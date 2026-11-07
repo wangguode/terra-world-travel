@@ -1,0 +1,40 @@
+[
+  {
+    "id": "1-day-classic",
+    "days": 1,
+    "name": { "en": "1-Day Classic", "zh": "一日经典" },
+    "subtitle": { "en": "Imperial heart of Beijing", "zh": "帝都核心" },
+    "stops": [
+      { "time": "09:00", "attractionId": "forbidden-city" },
+      { "time": "13:00", "attractionId": "beihai-park" },
+      { "time": "16:00", "attractionId": "wangfujing" }
+    ]
+  },
+  {
+    "id": "2-day-culture",
+    "days": 2,
+    "name": { "en": "2-Day Culture", "zh": "两日文化" },
+    "subtitle": { "en": "Temples, hutongs & art", "zh": "庙宇·胡同·艺术" },
+    "stops": [
+      { "time": "Day 1 · 09:00", "attractionId": "temple-of-heaven" },
+      { "time": "Day 1 · 14:00", "attractionId": "lama-temple" },
+      { "time": "Day 1 · 17:00", "attractionId": "nanluoguxiang" },
+      { "time": "Day 2 · 10:00", "attractionId": "798" },
+      { "time": "Day 2 · 15:00", "attractionId": "hutong-tour" }
+    ]
+  },
+  {
+    "id": "3-day-deep",
+    "days": 3,
+    "name": { "en": "3-Day Deep Dive", "zh": "三日深度" },
+    "subtitle": { "en": "Wall, gardens & everything", "zh": "长城·园林·全览" },
+    "stops": [
+      { "time": "Day 1 · 07:00", "attractionId": "great-wall" },
+      { "time": "Day 2 · 09:00", "attractionId": "summer-palace" },
+      { "time": "Day 2 · 15:00", "attractionId": "beihai-park" },
+      { "time": "Day 3 · 09:00", "attractionId": "forbidden-city" },
+      { "time": "Day 3 · 14:00", "attractionId": "temple-of-heaven" },
+      { "time": "Day 3 · 18:00", "attractionId": "wangfujing" }
+    ]
+  }
+]

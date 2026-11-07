@@ -1,0 +1,172 @@
+[
+  {
+    "id": "forbidden-city",
+    "name": { "en": "Forbidden City", "zh": "故宫" },
+    "category": "history",
+    "district": "dongcheng",
+    "duration": "3h",
+    "tags": ["unesco", "imperial", "must-see"],
+    "image": "assets/forbidden-city.jpg",
+    "address": { "en": "4 Jingshan Front St, Dongcheng", "zh": "东城区景山前街4号" },
+    "hours": { "en": "Tue-Sun 08:30-17:00", "zh": "周二至周日 08:30-17:00" },
+    "ticket": { "en": "¥60 (peak season)", "zh": "旺季 ¥60" },
+    "transport": { "en": "Metro Line 1, Tiananmen East", "zh": "地铁1号线天安门东站" },
+    "description": {
+      "en": "The imperial palace of Ming and Qing dynasties. Walk through vermilion gates and golden rooftops across 980 buildings.",
+      "zh": "明清两代皇家宫殿，九百八十座建筑，红墙金瓦，气势恢宏。"
+    }
+  },
+  {
+    "id": "great-wall",
+    "name": { "en": "Mutianyu Great Wall", "zh": "慕田峪长城" },
+    "category": "nature",
+    "district": "huairou",
+    "duration": "5h",
+    "tags": ["unesco", "hiking", "must-see"],
+    "image": "assets/great-wall.jpg",
+    "address": { "en": "Mutianyu, Huairou District", "zh": "怀柔区慕田峪村" },
+    "hours": { "en": "Daily 07:30-17:30", "zh": "每日 07:30-17:30" },
+    "ticket": { "en": "¥40 entrance + cable car optional", "zh": "门票 ¥40，缆车另计" },
+    "transport": { "en": "Bus 916 from Dongzhimen", "zh": "东直门乘916路" },
+    "description": {
+      "en": "Less crowded than Badaling, with forested ridges and watchtowers stretching across the horizon.",
+      "zh": "相比八达岭游客更少，森林山峦与烽火台绵延至天际。"
+    }
+  },
+  {
+    "id": "temple-of-heaven",
+    "name": { "en": "Temple of Heaven", "zh": "天坛" },
+    "category": "history",
+    "district": "dongcheng",
+    "duration": "2h",
+    "tags": ["unesco", "imperial"],
+    "image": "assets/temple-of-heaven.jpg",
+    "address": { "en": "1 Tiantan Rd, Dongcheng", "zh": "东城区天坛路1号" },
+    "hours": { "en": "Daily 06:00-22:00 (park)", "zh": "公园每日 06:00-22:00" },
+    "ticket": { "en": "¥15 park / ¥34 combo", "zh": "公园 ¥15 / 联票 ¥34" },
+    "transport": { "en": "Metro Line 5, Tiantan Dongmen", "zh": "地铁5号线天坛东门站" },
+    "description": {
+      "en": "Where emperors prayed for harvests. The circular Hall of Prayer is an icon of Chinese architecture.",
+      "zh": "皇帝祭天祈谷之地，祈年殿是中国建筑的标志性符号。"
+    }
+  },
+  {
+    "id": "summer-palace",
+    "name": { "en": "Summer Palace", "zh": "颐和园" },
+    "category": "nature",
+    "district": "haidian",
+    "duration": "4h",
+    "tags": ["unesco", "lake", "imperial"],
+    "image": "assets/summer-palace.jpg",
+    "address": { "en": "19 Xinjiangongmen Rd, Haidian", "zh": "海淀区新建宫门路19号" },
+    "hours": { "en": "Daily 06:30-18:00", "zh": "每日 06:30-18:00" },
+    "ticket": { "en": "¥30 (peak season)", "zh": "旺季 ¥30" },
+    "transport": { "en": "Metro Line 4, Beigongmen", "zh": "地铁4号线北宫门站" },
+    "description": {
+      "en": "Imperial garden around Kunming Lake. Longevity Hill, marble boat, and seventeen-arch bridge.",
+      "zh": "昆明湖畔皇家园林，万寿山、石舫与十七孔桥。"
+    }
+  },
+  {
+    "id": "798",
+    "name": { "en": "798 Art District", "zh": "798艺术区" },
+    "category": "culture",
+    "district": "chaoyang",
+    "duration": "3h",
+    "tags": ["art", "contemporary", "photography"],
+    "image": "assets/798.jpg",
+    "address": { "en": "2 Jiuxianqiao Rd, Chaoyang", "zh": "朝阳区酒仙桥路2号" },
+    "hours": { "en": "Daily 10:00-18:00 (galleries vary)", "zh": "画廊约 10:00-18:00" },
+    "ticket": { "en": "Free entry, exhibitions vary", "zh": "园区免费，展览另计" },
+    "transport": { "en": "Metro Line 14, Wangjing Nan", "zh": "地铁14号线望京南站" },
+    "description": {
+      "en": "Former factory complex turned contemporary art hub. Galleries, cafes, and Bauhaus-era architecture.",
+      "zh": "由旧厂房改造的当代艺术聚落，画廊、咖啡馆与包豪斯建筑并存。"
+    }
+  },
+  {
+    "id": "nanluoguxiang",
+    "name": { "en": "Nanluoguxiang", "zh": "南锣鼓巷" },
+    "category": "culture",
+    "district": "dongcheng",
+    "duration": "2h",
+    "tags": ["hutong", "food", "shopping"],
+    "image": "assets/nanluoguxiang.jpg",
+    "address": { "en": "Nanluoguxiang Hutong, Dongcheng", "zh": "东城区南锣鼓巷" },
+    "hours": { "en": "Shops ~10:00-22:00", "zh": "商铺约 10:00-22:00" },
+    "ticket": { "en": "Free", "zh": "免费" },
+    "transport": { "en": "Metro Line 6/8, Nanluoguxiang", "zh": "地铁6/8号线南锣鼓巷站" },
+    "description": {
+      "en": "Centuries-old hutong lane lined with courtyard houses, snack stalls, and indie boutiques.",
+      "zh": "数百年胡同巷弄，四合院、小吃摊与独立小店交织。"
+    }
+  },
+  {
+    "id": "beihai-park",
+    "name": { "en": "Beihai Park", "zh": "北海公园" },
+    "category": "nature",
+    "district": "xicheng",
+    "duration": "2h",
+    "tags": ["lake", "imperial", "relax"],
+    "image": "assets/beihai-park.jpg",
+    "address": { "en": "1 Wenjin St, Xicheng", "zh": "西城区文津街1号" },
+    "hours": { "en": "Daily 06:30-21:00", "zh": "每日 06:30-21:00" },
+    "ticket": { "en": "¥10", "zh": "¥10" },
+    "transport": { "en": "Metro Line 6, Beihai North", "zh": "地铁6号线北海北站" },
+    "description": {
+      "en": "White Dagoba on Jade Flower Island overlooks a lake used by emperors for leisure boating.",
+      "zh": "琼华岛白塔俯瞰湖面，帝王曾在此泛舟休闲。"
+    }
+  },
+  {
+    "id": "lama-temple",
+    "name": { "en": "Lama Temple", "zh": "雍和宫" },
+    "category": "culture",
+    "district": "dongcheng",
+    "duration": "1.5h",
+    "tags": ["temple", "buddhism"],
+    "image": "assets/lama-temple.jpg",
+    "address": { "en": "12 Yonghegong St, Dongcheng", "zh": "东城区雍和宫大街12号" },
+    "hours": { "en": "Daily 09:00-16:30", "zh": "每日 09:00-16:30" },
+    "ticket": { "en": "¥25", "zh": "¥25" },
+    "transport": { "en": "Metro Line 2/5, Yonghegong", "zh": "地铁2/5号线雍和宫站" },
+    "description": {
+      "en": "Tibetan Buddhist temple with an 18-meter sandalwood Buddha, the largest of its kind.",
+      "zh": "藏传佛教寺院，内有18米檀香木弥勒佛，为世界之最。"
+    }
+  },
+  {
+    "id": "hutong-tour",
+    "name": { "en": "Shichahai Hutongs", "zh": "什刹海胡同" },
+    "category": "culture",
+    "district": "xicheng",
+    "duration": "3h",
+    "tags": ["hutong", "cycling", "nightlife"],
+    "image": "assets/hutong.jpg",
+    "address": { "en": "Shichahai, Xicheng", "zh": "西城区什刹海" },
+    "hours": { "en": "Open 24h (area)", "zh": "全天开放" },
+    "ticket": { "en": "Free (rickshaw tours extra)", "zh": "免费（三轮车导览另计）" },
+    "transport": { "en": "Metro Line 8, Shichahai", "zh": "地铁8号线什刹海站" },
+    "description": {
+      "en": "Three lakes surrounded by hutongs. Rent a bike, grab a beer by the water at dusk.",
+      "zh": "三海环绕的胡同片区，骑行穿梭，黄昏临水小酌。"
+    }
+  },
+  {
+    "id": "wangfujing",
+    "name": { "en": "Wangfujing Snack Street", "zh": "王府井小吃街" },
+    "category": "food",
+    "district": "dongcheng",
+    "duration": "1.5h",
+    "tags": ["food", "street-food", "shopping"],
+    "image": "assets/wangfujing.jpg",
+    "address": { "en": "Wangfujing St, Dongcheng", "zh": "东城区王府井大街" },
+    "hours": { "en": "Daily 10:00-22:00", "zh": "每日 10:00-22:00" },
+    "ticket": { "en": "Free", "zh": "免费" },
+    "transport": { "en": "Metro Line 1, Wangfujing", "zh": "地铁1号线王府井站" },
+    "description": {
+      "en": "Beijing's busiest pedestrian street. From candied hawthorn to scorpion skewers, taste it all.",
+      "zh": "北京最繁华步行街，糖葫芦到蝎子串，一网打尽。"
+    }
+  }
+]
