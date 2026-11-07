@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   CORRIDORS,
+  CORRIDOR_METAS,
+  UPCOMING_CITIES,
   type CorridorId,
   type DriverCard,
 } from "@/lib/corridors-data";
@@ -20,7 +22,7 @@ interface AiStep {
 type StudioLayout = "app-studio" | "dual-phone" | "pc-wide";
 type MobileTab = "today" | "world3d" | "taxi" | "apps" | "ai-pro";
 
-const STORAGE_KEY = "terra_ios_state_v4";
+const STORAGE_KEY = "terra_ios_state_v5";
 
 // Crisp SF Symbol-style SVG Icons
 function IconToday({ active }: { active: boolean }) {
@@ -134,42 +136,42 @@ function IconSpeakerWave() {
 function renderAppSquircleIcon(appName: string, index: number) {
   if (appName.includes("Naver Map")) {
     return (
-      <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[14px] bg-[#03C75A] text-lg font-black text-white shadow-xs">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[13px] bg-[#03C75A] text-lg font-black text-white shadow-xs">
         N
       </div>
     );
   }
-  if (appName.includes("Kakao")) {
+  if (appName.includes("Kakao") || appName.includes("Suica")) {
     return (
-      <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[14px] bg-[#FAE100] text-lg font-black text-[#371D1E] shadow-xs">
-        T
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[13px] bg-[#FAE100] text-lg font-black text-[#371D1E] shadow-xs">
+        {appName.includes("Suica") ? "S" : "T"}
       </div>
     );
   }
-  if (appName.includes("CatchTable")) {
+  if (appName.includes("CatchTable") || appName.includes("Grab")) {
     return (
-      <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[14px] bg-[#FF3D00] text-lg font-black text-white shadow-xs">
-        C
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[13px] bg-[#00B14F] text-lg font-black text-white shadow-xs">
+        G
       </div>
     );
   }
-  if (appName.includes("Papago")) {
+  if (appName.includes("Papago") || appName.includes("Yahoo")) {
     return (
-      <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[14px] bg-[#00A8FF] text-lg font-black text-white shadow-xs">
-        P
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[13px] bg-[#FF0033] text-base font-black text-white shadow-xs">
+        Y!
       </div>
     );
   }
   if (appName.includes("高德") || appName.includes("Apple")) {
     return (
-      <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[14px] bg-[#007AFF] text-base font-black text-white shadow-xs">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[13px] bg-[#007AFF] text-base font-black text-white shadow-xs">
         导
       </div>
     );
   }
   if (appName.includes("滴滴") || appName.includes("支付宝")) {
     return (
-      <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[14px] bg-[#FF6600] text-base font-black text-white shadow-xs">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[13px] bg-[#FF6600] text-base font-black text-white shadow-xs">
         滴
       </div>
     );
@@ -177,7 +179,7 @@ function renderAppSquircleIcon(appName: string, index: number) {
   const colors = ["bg-[#007AFF]", "bg-[#34C759]", "bg-[#5856D6]", "bg-[#FF9500]"];
   return (
     <div
-      className={`flex h-13 w-13 shrink-0 items-center justify-center rounded-[14px] ${
+      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[13px] ${
         colors[index % colors.length]
       } text-base font-bold text-white shadow-xs`}
     >
@@ -188,10 +190,25 @@ function renderAppSquircleIcon(appName: string, index: number) {
 
 export function TerraTravelWorkbench() {
   const [corridorId, setCorridorId] = useState<CorridorId>("cn-to-seoul");
-  const corridor = CORRIDORS[corridorId];
+  const corridor = CORRIDORS[corridorId] ?? CORRIDORS["cn-to-seoul"];
+  const currentCorridorMeta =
+    CORRIDOR_METAS.find((m) => m.id === corridorId) ?? CORRIDOR_METAS[0];
 
   const [studioLayout, setStudioLayout] = useState<StudioLayout>("app-studio");
   const [activeTab, setActiveTab] = useState<MobileTab>("today");
+
+  // Global Corridor Discovery Sheet State
+  const [showCorridorDiscovery, setShowCorridorDiscovery] = useState(false);
+  const [corridorSearch, setCorridorSearch] = useState("");
+  const [corridorFilter, setCorridorFilter] = useState<
+    "all" | "visa-free" | "asia"
+  >("all");
+  const [voteCounts, setVoteCounts] = useState<Record<string, number>>({
+    SIN: 3842,
+    KIX: 2950,
+    CDG: 2410,
+    LHR: 1890,
+  });
 
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({
     "cn-to-seoul-0": true,
@@ -199,9 +216,11 @@ export function TerraTravelWorkbench() {
   });
   const [expandedAppIdx, setExpandedAppIdx] = useState<number | null>(0);
 
-  // Bidirectional FX state
+  // FX state
   const [krwInput, setKrwInput] = useState<string>("15000");
   const [usdInput, setUsdInput] = useState<string>("50");
+  const [jpyInput, setJpyInput] = useState<string>("3000");
+  const [thbInput, setThbInput] = useState<string>("500");
 
   // Taxi filter & voice state
   const [taxiSearch, setTaxiSearch] = useState("");
@@ -251,7 +270,6 @@ export function TerraTravelWorkbench() {
     }, 2200);
   };
 
-  // Restore saved state from localStorage on mount for instant continuity
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -262,6 +280,8 @@ export function TerraTravelWorkbench() {
         isProUnlocked?: boolean;
         krwInput?: string;
         usdInput?: string;
+        jpyInput?: string;
+        thbInput?: string;
       };
       if (parsed.corridorId && CORRIDORS[parsed.corridorId]) {
         setCorridorId(parsed.corridorId);
@@ -274,12 +294,13 @@ export function TerraTravelWorkbench() {
       }
       if (parsed.krwInput) setKrwInput(parsed.krwInput);
       if (parsed.usdInput) setUsdInput(parsed.usdInput);
+      if (parsed.jpyInput) setJpyInput(parsed.jpyInput);
+      if (parsed.thbInput) setThbInput(parsed.thbInput);
     } catch {
-      // ignore storage parse error
+      // ignore
     }
   }, []);
 
-  // Persist user progress seamlessly
   useEffect(() => {
     try {
       window.localStorage.setItem(
@@ -290,29 +311,18 @@ export function TerraTravelWorkbench() {
           isProUnlocked,
           krwInput,
           usdInput,
+          jpyInput,
+          thbInput,
         })
       );
     } catch {
-      // ignore quota error
+      // ignore
     }
-  }, [corridorId, completedSteps, isProUnlocked, krwInput, usdInput]);
-
-  // Preload destination photos in browser cache so switching Seoul <-> Beijing is 0ms instant
-  useEffect(() => {
-    const urls = [
-      ...CORRIDORS["cn-to-seoul"].worldScenes.map((s) => s.image),
-      ...CORRIDORS["global-to-beijing"].worldScenes.map((s) => s.image),
-    ];
-    urls.forEach((src) => {
-      const img = new window.Image();
-      img.src = src;
-    });
-  }, []);
+  }, [corridorId, completedSteps, isProUnlocked, krwInput, usdInput, jpyInput, thbInput]);
 
   const handleSelectTab = (nextTab: MobileTab) => {
     const container = scrollContainerRef.current;
     if (nextTab === activeTab) {
-      // Native iOS behavior: tapping the active tab scrolls smoothly to top
       container?.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -329,27 +339,47 @@ export function TerraTravelWorkbench() {
   };
 
   const handleSwitchCorridor = (nextId: CorridorId) => {
-    if (nextId === corridorId) return;
+    if (nextId === corridorId) {
+      setShowCorridorDiscovery(false);
+      return;
+    }
     setCorridorId(nextId);
+    setShowCorridorDiscovery(false);
     setTaxiSearch("");
     setAiSteps([]);
     setAiSummary(null);
+
+    const targetMeta = CORRIDOR_METAS.find((m) => m.id === nextId);
+    triggerIslandToast(`已切换至 ${targetMeta?.city ?? nextId}`);
+
     if (nextId === "cn-to-seoul") {
       setHotelArea("弘大入口 / 延南洞");
       setTravelerStyle("首次赴韩 · 景福宫韩服与圣水洞探店");
-      triggerIslandToast("已切换至首尔仁川 ICN");
-    } else {
+    } else if (nextId === "global-to-beijing") {
       setHotelArea("东城王府井 / 什刹海");
       setTravelerStyle("首次抵京 · 故宫中轴线与胡同铜锅涮肉");
-      triggerIslandToast("已切换至北京皇城 PKX");
+    } else if (nextId === "cn-to-tokyo") {
+      setHotelArea("新宿南口 / 涩谷");
+      setTravelerStyle("东京首访 · 涩谷十字路口与歌舞伎町夜景");
+    } else if (nextId === "cn-to-bangkok") {
+      setHotelArea("暹罗商圈 / 素坤逸");
+      setTravelerStyle("曼谷度假 · 郑王庙日落与米其林夜市探店");
     }
+  };
+
+  const handleVoteCity = (code: string, cityName: string) => {
+    setVoteCounts((prev) => ({
+      ...prev,
+      [code]: (prev[code] ?? 1000) + 1,
+    }));
+    triggerIslandToast(`已为你心仪的【${cityName}】投出宝贵一票！`);
   };
 
   const toggleTimelineStep = (idx: number) => {
     const key = `${corridorId}-${idx}`;
     const nextVal = !completedSteps[key];
     setCompletedSteps((prev) => ({ ...prev, [key]: nextVal }));
-    triggerIslandToast(nextVal ? "已标记完成该通关步骤" : "已取消完成标记");
+    triggerIslandToast(nextVal ? "已完成该准备节点" : "已重置状态");
   };
 
   const completedCount = corridor.timeline.filter(
@@ -357,15 +387,18 @@ export function TerraTravelWorkbench() {
   ).length;
 
   const handleSpeakDriverCard = (card: DriverCard) => {
-    triggerIslandToast(
-      corridorId === "cn-to-seoul" ? "正在播报韩语司机指令" : "正在播报中文司机指令"
-    );
+    let lang = "ko-KR";
+    if (corridorId === "global-to-beijing") lang = "zh-CN";
+    else if (corridorId === "cn-to-tokyo") lang = "ja-JP";
+    else if (corridorId === "cn-to-bangkok") lang = "th-TH";
+
+    triggerIslandToast("正在播报当地语音司机口令...");
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       return;
     }
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(card.localHeadline);
-    utterance.lang = corridorId === "cn-to-seoul" ? "ko-KR" : "zh-CN";
+    utterance.lang = lang;
     utterance.rate = 0.92;
     setSpeakingCardId(card.id);
     utterance.onend = () => setSpeakingCardId(null);
@@ -379,40 +412,7 @@ export function TerraTravelWorkbench() {
     } catch {
       // ignore
     }
-    triggerIslandToast("已复制原生地址，可直接粘贴导航");
-  };
-
-  const applyAiPreset = (preset: "morning" | "family" | "photo") => {
-    const isSeoul = corridorId === "cn-to-seoul";
-    if (preset === "morning") {
-      setArrivalTime("11:20");
-      setDays(4);
-      setHotelArea(isSeoul ? "弘大入口 9号口" : "东四 / 王府井");
-      setTravelerStyle(
-        isSeoul
-          ? "早班机高效通关 · 圣水洞探店与烤肉"
-          : "早班机直奔东华门故宫与景山日落"
-      );
-    } else if (preset === "family") {
-      setArrivalTime("15:00");
-      setDays(5);
-      setHotelArea(isSeoul ? "明洞乐天百货旁" : "什刹海 / 鼓楼四合院");
-      setTravelerStyle(
-        isSeoul
-          ? "带长辈轻松慢游 · 免爬坡直达景福宫"
-          : "带家人不费腿路线 · 颐和园画舫与涮肉"
-      );
-    } else {
-      setArrivalTime("13:45");
-      setDays(3);
-      setHotelArea(isSeoul ? "汉南洞 / 圣水洞" : "前门 / 东交民巷");
-      setTravelerStyle(
-        isSeoul
-          ? "黄金蓝调时刻 · 庆会楼倒影与南山夜景"
-          : "中轴线古建摄影 · 太和殿与祈年殿对称机位"
-      );
-    }
-    triggerIslandToast("已填入推荐场景参数");
+    triggerIslandToast("已复制当地原生地名，可直接粘贴搜索");
   };
 
   const handleGenerateAiPlan = async (e: React.FormEvent) => {
@@ -438,7 +438,7 @@ export function TerraTravelWorkbench() {
       setAiSummary(data.summary ?? null);
       setAiProvider(data.provider ?? "qwen-plus");
       setAiSteps(Array.isArray(data.steps) ? data.steps : []);
-      triggerIslandToast("专属行程已生成");
+      triggerIslandToast("专属时空行程已生成");
     } catch {
       setAiSummary("已切换至本地离线生存引擎生成方案。");
     } finally {
@@ -457,22 +457,46 @@ export function TerraTravelWorkbench() {
     );
   });
 
-  // Authentic Apple App Store (iOS 18 HIG) Screen with 120Hz Micro-Interactions
+  const filteredCorridorMetas = CORRIDOR_METAS.filter((m) => {
+    if (corridorFilter === "visa-free" && !m.visaTag.includes("免签")) return false;
+    if (corridorFilter === "asia" && m.region !== "asia") return false;
+    if (!corridorSearch.trim()) return true;
+    const q = corridorSearch.toLowerCase();
+    return (
+      m.city.toLowerCase().includes(q) ||
+      m.country.toLowerCase().includes(q) ||
+      m.code.toLowerCase().includes(q)
+    );
+  });
+
+  // Authentic Apple App Store (iOS 18 HIG) Screen with Dynamic Corridor Discovery
   const renderMobileAppScreen = (
     osVariant: "ios" | "android" = "ios",
     attachScrollRef = false
   ) => {
     const isSeoul = corridorId === "cn-to-seoul";
-    const cnyFromKrw = ((Number(krwInput) || 0) * 0.0053).toFixed(1);
-    const cnyFromUsd = ((Number(usdInput) || 0) * 7.22).toFixed(1);
+    const isBeijing = corridorId === "global-to-beijing";
+    const isTokyo = corridorId === "cn-to-tokyo";
+    const isBangkok = corridorId === "cn-to-bangkok";
+
+    let fxDisplay = "";
+    if (isSeoul) {
+      fxDisplay = `≈ ¥ ${((Number(krwInput) || 0) * 0.0053).toFixed(1)} RMB`;
+    } else if (isBeijing) {
+      fxDisplay = `≈ ¥ ${((Number(usdInput) || 0) * 7.22).toFixed(1)} CNY`;
+    } else if (isTokyo) {
+      fxDisplay = `≈ ¥ ${((Number(jpyInput) || 0) * 0.0478).toFixed(1)} RMB`;
+    } else if (isBangkok) {
+      fxDisplay = `≈ ¥ ${((Number(thbInput) || 0) * 0.215).toFixed(1)} RMB`;
+    }
 
     const tabTitles: Record<MobileTab, { kicker: string; title: string }> = {
       today: {
-        kicker: isSeoul ? "FIRST TOUCHDOWN · 首尔仁川" : "FIRST TOUCHDOWN · 北京皇城",
+        kicker: `FIRST TOUCHDOWN · ${currentCorridorMeta.city}`,
         title: "Today",
       },
       world3d: {
-        kicker: "APPLE MAPS FLYOVER · 空间预演",
+        kicker: "SPATIAL WORLD MODEL · 空间预演",
         title: "实景 3D",
       },
       taxi: {
@@ -480,11 +504,11 @@ export function TerraTravelWorkbench() {
         title: "打车卡",
       },
       apps: {
-        kicker: "ESSENTIALS · 本土国民级软件",
+        kicker: "ESSENTIALS · 当地国民软件",
         title: "必备应用",
       },
       "ai-pro": {
-        kicker: "INTELLIGENCE · 私人行程与离线包",
+        kicker: "INTELLIGENCE · 空间动线定制",
         title: "专属定制",
       },
     };
@@ -493,7 +517,7 @@ export function TerraTravelWorkbench() {
 
     return (
       <div className="relative flex h-full w-full flex-col bg-[#F2F2F7] text-[#1D1D1F] select-none">
-        {/* iOS Status Bar + Expandable Dynamic Island Capsule */}
+        {/* iOS Status Bar + Dynamic Island Capsule */}
         <div className="shrink-0 bg-[#F2F2F7]/90 px-6 pt-3 pb-2 backdrop-blur-xl z-20">
           <div className="relative flex items-center justify-between text-[12px] font-semibold tracking-tight text-[#1D1D1F]">
             <span>9:41</span>
@@ -507,7 +531,7 @@ export function TerraTravelWorkbench() {
               >
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#34C759]" />
                 <span className="truncate">
-                  {islandToast ? islandToast : isSeoul ? "ICN T2" : "PKX"}
+                  {islandToast ? islandToast : currentCorridorMeta.code}
                 </span>
               </div>
             ) : (
@@ -521,7 +545,7 @@ export function TerraTravelWorkbench() {
             </div>
           </div>
 
-          {/* Apple App Store Large Title Bar + Segmented City Switcher */}
+          {/* Apple App Store Header: Large Title + Scalable Corridor Discovery Trigger Pill */}
           <div className="mt-3 flex items-end justify-between gap-2">
             <div>
               <div className="text-[11px] font-semibold tracking-wider text-[#86868B] uppercase">
@@ -532,43 +556,34 @@ export function TerraTravelWorkbench() {
               </h1>
             </div>
 
-            <div className="flex items-center rounded-full bg-[#E5E5EA] p-0.5">
-              <button
-                type="button"
-                onClick={() => handleSwitchCorridor("cn-to-seoul")}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 ${
-                  isSeoul
-                    ? "bg-white text-[#1D1D1F] shadow-xs"
-                    : "text-[#86868B] hover:text-[#1D1D1F]"
-                }`}
-              >
-                首尔
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSwitchCorridor("global-to-beijing")}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 ${
-                  !isSeoul
-                    ? "bg-white text-[#1D1D1F] shadow-xs"
-                    : "text-[#86868B] hover:text-[#1D1D1F]"
-                }`}
-              >
-                北京
-              </button>
-            </div>
+            {/* Scalable Global Corridor Selector Pill */}
+            <button
+              type="button"
+              onClick={() => setShowCorridorDiscovery(true)}
+              className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#1D1D1F] shadow-xs ring-1 ring-black/[0.08] transition-all duration-150 active:scale-95 hover:bg-[#F2F2F7]"
+            >
+              <span className="text-sm">{currentCorridorMeta.flag}</span>
+              <span>{currentCorridorMeta.city.split(" ")[0]}</span>
+              <span className="rounded bg-[#F2F2F7] px-1 py-0.2 text-[10px] font-semibold text-[#86868B]">
+                {currentCorridorMeta.code}
+              </span>
+              <span className="text-[10px] text-[#86868B]">▼</span>
+            </button>
           </div>
         </div>
 
-        {/* Main Scrollable Content Area with Overscroll Containment & Tab Enter Spring */}
+        {/* Scrollable Viewport */}
         <div
           ref={attachScrollRef ? scrollContainerRef : undefined}
           className="no-scrollbar flex-1 overflow-y-auto overscroll-contain px-4 pt-2 pb-24"
         >
-          <div key={`${corridorId}-${activeTab}`} className="ios-tab-enter space-y-4">
+          <div
+            key={`${corridorId}-${activeTab}`}
+            className="ios-tab-enter space-y-4"
+          >
             {/* ================= TAB 1: TODAY ================= */}
             {activeTab === "today" && (
               <>
-                {/* App Store "Today" Full-Bleed Editorial Hero Card (Tappable like real App Store!) */}
                 <div
                   onClick={() => setShowTodayStoryModal(true)}
                   className="group relative h-[296px] w-full cursor-pointer overflow-hidden rounded-[26px] bg-[#1C1C1E] shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-transform duration-300 active:scale-[0.98]"
@@ -583,33 +598,28 @@ export function TerraTravelWorkbench() {
                   <div className="absolute inset-x-5 top-4 flex items-start justify-between">
                     <div>
                       <div className="text-[11px] font-semibold tracking-wider text-white/80 uppercase">
-                        落地首日生存指南
+                        落地首日生存指南 · {currentCorridorMeta.country}
                       </div>
                       <h2 className="mt-0.5 text-[24px] leading-tight font-bold tracking-tight text-white">
-                        {isSeoul
-                          ? "仁川落地黄金 120 分钟"
-                          : "北京抵京黄金 120 分钟"}
+                        {currentCorridorMeta.city.split(" ")[0]} 落地黄金 120 分钟
                       </h2>
                     </div>
                     <span className="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
-                      详情
+                      专题
                     </span>
                   </div>
 
-                  {/* Bottom App Store Frosted Glass Dock */}
                   <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-black/45 px-4 py-3.5 backdrop-blur-2xl">
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[#007AFF] text-sm font-bold text-white shadow-xs">
-                        {isSeoul ? "ICN" : "PKX"}
+                        {currentCorridorMeta.code}
                       </div>
                       <div>
                         <div className="text-[13px] font-semibold text-white">
-                          {isSeoul
-                            ? "eSIM · WOWPASS · 机场快轨"
-                            : "外卡绑支付宝 · 东华门捷径"}
+                          {currentCorridorMeta.highlights.join(" · ")}
                         </div>
                         <div className="text-[11px] text-white/70">
-                          已完成 {completedCount}/{corridor.timeline.length} 项关键准备
+                          已完成 {completedCount}/{corridor.timeline.length} 项关键通关步骤
                         </div>
                       </div>
                     </div>
@@ -626,7 +636,7 @@ export function TerraTravelWorkbench() {
                   </div>
                 </div>
 
-                {/* 2-Column iOS 18 Widgets: Quick-Tap Offline FX Calculator & Emergency Info */}
+                {/* 2-Column iOS 18 Widgets: Offline FX Calculator & Emergency Info */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-[22px] bg-white p-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.04]">
                     <div className="flex items-center justify-between">
@@ -634,73 +644,43 @@ export function TerraTravelWorkbench() {
                         离线汇率换算
                       </span>
                       <span className="text-[10px] font-medium text-[#007AFF]">
-                        可输入
+                        {currentCorridorMeta.code}
                       </span>
                     </div>
-                    {isSeoul ? (
-                      <div className="mt-1.5">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-xs font-medium text-[#86868B]">₩</span>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            value={krwInput}
-                            onChange={(e) => setKrwInput(e.target.value)}
-                            className="w-full bg-transparent text-lg font-bold tracking-tight text-[#1D1D1F] outline-none"
-                          />
-                        </div>
-                        <div className="text-sm font-semibold text-[#007AFF]">
-                          ≈ ¥ {cnyFromKrw} RMB
-                        </div>
-                        <div className="mt-2 flex gap-1">
-                          {[
-                            { label: "打车4800", val: "4800" },
-                            { label: "1万", val: "10000" },
-                            { label: "5万", val: "50000" },
-                          ].map((chip) => (
-                            <button
-                              key={chip.val}
-                              type="button"
-                              onClick={() => setKrwInput(chip.val)}
-                              className="rounded-full bg-[#F2F2F7] px-2 py-0.5 text-[10px] font-medium text-[#3A3A3C] transition-transform active:scale-95 hover:bg-[#E5E5EA]"
-                            >
-                              {chip.label}
-                            </button>
-                          ))}
-                        </div>
+
+                    <div className="mt-1.5">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xs font-medium text-[#86868B]">
+                          {isSeoul ? "₩" : isTokyo ? "¥" : isBangkok ? "฿" : "$"}
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={
+                            isSeoul
+                              ? krwInput
+                              : isTokyo
+                              ? jpyInput
+                              : isBangkok
+                              ? thbInput
+                              : usdInput
+                          }
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (isSeoul) setKrwInput(v);
+                            else if (isTokyo) setJpyInput(v);
+                            else if (isBangkok) setThbInput(v);
+                            else setUsdInput(v);
+                          }}
+                          className="w-full bg-transparent text-lg font-bold tracking-tight text-[#1D1D1F] outline-none"
+                        />
                       </div>
-                    ) : (
-                      <div className="mt-1.5">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-xs font-medium text-[#86868B]">$</span>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            value={usdInput}
-                            onChange={(e) => setUsdInput(e.target.value)}
-                            className="w-full bg-transparent text-lg font-bold tracking-tight text-[#1D1D1F] outline-none"
-                          />
-                        </div>
-                        <div className="text-sm font-semibold text-[#007AFF]">
-                          ≈ ¥ {cnyFromUsd} CNY
-                        </div>
-                        <div className="mt-2 flex gap-1">
-                          {["10", "50", "100"].map((val) => (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => setUsdInput(val)}
-                              className="rounded-full bg-[#F2F2F7] px-2 py-0.5 text-[10px] font-medium text-[#3A3A3C] transition-transform active:scale-95 hover:bg-[#E5E5EA]"
-                            >
-                              ${val}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="text-sm font-semibold text-[#007AFF]">
+                        {fxDisplay}
                       </div>
-                    )}
+                    </div>
                   </div>
 
-                  {/* Right Widget: Clean iOS Assistance & Quick Taxi Jump */}
                   <div className="flex flex-col justify-between rounded-[22px] bg-white p-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.04]">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-[#86868B]">
@@ -710,10 +690,10 @@ export function TerraTravelWorkbench() {
                     </div>
                     <div className="my-1">
                       <div className="text-lg font-bold tracking-tight text-[#1D1D1F]">
-                        {isSeoul ? "1330 热线" : "12345 热线"}
+                        {corridor.emergencyNumber.split(" ")[0]}
                       </div>
                       <div className="text-[11px] text-[#86868B]">
-                        {isSeoul ? "24h 免费韩中翻译" : "多语种市民热线"}
+                        24小时中文翻译救援
                       </div>
                     </div>
                     <button
@@ -721,17 +701,17 @@ export function TerraTravelWorkbench() {
                       onClick={() => handleSelectTab("taxi")}
                       className="w-full rounded-full bg-[#F2F2F7] py-1 text-[11px] font-semibold text-[#007AFF] transition-transform active:scale-95 hover:bg-[#E5E5EA]"
                     >
-                      打开双语打车卡 →
+                      打开打车卡 →
                     </button>
                   </div>
                 </div>
 
-                {/* Apple Grouped Checklist Card: 4 Touchdown Steps */}
+                {/* Touchdown Checklist */}
                 <div className="rounded-[24px] bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.04]">
                   <div className="flex items-center justify-between pb-2">
                     <div>
                       <h3 className="text-base font-bold text-[#1D1D1F]">
-                        下飞机通关清单
+                        下飞机通关清单 · {currentCorridorMeta.city.split(" ")[0]}
                       </h3>
                       <p className="text-xs text-[#86868B]">
                         轻点圆圈记录进度，状态离线自动保存
@@ -740,18 +720,6 @@ export function TerraTravelWorkbench() {
                     <span className="rounded-full bg-[#F2F2F7] px-2.5 py-1 text-xs font-semibold text-[#1D1D1F]">
                       {completedCount}/{corridor.timeline.length}
                     </span>
-                  </div>
-
-                  {/* Subtle Apple Progress Hairline */}
-                  <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-[#F2F2F7]">
-                    <div
-                      className="h-full rounded-full bg-[#007AFF] transition-all duration-300"
-                      style={{
-                        width: `${Math.round(
-                          (completedCount / corridor.timeline.length) * 100
-                        )}%`,
-                      }}
-                    />
                   </div>
 
                   <div className="divide-y divide-black/[0.06]">
@@ -819,7 +787,7 @@ export function TerraTravelWorkbench() {
               </>
             )}
 
-            {/* ================= TAB 2: 实景 3D ================= */}
+            {/* ================= TAB 2: 实景 3D (WORLD MODEL TRIPLE VALUE) ================= */}
             {activeTab === "world3d" && (
               <div className="space-y-3.5">
                 <WorldModelViewport
@@ -828,11 +796,11 @@ export function TerraTravelWorkbench() {
                   compact
                 />
 
-                {!isSeoul && (
+                {isBeijing && (
                   <div className="rounded-[24px] bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.04]">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-[#1D1D1F]">
-                        北京地标实拍图鉴
+                        北京中轴高清实拍机位图鉴
                       </h3>
                       <span className="text-xs text-[#86868B]">左右滑动</span>
                     </div>
@@ -867,7 +835,6 @@ export function TerraTravelWorkbench() {
             {/* ================= TAB 3: 打车卡 ================= */}
             {activeTab === "taxi" && (
               <div className="space-y-3">
-                {/* iOS Native Spotlight-Style Instant Search Bar */}
                 <div className="flex items-center gap-2 rounded-2xl bg-[#E5E5EA]/80 px-3.5 py-2">
                   <svg
                     className="h-4 w-4 shrink-0 text-[#86868B]"
@@ -883,11 +850,7 @@ export function TerraTravelWorkbench() {
                     type="text"
                     value={taxiSearch}
                     onChange={(e) => setTaxiSearch(e.target.value)}
-                    placeholder={
-                      isSeoul
-                        ? "搜索弘大、明洞、圣水洞、仁川机场..."
-                        : "搜索故宫东华门、景山、颐和园、机场..."
-                    }
+                    placeholder={`搜索 ${currentCorridorMeta.city.split(" ")[0]} 热门地标或交通枢纽...`}
                     className="w-full bg-transparent text-xs font-medium text-[#1D1D1F] placeholder-[#86868B] outline-none"
                   />
                   {taxiSearch && (
@@ -975,7 +938,7 @@ export function TerraTravelWorkbench() {
                 <div className="rounded-[24px] bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.04]">
                   <div className="pb-2">
                     <div className="text-[11px] font-semibold tracking-wider text-[#007AFF] uppercase">
-                      ESSENTIAL APPS
+                      ESSENTIAL APPS · {currentCorridorMeta.country}
                     </div>
                     <h3 className="text-lg font-bold text-[#1D1D1F]">
                       当地必装软件与中文配置
@@ -1037,7 +1000,7 @@ export function TerraTravelWorkbench() {
 
                 <div className="rounded-[24px] bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.04]">
                   <h3 className="text-base font-bold text-[#1D1D1F]">
-                    推荐住宿片区
+                    推荐住宿片区 · {currentCorridorMeta.city.split(" ")[0]}
                   </h3>
                   <div className="mt-3 divide-y divide-black/[0.06]">
                     {corridor.stayDistricts.map((stay) => (
@@ -1068,29 +1031,11 @@ export function TerraTravelWorkbench() {
               <div className="space-y-4">
                 <div className="rounded-[24px] bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.04]">
                   <div className="text-[11px] font-semibold tracking-wider text-[#007AFF] uppercase">
-                    TRIP PLANNER
+                    TRIP PLANNER · {currentCorridorMeta.code}
                   </div>
                   <h3 className="mt-0.5 text-lg font-bold text-[#1D1D1F]">
-                    生成分时段落地行程
+                    生成分时段落地动线
                   </h3>
-
-                  {/* 1-Tap Quick Scenario Chips for Zero-Typing Convenience */}
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {[
-                      { id: "morning" as const, label: "早班机高效探店" },
-                      { id: "family" as const, label: "带家人轻松慢游" },
-                      { id: "photo" as const, label: "建筑摄影机位控" },
-                    ].map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => applyAiPreset(preset.id)}
-                        className="rounded-full bg-[#F2F2F7] px-3 py-1 text-[11px] font-medium text-[#1D1D1F] transition-transform active:scale-95 hover:bg-[#E5E5EA]"
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
 
                   <form onSubmit={handleGenerateAiPlan} className="mt-3">
                     <div className="divide-y divide-black/[0.06] overflow-hidden rounded-2xl bg-[#F2F2F7]/80 px-3.5">
@@ -1147,15 +1092,13 @@ export function TerraTravelWorkbench() {
                       disabled={aiLoading}
                       className="mt-3.5 w-full rounded-full bg-[#007AFF] py-3 text-xs font-semibold text-white shadow-xs transition-all active:scale-[0.98] hover:bg-[#0071E3] disabled:opacity-60"
                     >
-                      {aiLoading ? "正在通过百炼引擎生成..." : "生成定制路线"}
+                      {aiLoading ? "正在通过百炼引擎生成..." : "生成定制动线"}
                     </button>
                   </form>
 
-                  {/* Smooth Skeleton Loader during API Call */}
                   {aiLoading && (
                     <div className="mt-4 space-y-2.5 border-t border-black/[0.06] pt-3">
                       <div className="h-3 w-36 animate-pulse rounded-full bg-[#E5E5EA]" />
-                      <div className="h-14 w-full animate-pulse rounded-2xl bg-[#F2F2F7]" />
                       <div className="h-14 w-full animate-pulse rounded-2xl bg-[#F2F2F7]" />
                     </div>
                   )}
@@ -1177,17 +1120,8 @@ export function TerraTravelWorkbench() {
                             {st.timeSlot} · {st.phase}
                           </div>
                           <div className="mt-1 text-[#3A3A3C]">{st.action}</div>
-                          <div className="mt-1.5 flex items-center justify-between">
-                            <span className="text-[11px] text-[#007AFF]">
-                              口令：{st.driverPhrase}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyPhrase(st.driverPhrase)}
-                              className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-semibold text-[#1D1D1F] shadow-2xs active:scale-95"
-                            >
-                              复制
-                            </button>
+                          <div className="mt-1 text-[11px] text-[#007AFF]">
+                            口令：{st.driverPhrase}
                           </div>
                         </div>
                       ))}
@@ -1195,7 +1129,6 @@ export function TerraTravelWorkbench() {
                   )}
                 </div>
 
-                {/* Clean Apple App Store Subscription / StoreKit 2 Sheet */}
                 <div className="rounded-[24px] bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.04]">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-semibold tracking-wider text-[#86868B] uppercase">
@@ -1205,9 +1138,9 @@ export function TerraTravelWorkbench() {
                       type="button"
                       onClick={() => {
                         setIsProUnlocked(true);
-                        triggerIslandToast("已恢复 TERRA+ 购买权益");
+                        triggerIslandToast("已恢复购买");
                       }}
-                      className="text-xs font-medium text-[#007AFF] active:opacity-60"
+                      className="text-xs font-medium text-[#007AFF]"
                     >
                       恢复购买
                     </button>
@@ -1226,7 +1159,7 @@ export function TerraTravelWorkbench() {
                         key={plan.id}
                         type="button"
                         onClick={() => setSelectedPlan(plan.id)}
-                        className={`rounded-2xl p-2.5 text-left transition-all duration-150 active:scale-95 ${
+                        className={`rounded-2xl p-2.5 text-left transition-all ${
                           selectedPlan === plan.id
                             ? "bg-[#007AFF]/8 ring-2 ring-[#007AFF]"
                             : "bg-[#F2F2F7] ring-1 ring-black/[0.04]"
@@ -1249,9 +1182,9 @@ export function TerraTravelWorkbench() {
                     type="button"
                     onClick={() => {
                       setIsProUnlocked(true);
-                      triggerIslandToast("已通过 Apple Pay 解锁 TERRA+");
+                      triggerIslandToast("已通过 Apple Pay 订阅");
                     }}
-                    className="mt-3.5 w-full rounded-full bg-[#1D1D1F] py-3 text-xs font-semibold text-white transition-all active:scale-[0.98] hover:opacity-90"
+                    className="mt-3.5 w-full rounded-full bg-[#1D1D1F] py-3 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                   >
                     {isProUnlocked ? "已解锁 TERRA+ 全部权益" : "通过 Apple Pay 订阅"}
                   </button>
@@ -1261,7 +1194,7 @@ export function TerraTravelWorkbench() {
           </div>
         </div>
 
-        {/* Authentic iOS 18 Translucent Frosted Bottom Tab Bar */}
+        {/* Translucent Tab Bar */}
         <div className="absolute inset-x-0 bottom-0 z-20 border-t border-black/[0.06] bg-white/85 px-2 pt-1.5 pb-2.5 backdrop-blur-2xl">
           <div className="grid grid-cols-5">
             {[
@@ -1317,12 +1250,26 @@ export function TerraTravelWorkbench() {
                   TERRA
                 </span>
                 <span className="text-xs font-medium text-[#86868B]">
-                  iOS 18 App Store 设计规范 · 120Hz 阻尼交互与跨国落地指南
+                  iOS 18 全球走廊发现中心 · 空间世界模型与跨国落地指南
                 </span>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Scalable Global Corridor Trigger Pill on Desktop */}
+              <button
+                type="button"
+                onClick={() => setShowCorridorDiscovery(true)}
+                className="flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-xs font-bold text-[#1D1D1F] shadow-xs ring-1 ring-black/[0.08] transition-all duration-150 active:scale-95 hover:bg-[#F2F2F7]"
+              >
+                <span className="text-base">{currentCorridorMeta.flag}</span>
+                <span>{currentCorridorMeta.city}</span>
+                <span className="rounded bg-[#F2F2F7] px-1.5 py-0.5 text-[10px] font-semibold text-[#86868B]">
+                  {currentCorridorMeta.code}
+                </span>
+                <span className="text-xs text-[#86868B]">切换城市 ▼</span>
+              </button>
+
               <div className="flex items-center rounded-full bg-[#E5E5EA] p-0.5">
                 <button
                   type="button"
@@ -1365,14 +1312,12 @@ export function TerraTravelWorkbench() {
         <main className="mx-auto flex-1 w-full max-w-[1380px] px-8 py-8">
           {studioLayout === "app-studio" && (
             <div className="grid grid-cols-12 items-start gap-10">
-              {/* Left Column: Clean Natural Titanium iPhone 16 Pro */}
               <div className="col-span-5 flex flex-col items-center">
                 <div className="relative h-[840px] w-[408px] overflow-hidden rounded-[54px] border-[10px] border-[#1D1D1F] bg-[#F2F2F7] shadow-[0_24px_70px_rgba(0,0,0,0.12)] ring-1 ring-black/10">
                   {renderMobileAppScreen("ios", true)}
                 </div>
               </div>
 
-              {/* Right Column: Clean Apple App Store Product Page & Large 3D Map */}
               <div className="col-span-7 space-y-6">
                 <div className="rounded-[28px] bg-white p-7 shadow-[0_4px_24px_rgba(0,0,0,0.04)] ring-1 ring-black/[0.04]">
                   <div className="flex items-start justify-between gap-6">
@@ -1382,62 +1327,62 @@ export function TerraTravelWorkbench() {
                       </div>
                       <div>
                         <div className="text-xs font-semibold text-[#007AFF]">
-                          旅行与空间导航 · 编辑精选
+                          全球城市走廊 · {currentCorridorMeta.country} · {currentCorridorMeta.visaTag}
                         </div>
                         <h2 className="mt-0.5 text-2xl font-bold tracking-tight text-[#1D1D1F]">
-                          TERRA — 跨国落地指南
+                          TERRA — {currentCorridorMeta.city}
                         </h2>
                         <p className="mt-1 text-sm text-[#86868B]">
-                          首尔与北京黄金120分钟通关 · 离线双语出租车发声卡 · 3D 机位预演
+                          {corridor.heroSubheadline}
                         </p>
                       </div>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => setShowPaywallModal(true)}
+                      onClick={() => setShowCorridorDiscovery(true)}
                       className="shrink-0 rounded-full bg-[#007AFF] px-5 py-2 text-xs font-bold text-white transition-all active:scale-95 hover:bg-[#0071E3]"
                     >
-                      App 内购买 · ¥18 起
+                      切换全球城市 🌐
                     </button>
                   </div>
 
                   <div className="mt-6 grid grid-cols-4 divide-x divide-black/[0.06] border-y border-black/[0.06] py-3 text-center">
                     <div>
                       <div className="text-[10px] font-semibold text-[#86868B]">
-                        评分
+                        全球走廊
                       </div>
                       <div className="mt-0.5 text-base font-bold text-[#1D1D1F]">
-                        4.9
+                        4 开通 + 4 筹备
                       </div>
-                      <div className="text-[10px] text-[#86868B]">★★★★★</div>
+                      <div className="text-[10px] text-[#86868B]">实时投票扩展</div>
                     </div>
                     <div>
                       <div className="text-[10px] font-semibold text-[#86868B]">
-                        帧率优化
+                        世界模型应用
                       </div>
                       <div className="mt-0.5 text-base font-bold text-[#1D1D1F]">
-                        120Hz
+                        3 大实战场景
                       </div>
-                      <div className="text-[10px] text-[#86868B]">惯性阻尼手势</div>
+                      <div className="text-[10px] text-[#86868B]">动线/时空/机位</div>
                     </div>
                     <div>
                       <div className="text-[10px] font-semibold text-[#86868B]">
                         语音引擎
                       </div>
                       <div className="mt-0.5 text-base font-bold text-[#1D1D1F]">
-                        韩 / 中
+                        韩/日/泰/中
                       </div>
-                      <div className="text-[10px] text-[#86868B]">离线 TTS 播报</div>
+                      <div className="text-[10px] text-[#86868B]">离线双语 TTS</div>
                     </div>
                     <div>
                       <div className="text-[10px] font-semibold text-[#86868B]">
-                        状态存储
+                        架构定位
                       </div>
                       <div className="mt-0.5 text-base font-bold text-[#1D1D1F]">
-                        0ms
+                        iOS 18 原生
                       </div>
-                      <div className="text-[10px] text-[#86868B]">离线自动恢复</div>
+                      <div className="text-[10px] text-[#86868B]">Capacitor 就绪</div>
                     </div>
                   </div>
 
@@ -1468,42 +1413,24 @@ export function TerraTravelWorkbench() {
                   </div>
                 </div>
 
-                {/* Large Synced 3D Flyover Card */}
                 <div className="rounded-[28px] bg-white p-6 shadow-[0_4px_24px_rgba(0,0,0,0.04)] ring-1 ring-black/[0.04]">
                   <div className="mb-4 flex items-center justify-between">
                     <div>
                       <div className="text-xs font-semibold text-[#86868B]">
-                        3D FLYOVER · 空间地标预演
+                        3D SPATIAL WORLD MODEL · 空间世界模型视窗
                       </div>
                       <h3 className="text-lg font-bold text-[#1D1D1F]">
                         {corridor.destinationCity}
                       </h3>
                     </div>
 
-                    <div className="flex items-center rounded-full bg-[#F2F2F7] p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleSwitchCorridor("cn-to-seoul")}
-                        className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all ${
-                          corridorId === "cn-to-seoul"
-                            ? "bg-white text-[#1D1D1F] shadow-xs"
-                            : "text-[#86868B]"
-                        }`}
-                      >
-                        首尔 Seoul
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSwitchCorridor("global-to-beijing")}
-                        className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all ${
-                          corridorId === "global-to-beijing"
-                            ? "bg-white text-[#1D1D1F] shadow-xs"
-                            : "text-[#86868B]"
-                        }`}
-                      >
-                        北京 Beijing
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCorridorDiscovery(true)}
+                      className="rounded-full bg-[#F2F2F7] px-3.5 py-1.5 text-xs font-semibold text-[#007AFF] hover:bg-[#E5E5EA]"
+                    >
+                      更多全球城市 ➔
+                    </button>
                   </div>
 
                   <WorldModelViewport
@@ -1543,7 +1470,7 @@ export function TerraTravelWorkbench() {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <div className="text-xs font-semibold text-[#007AFF]">
-                      IPAD & DESKTOP VIEW
+                      GLOBAL TRAVEL COMMAND DECK
                     </div>
                     <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#1D1D1F]">
                       {corridor.heroHeadline}
@@ -1552,6 +1479,13 @@ export function TerraTravelWorkbench() {
                       {corridor.heroSubheadline}
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCorridorDiscovery(true)}
+                    className="rounded-full bg-[#007AFF] px-6 py-2.5 text-xs font-bold text-white shadow-xs"
+                  >
+                    选择全球目的地 🌐
+                  </button>
                 </div>
               </div>
 
@@ -1564,7 +1498,201 @@ export function TerraTravelWorkbench() {
         </main>
       </div>
 
-      {/* App Store "Today" Editorial Story Sheet Modal */}
+      {/* ================= GLOBAL CORRIDOR & CITY DISCOVERY SHEET MODAL ================= */}
+      {showCorridorDiscovery && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-md"
+          onClick={() => setShowCorridorDiscovery(false)}
+        >
+          <div
+            className="ios-tab-enter max-h-[88vh] w-full max-w-xl overflow-hidden rounded-[32px] bg-white shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-black/[0.06] p-5 pb-4">
+              <div>
+                <span className="text-[11px] font-bold tracking-wider text-[#007AFF] uppercase">
+                  GLOBAL DESTINATIONS
+                </span>
+                <h3 className="text-xl font-bold text-[#1D1D1F]">
+                  全球旅游城市与跨国走廊
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCorridorDiscovery(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F2F2F7] text-xs font-bold text-[#86868B] transition-transform active:scale-95"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Search + Filter Pill Row */}
+            <div className="p-5 pb-3 space-y-3 bg-[#F9F9FB]">
+              <div className="flex items-center gap-2 rounded-2xl bg-white px-3.5 py-2 ring-1 ring-black/[0.08]">
+                <svg
+                  className="h-4 w-4 shrink-0 text-[#86868B]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+                </svg>
+                <input
+                  type="text"
+                  value={corridorSearch}
+                  onChange={(e) => setCorridorSearch(e.target.value)}
+                  placeholder="搜索全球城市、国家或机场三字码 (如 HND / BKK / 巴黎)..."
+                  className="w-full bg-transparent text-xs font-medium text-[#1D1D1F] placeholder-[#86868B] outline-none"
+                />
+                {corridorSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setCorridorSearch("")}
+                    className="text-xs font-bold text-[#86868B]"
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                {[
+                  { id: "all" as const, label: "全部走廊" },
+                  { id: "visa-free" as const, label: "免签特快" },
+                  { id: "asia" as const, label: "亚洲直飞" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setCorridorFilter(f.id)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                      corridorFilter === f.id
+                        ? "bg-[#1D1D1F] text-white"
+                        : "bg-white text-[#86868B] ring-1 ring-black/[0.06] hover:bg-[#F2F2F7]"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Scrollable City Cards List */}
+            <div className="no-scrollbar flex-1 overflow-y-auto p-5 space-y-4">
+              <div>
+                <div className="text-xs font-bold text-[#86868B] mb-2.5">
+                  已上线跨国生存走廊 ({filteredCorridorMetas.length})
+                </div>
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {filteredCorridorMetas.map((meta) => {
+                    const isSelected = meta.id === corridorId;
+                    return (
+                      <div
+                        key={meta.id}
+                        onClick={() => handleSwitchCorridor(meta.id)}
+                        className={`cursor-pointer rounded-2xl p-3.5 transition-all duration-200 active:scale-[0.98] ${
+                          isSelected
+                            ? "bg-[#007AFF]/8 ring-2 ring-[#007AFF]"
+                            : "bg-[#F2F2F7] hover:bg-[#E5E5EA]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{meta.flag}</span>
+                            <div>
+                              <div className="text-sm font-bold text-[#1D1D1F]">
+                                {meta.city}
+                              </div>
+                              <div className="text-[10px] text-[#86868B]">
+                                {meta.country} · {meta.code}
+                              </div>
+                            </div>
+                          </div>
+                          <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-semibold text-[#007AFF] shadow-2xs">
+                            {meta.visaTag}
+                          </span>
+                        </div>
+                        <div className="mt-2.5 flex flex-wrap gap-1">
+                          {meta.highlights.map((h) => (
+                            <span
+                              key={h}
+                              className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] text-[#3A3A3C]"
+                            >
+                              {h}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Upcoming Cities & Community Voting Section */}
+              <div className="border-t border-black/[0.06] pt-4">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="text-xs font-bold text-[#86868B]">
+                    正在筹备与用户投票榜 (即将上线)
+                  </div>
+                  <span className="text-[10px] text-[#007AFF]">
+                    轻点一键投票加速上线
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {UPCOMING_CITIES.map((c) => (
+                    <div
+                      key={c.code}
+                      className="flex items-center justify-between rounded-2xl bg-[#F9F9FB] p-3 ring-1 ring-black/[0.04]"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">{c.flag}</span>
+                        <div>
+                          <div className="text-xs font-bold text-[#1D1D1F]">
+                            {c.city}
+                          </div>
+                          <div className="text-[10px] text-[#86868B]">
+                            {c.tag}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleVoteCity(c.code, c.city.split(" ")[0])
+                        }
+                        className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#007AFF] shadow-2xs ring-1 ring-black/[0.06] transition-transform active:scale-95"
+                      >
+                        👍 {voteCounts[c.code] ?? c.votes}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Dismiss */}
+            <div className="p-4 border-t border-black/[0.06] bg-[#F9F9FB] flex items-center justify-between">
+              <span className="text-xs text-[#86868B]">
+                有想去的新城市？欢迎在社区投票
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowCorridorDiscovery(false)}
+                className="rounded-full bg-[#1D1D1F] px-5 py-2 text-xs font-semibold text-white"
+              >
+                完成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Story Modal */}
       {showTodayStoryModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-md"
@@ -1621,14 +1749,14 @@ export function TerraTravelWorkbench() {
                 onClick={() => setShowTodayStoryModal(false)}
                 className="w-full rounded-full bg-[#007AFF] py-3 text-xs font-semibold text-white active:scale-[0.98]"
               >
-                开始按步骤通关
+                关闭
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Fullscreen Taxi Pass Display */}
+      {/* Fullscreen Taxi Pass */}
       {fullscreenDriverCard && (
         <div
           className="fixed inset-0 z-50 flex flex-col justify-between bg-white p-8 md:p-16"
@@ -1679,56 +1807,13 @@ export function TerraTravelWorkbench() {
                 }
                 className="rounded-full bg-[#F2F2F7] px-7 py-3.5 text-base font-semibold text-[#1D1D1F] active:scale-95"
               >
-                复制原生地址
+                复制当地地址
               </button>
             </div>
           </div>
 
           <div className="text-sm text-[#86868B]">
             {fullscreenDriverCard.subwayBackup}
-          </div>
-        </div>
-      )}
-
-      {/* Clean Apple StoreKit Sheet Modal */}
-      {showPaywallModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
-          onClick={() => setShowPaywallModal(false)}
-        >
-          <div
-            className="ios-tab-enter w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#86868B]">
-                App Store 内购预览
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowPaywallModal(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F2F2F7] text-xs font-bold text-[#86868B]"
-              >
-                ✕
-              </button>
-            </div>
-            <h3 className="mt-3 text-xl font-bold text-[#1D1D1F]">
-              TERRA+ 全球离线通行证
-            </h3>
-            <p className="mt-1 text-xs leading-relaxed text-[#86868B]">
-              一次解锁首尔与北京全部 3D 离线地标、真人韩语出租车播报及无限次行程定制。
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setIsProUnlocked(true);
-                setShowPaywallModal(false);
-                triggerIslandToast("已解锁 TERRA+ 全部权益");
-              }}
-              className="mt-5 w-full rounded-full bg-[#007AFF] py-3 text-xs font-semibold text-white active:scale-[0.98]"
-            >
-              使用 Apple Pay 订阅 (¥28)
-            </button>
           </div>
         </div>
       )}

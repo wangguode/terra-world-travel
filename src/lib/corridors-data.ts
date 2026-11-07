@@ -1,4 +1,102 @@
-export type CorridorId = "cn-to-seoul" | "global-to-beijing";
+export type CorridorId =
+  | "cn-to-seoul"
+  | "global-to-beijing"
+  | "cn-to-tokyo"
+  | "cn-to-bangkok";
+
+export interface CorridorMeta {
+  id: CorridorId;
+  city: string;
+  country: string;
+  code: string;
+  flag: string;
+  region: "asia" | "europe" | "americas";
+  visaTag: string;
+  status: "available" | "coming-soon";
+  highlights: string[];
+}
+
+export const CORRIDOR_METAS: CorridorMeta[] = [
+  {
+    id: "cn-to-seoul",
+    city: "首尔 Seoul",
+    country: "韩国",
+    code: "ICN",
+    flag: "🇰🇷",
+    region: "asia",
+    visaTag: "贴纸签/电子签",
+    status: "available",
+    highlights: ["AREX快线直达", "WOWPASS换汇卡", "双语出租车卡"],
+  },
+  {
+    id: "global-to-beijing",
+    city: "北京 Beijing",
+    country: "中国",
+    code: "PKX",
+    flag: "🇨🇳",
+    region: "asia",
+    visaTag: "144h过境免签",
+    status: "available",
+    highlights: ["故宫东华门捷径", "支付宝外卡无感", "皇城中轴3D"],
+  },
+  {
+    id: "cn-to-tokyo",
+    city: "东京 Tokyo",
+    country: "日本",
+    code: "HND",
+    flag: "🇯🇵",
+    region: "asia",
+    visaTag: "单次/多次电子签",
+    status: "available",
+    highlights: ["iPhone直绑Suica", "成田Skyliner", "新宿站迷宫动线"],
+  },
+  {
+    id: "cn-to-bangkok",
+    city: "曼谷 Bangkok",
+    country: "泰国",
+    code: "BKK",
+    flag: "🇹🇭",
+    region: "asia",
+    visaTag: "中泰永久互免签",
+    status: "available",
+    highlights: ["免签白名单丝滑", "Grab/Bolt打车防宰", "郑王庙日落机位"],
+  },
+];
+
+export const UPCOMING_CITIES = [
+  {
+    city: "新加坡 Singapore",
+    country: "新加坡",
+    code: "SIN",
+    flag: "🇸🇬",
+    tag: "30天互免签证",
+    votes: 3842,
+  },
+  {
+    city: "大阪 Osaka",
+    country: "日本",
+    code: "KIX",
+    flag: "🇯🇵",
+    tag: "关西机场Haruka",
+    votes: 2950,
+  },
+  {
+    city: "巴黎 Paris",
+    country: "法国",
+    code: "CDG",
+    flag: "🇫🇷",
+    tag: "戴高乐RER防盗",
+    votes: 2410,
+  },
+  {
+    city: "伦敦 London",
+    country: "英国",
+    code: "LHR",
+    flag: "🇬🇧",
+    tag: "伊丽莎白线直达",
+    votes: 1890,
+  },
+];
 
 export interface TimelineStep {
   window: string;
@@ -29,6 +127,20 @@ export interface SpatialHotspot {
   cameraPreset: { yaw: number; pitch: number; zoom: number };
 }
 
+export interface TrajectoryWaypoint {
+  step: number;
+  title: string;
+  hint: string;
+  cameraPreset: { yaw: number; pitch: number; zoom: number };
+}
+
+export interface TemporalComparison {
+  labelA: string;
+  labelB: string;
+  descA: string;
+  descB: string;
+}
+
 export interface WorldModelScene {
   id: string;
   name: string;
@@ -41,6 +153,8 @@ export interface WorldModelScene {
   bookingRule: string;
   spatialSummary: string;
   hotspots: SpatialHotspot[];
+  trajectoryWaypoints?: TrajectoryWaypoint[];
+  temporalComparison?: TemporalComparison;
 }
 
 export interface DriverCard {
@@ -213,6 +327,38 @@ export const CORRIDORS: Record<CorridorId, CorridorConfig> = {
             label: "庆会楼水面镜像",
             detail: "景福宫出片率最高机位。站在池塘西岸石栏处，用标准或两倍焦段对称构图拍摄庆会楼与松树倒影。",
             cameraPreset: { yaw: 28, pitch: 6, zoom: 1.2 },
+          },
+        ],
+        temporalComparison: {
+          labelA: "1890 历史王朝旧貌",
+          labelB: "2026 现代首尔孪生",
+          descA: "李氏朝鲜时期未烧毁前木结构原貌，丹青朱红与北岳山荒野相映。",
+          descB: "三维点云高精度重建后的现代景福宫，首尔中轴线现代摩天楼与皇家宫殿空间交叠。",
+        },
+        trajectoryWaypoints: [
+          {
+            step: 1,
+            title: "地铁3号线景福宫站5号口出站",
+            hint: "出站沿国立古宫博物馆长廊步行2分钟直达光化门东门",
+            cameraPreset: { yaw: -35, pitch: 6, zoom: 1.1 },
+          },
+          {
+            step: 2,
+            title: "光化门守门将换岗广场",
+            hint: "每日10:00与14:00，最佳站位在城楼正南偏东15米避开逆光",
+            cameraPreset: { yaw: -18, pitch: 10, zoom: 1.2 },
+          },
+          {
+            step: 3,
+            title: "勤政殿双层丹青御道中轴",
+            hint: "穿过兴礼门进入主殿，走西侧廊道可拍到无游客前景框景",
+            cameraPreset: { yaw: 0, pitch: 14, zoom: 1.28 },
+          },
+          {
+            step: 4,
+            title: "庆会楼倒影池与出口",
+            hint: "西侧池畔拍完倒影，直接从神武门出宫去青瓦台或三清洞",
+            cameraPreset: { yaw: 26, pitch: 8, zoom: 1.22 },
           },
         ],
       },
@@ -501,6 +647,38 @@ export const CORRIDORS: Record<CorridorId, CorridorConfig> = {
             cameraPreset: { yaw: 24, pitch: 22, zoom: 1.24 },
           },
         ],
+        temporalComparison: {
+          labelA: "太和殿午间晴空明净",
+          labelB: "景山万春亭夕阳落日",
+          descA: "早间08:30第一批入宫，太和殿广场空旷无游人，金色琉璃瓦在顺光下纯净威严。",
+          descB: "傍晚16:30登顶景山万春亭，金光横扫紫禁城万间殿宇，中轴线壮阔落日景致。",
+        },
+        trajectoryWaypoints: [
+          {
+            step: 1,
+            title: "打车直达东华门避开安检长队",
+            hint: "沿东华门筒子河向西步行8分钟直抵午门检票口，省去天安门广场1小时排队",
+            cameraPreset: { yaw: -26, pitch: 6, zoom: 1.16 },
+          },
+          {
+            step: 2,
+            title: "午门检票与太和门金水桥",
+            hint: "刷身份证或护照秒进，走中轴内金水桥拍摄午门五凤楼倒影",
+            cameraPreset: { yaw: -10, pitch: 10, zoom: 1.2 },
+          },
+          {
+            step: 3,
+            title: "太和殿须弥座与弘义阁回廊",
+            hint: "立于太和殿西侧回廊台阶，以朱红立柱作框景仰拍三重檐大殿",
+            cameraPreset: { yaw: 0, pitch: 12, zoom: 1.3 },
+          },
+          {
+            step: 4,
+            title: "神武门出宫直登景山万春亭",
+            hint: "出神武门过地道进景山南门，步行10分钟登顶俯瞰整座故宫全景",
+            cameraPreset: { yaw: 24, pitch: 22, zoom: 1.24 },
+          },
+        ],
       },
       {
         id: "beijing-summer-palace",
@@ -727,6 +905,320 @@ export const CORRIDORS: Record<CorridorId, CorridorConfig> = {
         priceRange: "¥450 - ¥1,100 / 晚",
         transitAccess: "地铁 2/7/8 号线交汇，往南直通大兴国际机场草桥枢纽",
         bestFor: "从大兴机场或北京南站抵京、想沉浸感受京剧茶馆与天坛晨练的旅客",
+      },
+    ],
+  },
+  "cn-to-tokyo": {
+    id: "cn-to-tokyo",
+    originLabel: "中国大陆出发旅客",
+    destinationCity: "东京 Tokyo",
+    destinationCountry: "日本 Japan",
+    heroHeadline: "TERRA · 东京落地生存",
+    heroSubheadline:
+      "解决成田/羽田落地三大痛点：成田Skyliner与Access特急买错票多花1小时、iPhone快速无损绑定Suica西瓜卡免排队、新宿地下三层巨大迷宫换乘第一视角空间预演。",
+    touchdownAirports: "羽田国际机场 (HND) · 成田国际机场 (NRT T1/T2)",
+    emergencyNumber: "#7119 (急救医疗咨询) / 110",
+    currencyInfo: "日元 JPY · 1,000 JPY 约合 47.8 RMB",
+    plugType: "两脚扁插头 (Type A, 100V) · 手机充电无需转换头",
+    timeline: [
+      {
+        window: "落地后第 0 至 20 分钟 · 航站楼",
+        title: "Apple 钱包开通移动西瓜卡 (Suica)",
+        painPoint: "实体西瓜卡因全球芯片短缺曾长期断供，机场人工排队买票耗时30分钟以上。",
+        solution: "iPhone无需下载任何App，在自带【钱包】点击右上角加号，搜索【交通卡 ➔ Suica】，直接用国内万事达或Visa外币卡充值2000日元即刻刷机过闸。",
+        actionTag: "Apple Wallet 零等待激活",
+        affiliateUrl: "https://www.jreast.co.jp/e/pass/suica.html",
+        affiliateLabel: "查看Suica西瓜卡绑卡图解",
+        image: "/images/seoul-street-real.jpg",
+      },
+      {
+        window: "落地后第 25 至 50 分钟 · 铁道站台",
+        title: "京成 Skyliner 直达日暮里与上野",
+        painPoint: "成田机场站台列车种类繁多，误上普通各停慢车需耗时近2小时才能进城。",
+        solution: "住上野/浅草/银座认准【Skyliner 特急】，36分钟无折返直达日暮里（换乘山手线极快）；住涩谷/新宿可乘成田特快 N'EX 直达。",
+        actionTag: "36分钟直达山手线环线",
+        affiliateUrl: "https://www.keisei.co.jp/keisei/tetudou/skyliner/cn/",
+        affiliateLabel: "预订 Skyliner 快速折扣车票",
+        image: "/images/seoul-city-real.jpg",
+      },
+      {
+        window: "落地后第 50 至 90 分钟 · 地铁枢纽",
+        title: "新宿站地下迷宫第一视角导航",
+        painPoint: "新宿站每日吞吐350万人次，拥有200余个出口，高德与Google均无法精准定位地下楼层。",
+        solution: "打开 TERRA 第一视角空间动线，跟随无障碍电梯与JR南口黄色指示标线直接出站，避开西口地下换乘陷阱。",
+        actionTag: "空间级地下通道指引",
+        affiliateUrl: "https://www.tokyometro.jp/cn/",
+        affiliateLabel: "加载东京地铁24/48/72小时通票",
+        image: "/images/seoul-incheon-real.jpg",
+      },
+    ],
+    appMatrix: [
+      {
+        category: "地下铁路线与车厢换乘",
+        originApp: "高德地图 / 百度地图",
+        whyItFails: "国内地图无东京JR与东京地下铁（Metro/都营）实时换乘最佳车厢与出口步行动线。",
+        localChampion: "Yahoo! 乘换案内 与 Google Maps",
+        setupGuide: "输入汉字站名（如新宿、涩谷、秋叶原）即可直接查询最少换乘与早发车次。",
+        proTip: "注意看【早 / 安 / 乐】三个小标，选择【乐】代表换乘最少不折腾。",
+      },
+      {
+        category: "出租车与夜间打车",
+        originApp: "滴滴出行",
+        whyItFails: "日本街头出租车起步价高且夜间拦车极难。",
+        localChampion: "GO (Taxi) 与 Uber Japan",
+        setupGuide: "用国内手机号注册，绑定外币卡扣款，支持预估精准价格。",
+        proTip: "深夜如果在六本木或歌舞伎町错过末班电车，可直接在 GO 呼叫定额接送出租车。",
+      },
+      {
+        category: "顶级日料与居酒屋预约",
+        originApp: "大众点评",
+        whyItFails: "Tabelog 铜牌/银牌餐厅现场不接待临时客，未提前预约无法就座。",
+        localChampion: "Tabelog 国际版 与 TableCheck",
+        setupGuide: "在网页端直接用邮箱注册 TableCheck，支持中文预订与信用卡担保。",
+        proTip: "Tabelog 评分超过 3.5 分在日本就是极品神店，根本无需排小红书网红店。",
+      },
+    ],
+    worldScenes: [
+      {
+        id: "tokyo-shinjuku-cross",
+        name: "新宿站南口与歌舞伎町夜景",
+        subtitle: "Shinjuku Station South Exit & Kabukicho 3D Twin",
+        coordinates: "35.6895° N, 139.7006° E",
+        elevation: "海拔 38 米 · 全球最繁华地下枢纽",
+        image: "/images/seoul-street-real.jpg",
+        splatPalette: ["#f43f5e", "#0284c7", "#eab308"],
+        bestTime: "傍晚 17:30 至 21:00（霓虹灯点亮与蓝调交织时刻）",
+        bookingRule: "歌舞伎町街景全天免费开放；SHINJUKU TOKYU MILANO 楼顶展望台现场购票。",
+        spatialSummary:
+          "三维空间视窗复刻了新宿站南口甲州街道天桥、JR各线换乘扶梯、Lumine商场与歌舞伎町一番街大门的物理空间拓扑关系。",
+        hotspots: [
+          {
+            id: "shinjuku-south-bridge",
+            x: 42,
+            y: 48,
+            label: "南口甲州街道天桥机位",
+            detail: "站在天桥上俯瞰JR特急列车穿行与繁华车流，长焦70mm拍摄出极具赛博朋克质感的列车进站画面。",
+            cameraPreset: { yaw: -18, pitch: 8, zoom: 1.2 },
+          },
+          {
+            id: "kabukicho-gate",
+            x: 65,
+            y: 38,
+            label: "歌舞伎町一番街霓虹门楼",
+            detail: "夜景经典机位，站在斑马线安全岛中央利用广角镜头仰拍大红门楼与哥斯拉头像。",
+            cameraPreset: { yaw: 15, pitch: 12, zoom: 1.25 },
+          },
+        ],
+        temporalComparison: {
+          labelA: "日间晴朗通透街景",
+          labelB: "夜间赛博霓虹蓝调",
+          descA: "上午时段新宿站南口阳光明净，适合拍摄建筑线条与电车轨道空间层次。",
+          descB: "入夜后全城霓虹招牌点亮，雨后地面反光更具《迷失东京》光影质感。",
+        },
+        trajectoryWaypoints: [
+          {
+            step: 1,
+            title: "成田快线N'EX下车到达新宿站地下站台",
+            hint: "切勿跟随大流下楼梯！抬头寻找【南改札 (South Exit)】黄色指示标志乘直梯上楼",
+            cameraPreset: { yaw: -25, pitch: 6, zoom: 1.15 },
+          },
+          {
+            step: 2,
+            title: "刷Suica穿过南口人工闸机出站",
+            hint: "出闸机即是开阔的甲州街道人行天桥，视野开阔无拥挤感",
+            cameraPreset: { yaw: 0, pitch: 10, zoom: 1.22 },
+          },
+          {
+            step: 3,
+            title: "沿地面人行道步行8分钟穿过JR铁道天桥",
+            hint: "直达歌舞伎町一番街主干道，全程零地下迷路风险",
+            cameraPreset: { yaw: 22, pitch: 12, zoom: 1.28 },
+          },
+        ],
+      },
+    ],
+    driverCards: [
+      {
+        id: "jp-shinjuku",
+        tag: "新宿商圈核心住宿",
+        titleCn: "送我到新宿站南口高岛屋百货",
+        localHeadline: "運転手さん、新宿駅南口の高島屋前までお願いします。",
+        phoneticOrSub: "Shinjuku-eki Minamiguchi Takashimaya-mae made onegaishimasu.",
+        driverInstruction: "カード（Suica / クレジットカード）で支払います。(我将使用西瓜卡或信用卡结账，谢谢！)",
+        subwayBackup: "备选电车：JR山手线或中央线【新宿站】南口即达",
+      },
+      {
+        id: "jp-ginza",
+        tag: "银座步行街与百货区",
+        titleCn: "送我到银座四丁目三越百货",
+        localHeadline: "運転手さん、銀座四丁目の三越前までお願いします。",
+        phoneticOrSub: "Ginza Yonchome Mitsukoshi-mae made onegaishimasu.",
+        driverInstruction: "トランクを開けていただけますか？(麻烦帮我开一下后备箱，非常感谢！)",
+        subwayBackup: "备选电车：东京地下铁银座线【银座站】A7出口直通三越",
+      },
+    ],
+    stayDistricts: [
+      {
+        name: "新宿与涩谷片区",
+        vibe: "不夜城霓虹 · 潮流旗舰百货 · 交通枢纽四通八达",
+        priceRange: "¥900 - ¥2,200 / 晚",
+        transitAccess: "JR山手线大站 + N'EX 成田特快免换乘直达",
+        bestFor: "年轻自由行玩家、看重夜生活与大站直通的旅客",
+      },
+      {
+        name: "上野与浅草片区",
+        vibe: "下町江户风情 · 药妆平价美食 · 机场列车起点",
+        priceRange: "¥600 - ¥1,400 / 晚",
+        transitAccess: "Skyliner 36分钟直造成田机场 + 银座线始发站",
+        bestFor: "高性价比预算游、行李较多看重机场直达的旅客",
+      },
+    ],
+  },
+  "cn-to-bangkok": {
+    id: "cn-to-bangkok",
+    originLabel: "中国大陆出发旅客",
+    destinationCity: "曼谷 Bangkok",
+    destinationCountry: "泰国 Thailand",
+    heroHeadline: "TERRA · 曼谷落地生存",
+    heroSubheadline:
+      "解决素万那普与廊曼机场下飞机后三大痛点：中泰永久互免签丝滑通关走哪个通道、路边揽客黑车漫天要价防坑、Grab与Bolt叫车价差对比与郑王庙最佳落日机位预演。",
+    touchdownAirports: "素万那普国际机场 (BKK) · 廊曼国际机场 (DMK)",
+    emergencyNumber: "1155 (泰国旅游警察 24h 中文热线) / 191",
+    currencyInfo: "泰铢 THB · 100 THB 约合 21.5 RMB",
+    plugType: "美标双扁/两圆插孔 (Type A/C, 220V) · 手机充电器可直插",
+    timeline: [
+      {
+        window: "落地后第 0 至 20 分钟 · 入境边检",
+        title: "中泰互免签白名单通道通关",
+        painPoint: "许多旅客误排付费落地签（Visa on Arrival）长队浪费40分钟并多花2000铢。",
+        solution: "中泰已实行永久互免签证！下飞机直接沿着【Passport Control 护照查验】大通道前行，出示中国护照直接盖章免费入境。",
+        actionTag: "永久互免签零费用通道",
+        affiliateUrl: "https://www.trip.com/travel-guide/info/thailand-visa-free.html",
+        affiliateLabel: "查看泰国入境免签最新通关指引",
+        image: "/images/seoul-gyeongbokgung-real.jpg",
+      },
+      {
+        window: "落地后第 25 至 45 分钟 · 交通层",
+        title: "B1 机场快线 ARL 避开曼谷大堵车",
+        painPoint: "曼谷高峰期进城高速常态化拥堵90分钟以上，且出租车经常拒载或不打表（No Meter）。",
+        solution: "下到素万那普 B1 层搭乘机场快线 (Airport Rail Link)，45 泰铢（不到10元人民币）26分钟直达披耶泰站 (Phaya Thai)，无缝换乘 BTS 轻轨避开堵车。",
+        actionTag: "26分钟轨道交通直达市区",
+        affiliateUrl: "https://www.srtet.co.th/en/",
+        affiliateLabel: "加载曼谷天铁BTS与机场快线图",
+        image: "/images/seoul-incheon-real.jpg",
+      },
+    ],
+    appMatrix: [
+      {
+        category: "全城网约车与防宰打车",
+        originApp: "滴滴出行",
+        whyItFails: "机场一楼出租车常要求固定一口价（500-800铢），夜间常不打表。",
+        localChampion: "Grab 与 Bolt 双平台比价",
+        setupGuide: "国内手机号直接注册，绑定支付宝或外币卡，着急选 Grab，省钱选 Bolt（便宜30%）。",
+        proTip: "机场出发层四楼叫车比一楼便宜，且司乘碰面更快。",
+      },
+      {
+        category: "移动扫码支付与免手续费",
+        originApp: "国内普通储蓄卡取现",
+        whyItFails: "泰国ATM机每笔取现强制扣除220泰铢（约合48元人民币）当地银行手续费。",
+        localChampion: "支付宝与微信跨境支付",
+        setupGuide: "曼谷全境7-11便利店、商场百货与BTS轻轨购票机全面支持支付宝汇率直扣。",
+        proTip: "街头夜市摊位认准蓝色 PromptPay 码，支持部分国内电子钱包扫码付。",
+      },
+    ],
+    worldScenes: [
+      {
+        id: "bangkok-wat-arun",
+        name: "郑王庙黎明寺与湄南河日落",
+        subtitle: "Wat Arun & Chao Phraya River Sunset Spatial Twin",
+        coordinates: "13.7437° N, 100.4888° E",
+        elevation: "海拔 12 米 · 暹罗大乘舍利塔",
+        image: "/images/seoul-city-real.jpg",
+        splatPalette: ["#f59e0b", "#06b6d4", "#f43f5e"],
+        bestTime: "下午 16:45 至 18:30（夕阳将陶瓷佛塔染成金色与对岸蓝调时刻）",
+        bookingRule: "门票 200 泰铢现场购买（附赠一瓶饮用水）；穿短裤无袖需在门口租披肩方可入内。",
+        spatialSummary:
+          "三维空间视窗还原了82米高黎明寺主塔、彩瓷浮雕、湄南河摆渡船码头以及对岸沿河景观咖啡馆的对望景深空间。",
+        hotspots: [
+          {
+            id: "wat-arun-main-spire",
+            x: 48,
+            y: 42,
+            label: "郑王庙主塔陡峭台阶",
+            detail: "近距离仰拍彩瓷拼接浮雕，站在第二层平台向东可拍摄湄南河游船与主塔金顶同框。",
+            cameraPreset: { yaw: 0, pitch: 16, zoom: 1.25 },
+          },
+          {
+            id: "chao-phraya-sunset-deck",
+            x: 75,
+            y: 54,
+            label: "湄南河对岸日落观景位",
+            detail: "乘5泰铢横渡摆渡船到东岸（Tha Tien码头旁咖啡馆），长焦拍摄落日恰好落入郑王庙塔尖的绝美剪影。",
+            cameraPreset: { yaw: 28, pitch: 8, zoom: 1.2 },
+          },
+        ],
+        temporalComparison: {
+          labelA: "午后白瓷光泽明亮",
+          labelB: "傍晚夕阳落日金辉",
+          descA: "日间强光下陶瓷浮雕花纹细节极其清晰，适合特写雕刻与泰服人像。",
+          descB: "傍晚六点落日将佛塔染成绚丽金红色，对岸酒吧灯火点亮，氛围感拉满。",
+        },
+        trajectoryWaypoints: [
+          {
+            step: 1,
+            title: "地铁MRT其木站或郑王庙专属渡口上岸",
+            hint: "由东岸Tha Tien码头花5泰铢坐摆渡轮，3分钟直达寺庙专用码头",
+            cameraPreset: { yaw: -22, pitch: 6, zoom: 1.15 },
+          },
+          {
+            step: 2,
+            title: "售票处购票并穿戴合格服饰入园",
+            hint: "持中国护照直接扫码支付200铢门票，入口处免费领取饮用水",
+            cameraPreset: { yaw: -5, pitch: 12, zoom: 1.2 },
+          },
+          {
+            step: 3,
+            title: "主塔第二层观景台与落日机位",
+            hint: "沿台阶缓步登上中央塔身，面朝西方湄南河迎接落日辉光",
+            cameraPreset: { yaw: 24, pitch: 14, zoom: 1.28 },
+          },
+        ],
+      },
+    ],
+    driverCards: [
+      {
+        id: "th-wat-arun",
+        tag: "郑王庙核心景区",
+        titleCn: "送我到郑王庙正门入口",
+        localHeadline: "พี่คนขับครับ ไปส่งที่ วัดอรุณราชวราราม นะครับ ขอบคุณครับ",
+        phoneticOrSub: "Pii khon khap khrap, bpai song tee Wat Arun na khrap, khawp khun khrap.",
+        driverInstruction: "กรุณาเปิดมิเตอร์ด้วยนะครับ (请帮我按打表计费，非常感谢！)",
+        subwayBackup: "备选交通：MRT蓝线【Itsaraphap站】2号口步行10分钟即达",
+      },
+      {
+        id: "th-bkk-airport",
+        tag: "赶飞机返程（素万那普）",
+        titleCn: "送我到素万那普国际机场四层出发大厅",
+        localHeadline: "พี่คนขับครับ ไปส่งที่ สนามบินสุวรรณภูมิ ชั้น 4 ขาออก นะครับ",
+        phoneticOrSub: "Suvarnabhumi Airport Departure Level 4, khawp khun khrap.",
+        driverInstruction: "ขึ้นทางด่วนได้เลยครับ ผมจ่ายค่าทางด่วนเอง (请走高速公路，高速过路费由我承担)",
+        subwayBackup: "备选快轨：披耶泰站搭乘 ARL 机场快线直达航站楼",
+      },
+    ],
+    stayDistricts: [
+      {
+        name: "素坤逸与暹罗商圈 (Sukhumvit / Siam)",
+        vibe: "现代百货核心 · BTS天铁交汇 · 购物夜市极度便利",
+        priceRange: "¥400 - ¥1,200 / 晚",
+        transitAccess: "BTS 绿色主线贯穿，步行去各大商场免晒太阳",
+        bestFor: "第一次来曼谷、喜欢逛街与美食咖啡馆的自由行玩家",
+      },
+      {
+        name: "湄南河畔度假片区 (Riverside)",
+        vibe: "五星奢华度假 · 壮阔河景晚风 · 游船穿梭两岸",
+        priceRange: "¥900 - ¥2,800 / 晚",
+        transitAccess: "酒店专属摆渡船往返 Sathorn 码头与郑王庙",
+        bestFor: "看重度假体验、情侣出游与摄影爱好者的深度优选",
       },
     ],
   },
