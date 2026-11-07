@@ -6,6 +6,7 @@ import type { SpatialHotspot, WorldModelScene } from "@/lib/corridors-data";
 interface WorldModelViewportProps {
   scenes: WorldModelScene[];
   destinationCity: string;
+  compact?: boolean;
 }
 
 interface SplatParticle {
@@ -28,19 +29,21 @@ function createSceneParticles(seedKey: string): SplatParticle[] {
 
   const particles: SplatParticle[] = [];
 
-  for (let i = 0; i < 220; i++) {
+  // Ground plane & volumetric grid
+  for (let i = 0; i < 240; i++) {
     particles.push({
       x: (nextRand() - 0.5) * 320,
       y: 55 + nextRand() * 25,
       z: (nextRand() - 0.5) * 320,
-      size: 1.5 + nextRand() * 2.2,
+      size: 1.4 + nextRand() * 2.2,
       colorIndex: 2,
     });
   }
 
-  for (let i = 0; i < 340; i++) {
+  // Architectural tiered structure
+  for (let i = 0; i < 360; i++) {
     const tier = i % 3;
-    const widthScale = tier === 0 ? 180 : tier === 1 ? 125 : 75;
+    const widthScale = tier === 0 ? 185 : tier === 1 ? 130 : 78;
     const heightBase = tier === 0 ? 35 : tier === 1 ? -5 : -42;
     particles.push({
       x: (nextRand() - 0.5) * widthScale,
@@ -51,8 +54,9 @@ function createSceneParticles(seedKey: string): SplatParticle[] {
     });
   }
 
-  for (let i = 0; i < 140; i++) {
-    const angle = (i / 140) * Math.PI * 2;
+  // Surrounding horizon ridge
+  for (let i = 0; i < 150; i++) {
+    const angle = (i / 150) * Math.PI * 2;
     const radius = 155 + nextRand() * 45;
     particles.push({
       x: Math.cos(angle) * radius,
@@ -69,6 +73,7 @@ function createSceneParticles(seedKey: string): SplatParticle[] {
 export function WorldModelViewport({
   scenes,
   destinationCity,
+  compact = false,
 }: WorldModelViewportProps) {
   const [selectedSceneIdx, setSelectedSceneIdx] = useState(0);
   const activeScene = scenes[selectedSceneIdx] ?? scenes[0];
@@ -81,6 +86,15 @@ export function WorldModelViewport({
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, yaw: 0, pitch: 0 });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const nextScene = scenes[0];
+    setSelectedSceneIdx(0);
+    if (nextScene?.hotspots[0]) {
+      setActiveHotspot(nextScene.hotspots[0]);
+      setCamera(nextScene.hotspots[0].cameraPreset);
+    }
+  }, [scenes]);
 
   const selectScene = (idx: number) => {
     const nextScene = scenes[idx] ?? scenes[0];
@@ -103,7 +117,7 @@ export function WorldModelViewport({
     let tick = 0;
 
     const render = () => {
-      tick += 0.008;
+      tick += 0.009;
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
@@ -139,7 +153,7 @@ export function WorldModelViewport({
         const color = activeScene.splatPalette[p.colorIndex] ?? "#ff5a26";
         const alpha = Math.min(
           0.92,
-          Math.max(0.18, (380 - rz) / 310) * (renderMode === "splat" ? 1 : 0.82)
+          Math.max(0.18, (380 - rz) / 310) * (renderMode === "splat" ? 1 : 0.78)
         );
         projected.push({
           sx,
@@ -185,8 +199,14 @@ export function WorldModelViewport({
     const dy = e.clientY - dragStartRef.current.y;
     setCamera((prev) => ({
       ...prev,
-      yaw: Math.max(-75, Math.min(75, Math.round(dragStartRef.current.yaw + dx * 0.35))),
-      pitch: Math.max(-15, Math.min(45, Math.round(dragStartRef.current.pitch + dy * 0.25))),
+      yaw: Math.max(
+        -75,
+        Math.min(75, Math.round(dragStartRef.current.yaw + dx * 0.35))
+      ),
+      pitch: Math.max(
+        -15,
+        Math.min(45, Math.round(dragStartRef.current.pitch + dy * 0.25))
+      ),
     }));
   };
 
@@ -195,46 +215,9 @@ export function WorldModelViewport({
   };
 
   return (
-    <div className="bg-[#11161d]">
-      {/* Top Telemetry Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#151c25] px-5 py-4 md:px-8">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="text-sm font-semibold text-[#ff5a26]">
-            {destinationCity} · 三维高斯点云实景视窗
-          </span>
-          <span className="text-sm tabular-nums text-[#e4e3df]/80">
-            {activeScene.coordinates} · {activeScene.elevation}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setRenderMode("hybrid")}
-            className={`min-h-[38px] px-4 py-1.5 text-sm font-semibold transition-colors ${
-              renderMode === "hybrid"
-                ? "bg-[#ff5a26] text-[#0a0a0a]"
-                : "bg-[#0d1117] text-[#f5f5f3] hover:bg-[#1e2733]"
-            }`}
-          >
-            实景建筑与点云叠加态
-          </button>
-          <button
-            type="button"
-            onClick={() => setRenderMode("splat")}
-            className={`min-h-[38px] px-4 py-1.5 text-sm font-semibold transition-colors ${
-              renderMode === "splat"
-                ? "bg-[#ff5a26] text-[#0a0a0a]"
-                : "bg-[#0d1117] text-[#f5f5f3] hover:bg-[#1e2733]"
-            }`}
-          >
-            纯三维高斯点云态
-          </button>
-        </div>
-      </div>
-
-      {/* Scene Switcher Strip with Thumbnail Photographs */}
-      <div className="grid grid-cols-1 gap-2 bg-[#0a0a0a] p-2 md:grid-cols-3">
+    <div className="space-y-3">
+      {/* Horizontal Apple Maps Flyover Scene Carousel */}
+      <div className="flex gap-2.5 overflow-x-auto pb-1">
         {scenes.map((scene, idx) => {
           const isSelected = idx === selectedSceneIdx;
           return (
@@ -242,22 +225,20 @@ export function WorldModelViewport({
               key={scene.id}
               type="button"
               onClick={() => selectScene(idx)}
-              className={`terra-motion-card flex items-center gap-4 p-4 text-left ${
+              className={`group flex shrink-0 items-center gap-2.5 rounded-2xl border p-2 pr-3.5 text-left transition-all ${
                 isSelected
-                  ? "bg-[#1a2430] text-[#f5f5f3]"
-                  : "bg-[#11161d] text-[#e4e3df]/80 hover:bg-[#151c25]"
+                  ? "border-[#ff5a26] bg-gradient-to-r from-[#ff5a26]/20 to-[#1c2533] shadow-lg shadow-[#ff5a26]/10"
+                  : "border-white/10 bg-[#141a23]/90 hover:border-white/25"
               }`}
             >
               <img
                 src={scene.image}
                 alt={scene.name}
-                className="h-16 w-24 shrink-0 object-cover"
+                className="h-11 w-14 shrink-0 rounded-xl object-cover"
               />
               <div>
-                <div className="text-base font-bold text-[#f5f5f3]">
-                  {scene.name}
-                </div>
-                <div className="mt-1 text-sm text-[#e4e3df]/70">
+                <div className="text-xs font-bold text-white">{scene.name}</div>
+                <div className="mt-0.5 text-[11px] text-white/60">
                   {scene.elevation}
                 </div>
               </div>
@@ -266,127 +247,182 @@ export function WorldModelViewport({
         })}
       </div>
 
-      {/* Interactive 3D Viewport Stage */}
-      <div className="grid grid-cols-1 lg:grid-cols-12">
-        <div
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-          className="relative min-h-[420px] cursor-grab select-none overflow-hidden bg-[#070a0e] active:cursor-grabbing lg:col-span-8 lg:min-h-[520px]"
-        >
-          <img
-            src={activeScene.image}
-            alt={activeScene.name}
-            className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-              renderMode === "hybrid" ? "opacity-85" : "opacity-15"
-            }`}
-          />
+      {/* Interactive 3D Flyover Canvas Card */}
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        className={`relative cursor-grab select-none overflow-hidden rounded-3xl border border-white/15 bg-[#070a0f] shadow-2xl active:cursor-grabbing ${
+          compact ? "h-[285px]" : "h-[380px] md:h-[460px]"
+        }`}
+      >
+        <img
+          src={activeScene.image}
+          alt={activeScene.name}
+          className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+            renderMode === "hybrid" ? "opacity-85" : "opacity-20"
+          }`}
+        />
 
-          <canvas
-            ref={canvasRef}
-            width={920}
-            height={540}
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-          />
+        {/* Vignette gradient for HUD legibility */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-black/80" />
 
-          {activeScene.hotspots.map((spot) => {
-            const isActive = activeHotspot?.id === spot.id;
-            return (
-              <button
-                key={spot.id}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveHotspot(spot);
-                  setCamera(spot.cameraPreset);
-                }}
-                style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
-                className={`terra-motion-float absolute -translate-x-1/2 -translate-y-1/2 px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  isActive
-                    ? "bg-[#ff5a26] text-[#0a0a0a]"
-                    : "bg-[#0a0a0a]/90 text-[#f5f5f3] hover:bg-[#1a2430]"
-                }`}
-              >
-                {spot.label}
-              </button>
-            );
-          })}
+        <canvas
+          ref={canvasRef}
+          width={860}
+          height={520}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
 
-          {/* Bottom Camera Telemetry & Controls */}
-          <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-between gap-3 bg-[#0a0a0a]/90 px-5 py-3">
-            <div className="text-sm tabular-nums text-[#e4e3df]/90">
-              空间镜头参数：水平偏航 {camera.yaw}° · 俯仰 {camera.pitch}° · 焦段{" "}
-              {camera.zoom.toFixed(2)}x （按住画面左右拖拽可旋转三维点云）
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCamera((c) => ({ ...c, yaw: c.yaw - 18 }));
-                }}
-                className="min-h-[34px] bg-[#161e28] px-3 py-1 text-sm text-[#f5f5f3] hover:bg-[#ff5a26] hover:text-[#0a0a0a]"
-              >
-                左旋视角
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCamera({ yaw: 0, pitch: 12, zoom: 1.2 });
-                }}
-                className="min-h-[34px] bg-[#161e28] px-3 py-1 text-sm text-[#f5f5f3] hover:bg-[#ff5a26] hover:text-[#0a0a0a]"
-              >
-                复位中轴
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCamera((c) => ({ ...c, yaw: c.yaw + 18 }));
-                }}
-                className="min-h-[34px] bg-[#161e28] px-3 py-1 text-sm text-[#f5f5f3] hover:bg-[#ff5a26] hover:text-[#0a0a0a]"
-              >
-                右旋视角
-              </button>
-            </div>
+        {/* Top Floating Glass HUD */}
+        <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 truncate rounded-full border border-white/15 bg-black/65 px-2.5 py-1 text-[10px] font-medium text-white/90 backdrop-blur-md">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
+            <span className="truncate">3D Flyover · {activeScene.coordinates}</span>
+          </div>
+
+          <div className="flex shrink-0 items-center rounded-full border border-white/15 bg-black/65 p-0.5 backdrop-blur-md">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRenderMode("hybrid");
+              }}
+              className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+                renderMode === "hybrid"
+                  ? "bg-[#ff5a26] text-black"
+                  : "text-white/75 hover:text-white"
+              }`}
+            >
+              实景融合
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRenderMode("splat");
+              }}
+              className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+                renderMode === "splat"
+                  ? "bg-[#ff5a26] text-black"
+                  : "text-white/75 hover:text-white"
+              }`}
+            >
+              高斯点云
+            </button>
           </div>
         </div>
 
-        {/* Right Spatial Inspector Panel */}
-        <div className="flex flex-col justify-between bg-[#151c25] p-6 md:p-8 lg:col-span-4">
-          <div>
-            <h3 className="text-2xl font-bold text-[#f5f5f3]">
-              {activeScene.name}
-            </h3>
-            <p className="mt-3 max-w-[62ch] text-base leading-relaxed text-[#e4e3df]/85">
-              {activeScene.spatialSummary}
-            </p>
+        {/* Interactive Spatial Pins */}
+        {activeScene.hotspots.map((spot, idx) => {
+          const isActive = activeHotspot?.id === spot.id;
+          return (
+            <button
+              key={spot.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveHotspot(spot);
+                setCamera(spot.cameraPreset);
+              }}
+              style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
+              className={`terra-motion-float absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shadow-xl backdrop-blur-md transition-all ${
+                isActive
+                  ? "scale-105 border-white/60 bg-[#ff5a26] text-black shadow-[#ff5a26]/40"
+                  : "border-white/25 bg-black/75 text-white hover:bg-black/90"
+              }`}
+            >
+              <span
+                className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-black ${
+                  isActive ? "bg-black text-[#ff5a26]" : "bg-[#ff5a26] text-black"
+                }`}
+              >
+                {idx + 1}
+              </span>
+              <span>{spot.label}</span>
+            </button>
+          );
+        })}
 
-            <div className="mt-6 bg-[#11161d] p-4">
-              <div className="text-sm font-semibold text-[#ff5a26]">
-                黄金游览窗口
-              </div>
-              <p className="mt-1 max-w-[62ch] text-base text-[#f5f5f3]">
-                {activeScene.bestTime}
-              </p>
-
-              <div className="mt-4 text-sm font-semibold text-[#ff5a26]">
-                门票与预约铁律
-              </div>
-              <p className="mt-1 max-w-[62ch] text-base text-[#f5f5f3]">
-                {activeScene.bookingRule}
-              </p>
-            </div>
+        {/* Bottom Floating Camera Gimbal Bar */}
+        <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2 rounded-2xl border border-white/15 bg-black/70 px-3 py-2 backdrop-blur-md">
+          <div className="truncate text-[10px] tabular-nums text-white/80">
+            偏航 <strong className="text-white">{camera.yaw}°</strong> · 俯仰{" "}
+            <strong className="text-white">{camera.pitch}°</strong> ·{" "}
+            <span className="text-amber-300">单指拖拽3D旋转</span>
           </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCamera((c) => ({ ...c, yaw: c.yaw - 18 }));
+              }}
+              className="whitespace-nowrap rounded-lg bg-white/10 px-2 py-1 text-[10px] font-semibold text-white hover:bg-[#ff5a26] hover:text-black"
+            >
+              ↺ 左旋
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCamera({ yaw: 0, pitch: 12, zoom: 1.2 });
+              }}
+              className="whitespace-nowrap rounded-lg bg-white/10 px-2 py-1 text-[10px] font-semibold text-white hover:bg-[#ff5a26] hover:text-black"
+            >
+              中轴
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCamera((c) => ({ ...c, yaw: c.yaw + 18 }));
+              }}
+              className="whitespace-nowrap rounded-lg bg-white/10 px-2 py-1 text-[10px] font-semibold text-white hover:bg-[#ff5a26] hover:text-black"
+            >
+              右旋 ↻
+            </button>
+          </div>
+        </div>
+      </div>
 
-          <div className="mt-6 bg-[#0a0a0a] p-5">
-            <div className="text-sm font-semibold text-[#ff5a26]">
-              当前选中机位锚点：{activeHotspot?.label}
+      {/* iOS 18 Frosted Bottom Sheet Inspector */}
+      <div className="rounded-3xl border border-white/12 bg-gradient-to-b from-[#18202c] to-[#11161f] p-4 shadow-xl">
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#ff5a26]/20 px-2.5 py-0.5 text-[11px] font-bold text-[#ff7a4d]">
+              📍 当前选中机位：{activeHotspot?.label}
+            </span>
+            <h4 className="mt-1 text-base font-bold text-white">
+              {activeScene.name}
+            </h4>
+          </div>
+          <span className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
+            出片率 99% · 24mm/70mm
+          </span>
+        </div>
+
+        <p className="mt-2 text-xs leading-relaxed text-white/85">
+          {activeHotspot?.detail}
+        </p>
+
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/8 bg-black/35 p-3">
+            <div className="text-[11px] font-bold text-amber-400">
+              ⏰ 黄金光线与换岗时间
             </div>
-            <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-[#e4e3df]/85">
-              {activeHotspot?.detail}
+            <p className="mt-1 text-xs leading-relaxed text-white/80">
+              {activeScene.bestTime}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-black/35 p-3">
+            <div className="text-[11px] font-bold text-sky-400">
+              🎫 免排队与门票铁律
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-white/80">
+              {activeScene.bookingRule}
             </p>
           </div>
         </div>

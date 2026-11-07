@@ -77,6 +77,10 @@ body {
   animation: terraFloat 4.2s ease-in-out infinite;
 }
 
+nextjs-portal {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .terra-motion-card,
   .terra-motion-float {
