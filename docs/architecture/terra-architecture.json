@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "TERRA // Cross-Border Touchdown Survival & 3D World Model Architecture",
+    "output": "terra-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "traveler", "type": "external", "label": "Cross-Border Traveler", "sublabel": "CN -> Seoul / Global -> Beijing", "pos": [40, 260], "size": [150, 64] },
+    { "id": "corridor_ui", "type": "frontend", "label": "Colour-Chapters UI", "sublabel": "Next.js 16 App Router", "pos": [260, 140], "size": [150, 64], "tag": "0 FAIL Gate" },
+    { "id": "world_model", "type": "frontend", "label": "3D Gaussian Viewport", "sublabel": "60FPS Volumetric Canvas", "pos": [260, 260], "size": [150, 64], "tag": "Spatial Twin" },
+    { "id": "driver_deck", "type": "frontend", "label": "Show-to-Driver Deck", "sublabel": "Offline Bilingual Cards", "pos": [260, 380], "size": [150, 64] },
+    { "id": "corridor_store", "type": "database", "label": "Corridor Spatial Store", "sublabel": "Seoul & Beijing Assets", "pos": [500, 180], "size": [150, 64] },
+    { "id": "safety_api", "type": "security", "label": "AI Safety Gateway", "sublabel": "/api/survival-plan", "pos": [500, 340], "size": [150, 64], "tag": "8.5s Timeout" },
+    { "id": "bailian", "type": "cloud", "label": "Alibaba Cloud Bailian", "sublabel": "qwen-plus Compatible API", "pos": [760, 260], "size": [160, 64], "tag": "Dual Endpoint" },
+    { "id": "affiliate", "type": "external", "label": "Affiliate Monetization", "sublabel": "Airalo / WOWPASS / Trip.com", "pos": [760, 400], "size": [160, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "TERRA Next.js Edge & Spatial Client", "wraps": ["corridor_ui", "world_model", "driver_deck", "corridor_store", "safety_api"] }
+  ],
+  "connections": [
+    { "id": "c1", "from": "traveler", "to": "corridor_ui", "label": "Touchdown 120m", "variant": "emphasis" },
+    { "id": "c2", "from": "traveler", "to": "world_model", "label": "360 Orbit" },
+    { "id": "c3", "from": "traveler", "to": "driver_deck", "label": "Taxi Emergency" },
+    { "id": "c4", "from": "corridor_ui", "to": "corridor_store", "label": "Load SOP" },
+    { "id": "c5", "from": "world_model", "to": "corridor_store", "label": "Hotspots" },
+    { "id": "c6", "from": "corridor_ui", "to": "safety_api", "label": "Custom Plan" },
+    { "id": "c7", "from": "safety_api", "to": "bailian", "label": "Bearer Auth", "variant": "security" },
+    { "id": "c8", "from": "corridor_ui", "to": "affiliate", "label": "eSIM & Rail", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Touchdown Survival OS", "items": ["Golden 120-minute airport timeline", "App equivalence matrix (Naver Map / Kakao T / Alipay)", "Fullscreen bilingual Show-to-Driver cards"] },
+    { "dot": "emerald", "title": "3D Gaussian World Model", "items": ["Interactive 60FPS volumetric point cloud rig", "Seoul Gyeongbokgung, Seongsu-dong & Incheon B1F", "Beijing Forbidden City, Summer Palace & Shichahai"] },
+    { "dot": "rose", "title": "AI Call Safety & Revenue", "items": ["Alibaba Cloud Bailian qwen-plus with 8.5s timeout", "Deterministic offline fallback engine", "Airalo eSIM, WOWPASS, Klook AREX & Trip.com integration"] }
+  ]
+}

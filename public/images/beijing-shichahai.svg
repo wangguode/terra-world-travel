@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16181c"/>
+      <stop offset="68%" stop-color="#262a32"/>
+      <stop offset="100%" stop-color="#0a0a0a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="54%" r="48%">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.38"/>
+      <stop offset="60%" stop-color="#ff5a26" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#16181c" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="720" fill="url(#sky)"/>
+  <rect width="1200" height="720" fill="url(#glow)"/>
+  <rect width="1200" height="720" fill="url(#grid)"/>
+
+  <!-- Mountain / Skyline Silhouette -->
+  <path d="M0 470 L180 390 L340 430 L520 330 L690 400 L880 345 L1060 410 L1200 375 L1200 720 L0 720 Z" fill="#0d1117" fill-opacity="0.65"/>
+
+  <!-- Architectural Wireframe & Volumetric Splat Points -->
+  <g stroke="#f97316" stroke-opacity="0.55" fill="none" stroke-width="1.5">
+    <path d="M260 480 L940 480"/>
+    <path d="M320 480 L380 380 L820 380 L880 480"/>
+    <path d="M410 380 L460 300 L740 300 L790 380"/>
+    <rect x="440" y="380" width="320" height="100" fill="#0a0a0a" fill-opacity="0.55"/>
+    <line x1="520" y1="380" x2="520" y2="480"/>
+    <line x1="600" y1="300" x2="600" y2="480"/>
+    <line x1="680" y1="380" x2="680" y2="480"/>
+  </g>
+
+  <!-- Perspective Ground Grid -->
+  <g stroke="#ffffff" stroke-opacity="0.12" stroke-width="1">
+    <line x1="0" y1="480" x2="1200" y2="480"/>
+    <line x1="0" y1="530" x2="1200" y2="530"/>
+    <line x1="0" y1="595" x2="1200" y2="595"/>
+    <line x1="600" y1="480" x2="100" y2="720"/>
+    <line x1="600" y1="480" x2="350" y2="720"/>
+    <line x1="600" y1="480" x2="600" y2="720"/>
+    <line x1="600" y1="480" x2="850" y2="720"/>
+    <line x1="600" y1="480" x2="1100" y2="720"/>
+  </g>
+
+  <!-- Gaussian Splat Anchor Points -->
+  <g fill="#ff5a26">
+    <circle cx="460" cy="340" r="5" fill-opacity="0.9"/>
+    <circle cx="460" cy="340" r="16" fill="none" stroke="#ff5a26" stroke-opacity="0.45" stroke-width="1.5"/>
+    <circle cx="600" cy="310" r="6" fill-opacity="0.95"/>
+    <circle cx="600" cy="310" r="20" fill="none" stroke="#ff5a26" stroke-opacity="0.5" stroke-width="1.5"/>
+    <circle cx="750" cy="360" r="5" fill-opacity="0.9"/>
+    <circle cx="750" cy="360" r="16" fill="none" stroke="#ff5a26" stroke-opacity="0.45" stroke-width="1.5"/>
+  </g>
+
+  <!-- HUD Telemetry Overlay -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#f5f5f3">
+    <text x="56" y="64" font-size="15" letter-spacing="3" fill-opacity="0.7">39.9405° N, 116.3887° E · YANDAI XIEJIE</text>
+    <text x="56" y="102" font-size="26" font-weight="700" letter-spacing="1.5">SHICHAHAI // DRUM TOWER & HUTONG COURTYARDS</text>
+    <text x="56" y="656" font-size="16" fill-opacity="0.75">Gray-Tile Siheyuan Alleys & Bell-Drum Axis</text>
+    <text x="1144" y="64" font-size="14" letter-spacing="2" text-anchor="end" fill="#ff5a26">3D GAUSSIAN SPLAT // LIVE RIG</text>
+  </g>
+</svg>

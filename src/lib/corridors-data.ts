@@ -1,0 +1,655 @@
+export type CorridorId = "cn-to-seoul" | "global-to-beijing";
+
+export interface TimelineStep {
+  window: string;
+  title: string;
+  painPoint: string;
+  solution: string;
+  actionTag: string;
+  affiliateUrl: string;
+  affiliateLabel: string;
+  image: string;
+}
+
+export interface AppMapping {
+  category: string;
+  originApp: string;
+  whyItFails: string;
+  localChampion: string;
+  setupGuide: string;
+  proTip: string;
+}
+
+export interface SpatialHotspot {
+  id: string;
+  x: number;
+  y: number;
+  label: string;
+  detail: string;
+  cameraPreset: { yaw: number; pitch: number; zoom: number };
+}
+
+export interface WorldModelScene {
+  id: string;
+  name: string;
+  subtitle: string;
+  coordinates: string;
+  elevation: string;
+  image: string;
+  splatPalette: [string, string, string];
+  bestTime: string;
+  bookingRule: string;
+  spatialSummary: string;
+  hotspots: SpatialHotspot[];
+}
+
+export interface DriverCard {
+  id: string;
+  tag: string;
+  titleCn: string;
+  localHeadline: string;
+  phoneticOrSub: string;
+  driverInstruction: string;
+  subwayBackup: string;
+}
+
+export interface StayDistrict {
+  name: string;
+  vibe: string;
+  priceRange: string;
+  transitAccess: string;
+  bestFor: string;
+}
+
+export interface CorridorConfig {
+  id: CorridorId;
+  originLabel: string;
+  destinationCity: string;
+  destinationCountry: string;
+  heroHeadline: string;
+  heroSubheadline: string;
+  touchdownAirports: string;
+  emergencyNumber: string;
+  currencyInfo: string;
+  plugType: string;
+  timeline: TimelineStep[];
+  appMatrix: AppMapping[];
+  worldScenes: WorldModelScene[];
+  driverCards: DriverCard[];
+  stayDistricts: StayDistrict[];
+}
+
+export const CORRIDORS: Record<CorridorId, CorridorConfig> = {
+  "cn-to-seoul": {
+    id: "cn-to-seoul",
+    originLabel: "中国大陆出发旅客",
+    destinationCity: "首尔 Seoul",
+    destinationCountry: "韩国 South Korea",
+    heroHeadline: "TERRA · 首尔落地生存",
+    heroSubheadline:
+      "解决第一次去韩国下飞机后的四大断层：国内手机卡断网、Google 地图无法步行导航、路边摊与公交不支持微信支付、不懂韩语无法打车排队。通过 Web 3D 高斯点云世界模型，在出发前预演仁川机场动线、景福宫中轴与圣水洞街区。",
+    touchdownAirports: "仁川国际机场 (ICN T1/T2) · 金浦国际机场 (GMP)",
+    emergencyNumber: "1330 (韩国旅游发展局 24h 中文人工翻译与求助热线)",
+    currencyInfo: "韩元 KRW · 1,000 KRW 约合 5.3 RMB",
+    plugType: "德标两圆孔 (Type C / F, 220V) · 需备转换插头",
+    timeline: [
+      {
+        window: "落地后第 0 至 20 分钟 · 廊桥与入境厅",
+        title: "机舱落地与原生 eSIM 激活",
+        painPoint:
+          "国内手机号国际漫游不仅资费高，部分韩国本土排队系统（如 CatchTable）需要韩国本土网络或邮箱验证。",
+        solution:
+          "起飞前扫码安装 Airalo 韩国 LG U+ / SKT 原生 eSIM（落地关闭飞行模式即满格 5G），或在仁川到达厅 KT 柜台凭护照两分钟激活实体卡。",
+        actionTag: "原生 5G 低延迟通道",
+        affiliateUrl: "https://www.airalo.com/south-korea-esim",
+        affiliateLabel: "获取韩国 LG U+ 5G eSIM 离线包",
+        image: "/images/seoul-incheon-arex.jpg",
+      },
+      {
+        window: "落地后第 25 至 45 分钟 · B1 交通层",
+        title: "WOWPASS 换汇与交通卡",
+        painPoint:
+          "虽然明洞免税店支持支付宝，但韩国全境地铁、公交、九成以上的圣水洞独立咖啡馆与烤肉店仅接受韩元 IC 芯片卡或 T-money。",
+        solution:
+          "下到仁川机场 B1 层 AREX 铁路入口处，在橙色自助机用护照与人民币或支付宝直接申领一张 WOWPASS 卡：兼具预付 IC 借记卡与 T-money 交通卡芯片。",
+        actionTag: "消费与地铁双芯片合一",
+        affiliateUrl: "https://www.wowpass.io/?lang=zh_CN",
+        affiliateLabel: "预订仁川机场 WOWPASS 自提码",
+        image: "/images/seoul-gyeongbokgung.jpg",
+      },
+      {
+        window: "落地后第 45 至 70 分钟 · 进城列车",
+        title: "Naver 中文导航与打车",
+        painPoint:
+          "受韩国国家测绘法规限制，Google Maps 在韩国境内无法提供任何步行路线规划与驾车导航，高德或百度在首尔亦无实时小巷数据。",
+        solution:
+          "立即打开 Naver Map（在设置中切换为简体中文，可直接搜中文地名），并打开 Kakao T 打车软件（勾选 Pay to Driver 即可下车刷 WOWPASS 或付现）。",
+        actionTag: "本土高精度中文导航",
+        affiliateUrl: "https://map.naver.com",
+        affiliateLabel: "加载首尔热门机位 Naver 收藏夹",
+        image: "/images/seoul-seongsu.jpg",
+      },
+      {
+        window: "落地后第 75 至 120 分钟 · 核心商圈入住",
+        title: "仁川快轨直达与住宿选区",
+        painPoint:
+          "仁川机场 B1 层东西两侧分别是橙色 AREX 直达列车（仅停首尔站）与蓝色普通列车（经停弘大入口），走错闸机耽误 40 分钟。",
+        solution:
+          "住弘大或延南洞直接刷 T-money 进蓝色普通列车闸机（52 分钟直达弘大入口站）；住明洞或东大门刷码进橙色直达快线（43 分钟到首尔站）。",
+        actionTag: "43 分钟直达首尔核心",
+        affiliateUrl: "https://www.klook.com/zh-CN/activity/1163-airport-railroad-arex-incheon-seoul/",
+        affiliateLabel: "预订 AREX 仁川机场直达快线票",
+        image: "/images/beijing-forbidden-city.jpg",
+      },
+    ],
+    appMatrix: [
+      {
+        category: "步行与地铁路线导航",
+        originApp: "高德地图 / 百度地图 / Google Maps",
+        whyItFails: "Google 地图在韩国被锁死步行与驾车导航；国内地图无首尔地铁出口电梯与小巷数据。",
+        localChampion: "Naver Map 中文版",
+        setupGuide: "打开软件后进入左上角菜单 Settings，在 Language 中选择简体中文界面。",
+        proTip: "搜索店铺时如果不确定韩文名，可直接在下方出租车大字卡复制韩文原名粘贴检索。",
+      },
+      {
+        category: "城市出租车即时叫车",
+        originApp: "滴滴出行",
+        whyItFails: "韩国街头招手拦车极难（多数已被网约锁定），夜间弘大与江南更难路边拦车。",
+        localChampion: "Kakao T 与 Uber UT",
+        setupGuide: "用国内手机号收验证码注册 Kakao T，叫车选 General Taxi，支付方式右滑选 Pay to Driver。",
+        proTip: "Uber 在韩国会自动切换为与 SK 合作的 UT 出租车网络，原绑定的外币卡可直接扣款。",
+      },
+      {
+        category: "餐厅排队取号与防跑空",
+        originApp: "大众点评 / 美团排队",
+        whyItFails: "首尔网红烤肉、伦敦贝果博物馆、圣水洞热门餐厅全部采用门口 CatchTable 平板取号。",
+        localChampion: "CatchTable 国际版",
+        setupGuide: "无需韩国本土手机号，直接用邮箱注册 CatchTable Global 即可远程查看实时排队并取号。",
+        proTip: "热门店（如金猪食堂、London Bagel）建议在出发去门店前 45 分钟直接在软件内线上抢号。",
+      },
+      {
+        category: "菜单识别与无障碍沟通",
+        originApp: "普通英汉词典",
+        whyItFails: "韩国大量地道老店仅有韩文手写墙面菜单，通用翻译器对韩式料理专有名词翻译不准。",
+        localChampion: "Naver Papago",
+        setupGuide: "开启图片实时涂抹翻译与双人语音对话模式，提前下载韩中离线语言包。",
+        proTip: "点餐遇到两份起订（2인분）是韩国烤肉店常规规则，Papago 拍照可一秒识别。",
+      },
+    ],
+    worldScenes: [
+      {
+        id: "seoul-gyeongbokgung",
+        name: "景福宫与光化门皇家轴线",
+        subtitle: "Gyeongbokgung Palace & Gwanghwamun Spatial Twin",
+        coordinates: "37.5796° N, 126.9770° E",
+        elevation: "海拔 42 米 · 85° 广角体素",
+        image: "/images/seoul-gyeongbokgung.jpg",
+        splatPalette: ["#ff5a26", "#f4a261", "#38bdf8"],
+        bestTime: "上午 09:30 至 11:00（守门将换岗仪式 10:00 与 14:00，周二闭馆）",
+        bookingRule: "穿传统韩服可免门票直接从光化门东侧专用通道入园；普通门票 3,000 韩元现场即买。",
+        spatialSummary:
+          "三维世界模型视窗还原了光化门广场、勤政殿双层丹青飞檐与背后北岳山花岗岩山脊的空间景深关系。拖动视角可预演从地铁景福宫站出站、租借韩服、光化门换岗机位至庆会楼倒影池的无折返动线。",
+        hotspots: [
+          {
+            id: "gwanghwamun-gate",
+            x: 34,
+            y: 52,
+            label: "光化门换岗机位",
+            detail: "每日 10:00 与 14:00 举行皇家守门将换岗。最佳机位在光化门城门正南方偏东 15 米，以北岳山为背景仰拍。",
+            cameraPreset: { yaw: -22, pitch: 8, zoom: 1.15 },
+          },
+          {
+            id: "geunjeongjeon-hall",
+            x: 52,
+            y: 38,
+            label: "勤政殿丹青中轴",
+            detail: "利用早间侧逆光拍摄双层重檐与花岗岩品阶石，避开旅行团大部队请走西侧回廊框架取景。",
+            cameraPreset: { yaw: 0, pitch: 14, zoom: 1.28 },
+          },
+          {
+            id: "gyeonghoeru-pavilion",
+            x: 71,
+            y: 46,
+            label: "庆会楼水面镜像",
+            detail: "景福宫出片率最高机位。站在池塘西岸石栏处，用标准或两倍焦段对称构图拍摄庆会楼与松树倒影。",
+            cameraPreset: { yaw: 28, pitch: 6, zoom: 1.2 },
+          },
+        ],
+      },
+      {
+        id: "seoul-seongsu",
+        name: "圣水洞红砖买手街区",
+        subtitle: "Seongsu-dong Red-Brick Industrial & Flagship District",
+        coordinates: "37.5446° N, 127.0560° E",
+        elevation: "海拔 18 米 · 街景尺度点云",
+        image: "/images/seoul-seongsu.jpg",
+        splatPalette: ["#f97316", "#eab308", "#38bdf8"],
+        bestTime: "上午 11:00 至 17:30（建议工作日或周末 11:00 首批进店）",
+        bookingRule: "Dior 圣水玻璃花房外景拍照无需预约；Tamburins 与 ADER Error 现场直接排队入场。",
+        spatialSummary:
+          "被称为首尔布鲁克林的旧鞋厂工业区。通过三维空间模型可直观查看地铁圣水站出站后，沿着演武场街串联 Cafe Onion 废墟露台、Dior 圣水概念店与 Tamburins 下沉水泥展厅的最短步行闭环。",
+        hotspots: [
+          {
+            id: "dior-seongsu",
+            x: 48,
+            y: 44,
+            label: "Dior 金属玻璃花房",
+            detail: "演武场街核心地标。下午四点后暖色灯光亮起时在街对角斑马线旁拍摄建筑全貌最出片。",
+            cameraPreset: { yaw: -12, pitch: 10, zoom: 1.22 },
+          },
+          {
+            id: "tamburins-flagship",
+            x: 68,
+            y: 54,
+            label: "Tamburins 水泥展厅",
+            detail: "与 Dior 仅隔一条马路。支持现场直接办理免税退税（请随身携带实体护照原件）。",
+            cameraPreset: { yaw: 20, pitch: 4, zoom: 1.18 },
+          },
+          {
+            id: "onion-rooftop",
+            x: 29,
+            y: 58,
+            label: "Onion 废墟工厂露台",
+            detail: "圣水站 2 号口步行 3 分钟。招牌雪山面包配美式咖啡，二楼露台保留了七十年代红砖厂房结构。",
+            cameraPreset: { yaw: -28, pitch: 12, zoom: 1.12 },
+          },
+        ],
+      },
+      {
+        id: "seoul-incheon-arex",
+        name: "仁川机场地下交通枢纽",
+        subtitle: "Incheon Touchdown B1F Transit & WOWPASS Hub",
+        coordinates: "37.4602° N, 126.4407° E",
+        elevation: "地下一层 · 零摩擦换乘走廊",
+        image: "/images/seoul-incheon-arex.jpg",
+        splatPalette: ["#38bdf8", "#22d3ee", "#ff5a26"],
+        bestTime: "全天候 05:20 至 23:30（末班快轨 22:48 与 23:38）",
+        bookingRule: "橙色直达快线需对号入座；蓝色普通列车直接刷 T-money 或 WOWPASS 进站。",
+        spatialSummary:
+          "第一次去首尔最容易迷路的就是仁川机场入境后从一层下到地下一层交通中心。本三维视窗标定了自动扶梯落点、WOWPASS 自助发卡机、CU 便利店以及橙蓝双色闸机的精确空间方位。",
+        hotspots: [
+          {
+            id: "wowpass-kiosk",
+            x: 38,
+            y: 56,
+            label: "WOWPASS 自助发卡机",
+            detail: "位于 AREX 售票处旁。插入护照与人民币百元现钞或预约码，一分钟吐出实体卡。",
+            cameraPreset: { yaw: -18, pitch: 6, zoom: 1.2 },
+          },
+          {
+            id: "arex-orange-gate",
+            x: 62,
+            y: 42,
+            label: "橙色直达快线闸机",
+            detail: "全程 43 分钟中途不停靠直达首尔站，提供免费无线网与指定座位，适合住明洞与东大门旅客。",
+            cameraPreset: { yaw: 16, pitch: 10, zoom: 1.25 },
+          },
+          {
+            id: "arex-blue-gate",
+            x: 76,
+            y: 58,
+            label: "蓝色普通列车闸机",
+            detail: "直接刷交通卡进站，无需买指定席票，52 分钟直达年轻旅客最集中的弘大入口站。",
+            cameraPreset: { yaw: 30, pitch: 5, zoom: 1.15 },
+          },
+        ],
+      },
+    ],
+    driverCards: [
+      {
+        id: "kr-hongdae",
+        tag: "弘大商圈与民宿核心区",
+        titleCn: "送我到弘大入口站 9 号口",
+        localHeadline: "기사님, 홍대입구역 9번 출구 앞으로 가주세요.",
+        phoneticOrSub: "Hongdae-ipgu-yeok 9-beon chulgu · Mapo-gu, Seoul",
+        driverInstruction: "감사합니다! 카드(티머니/신용카드) 결제할게요. (谢谢师傅！我将使用交通卡或银行卡刷卡支付)",
+        subwayBackup: "地铁路线：机场快线或地铁 2 号线【弘大入口站】9 号口出",
+      },
+      {
+        id: "kr-myeongdong",
+        tag: "明洞换汇与免税百货中心",
+        titleCn: "送我到明洞乐天百货总店",
+        localHeadline: "기사님, 명동 롯데백화점 본점 앞으로 가주세요.",
+        phoneticOrSub: "Lotte Department Store Main Branch · Jung-gu, Seoul",
+        driverInstruction: "트렁크 좀 열어주시겠어요? 감사합니다! (麻烦帮我打开一下后备箱，非常感谢！)",
+        subwayBackup: "地铁路线：地铁 2 号线【乙支路入口站】7 号口出",
+      },
+      {
+        id: "kr-seongsu",
+        tag: "圣水洞买手店与咖啡街",
+        titleCn: "送我到圣水洞 Dior 概念店",
+        localHeadline: "기사님, 성수동 디올성수(연무장길 7) 앞으로 가주세요.",
+        phoneticOrSub: "7 Yeonmujang-gil, Seongdong-gu, Seoul (Dior Seongsu)",
+        driverInstruction: "여기서 세워주세요. 감사합니다! (请在这里靠边停一下即可，谢谢！)",
+        subwayBackup: "地铁路线：地铁 2 号线【圣水站】4 号口步行 350 米",
+      },
+      {
+        id: "kr-gyeongbokgung",
+        tag: "景福宫光化门正门",
+        titleCn: "送我到景福宫光化门正门",
+        localHeadline: "기사님, 경복궁 정문(광화문 앞)으로 가주세요.",
+        phoneticOrSub: "161 Sajik-ro, Jongno-gu, Seoul (Gyeongbokgung Palace)",
+        driverInstruction: "광화문 우측 하차장에 내려주세요. (请在光化门右侧落客区停靠，谢谢！)",
+        subwayBackup: "地铁路线：地铁 3 号线【景福宫站】4 号或 5 号口即达",
+      },
+      {
+        id: "kr-icn-airport",
+        tag: "返程赶飞机（仁川航站楼）",
+        titleCn: "送我到仁川国际机场出发层",
+        localHeadline: "기사님, 인천국제공항 출국장으로 가주세요.",
+        phoneticOrSub: "Incheon International Airport Departure Level (T1 / T2)",
+        driverInstruction: "비행기 시간이 급해서 빠른 길로 부탁드립니다. (航班较紧，麻烦走高速快线)",
+        subwayBackup: "备选快轨：首尔站或弘大入口站搭乘 AREX 机场快线准点不堵车",
+      },
+    ],
+    stayDistricts: [
+      {
+        name: "弘大与延南洞片区",
+        vibe: "潮流街区 · 独立咖啡馆 · 深夜烤肉与街头演出",
+        priceRange: "¥550 - ¥1,100 / 晚",
+        transitAccess: "AREX 机场铁路 52 分钟免换乘直达 + 地铁 2 号环线核心",
+        bestFor: "第一次去首尔的年轻旅客、看重机场直达免搬行李过楼梯的自由行玩家",
+      },
+      {
+        name: "明洞与乙支路片区",
+        vibe: "百货免税店 · 大使馆换汇街 · 步行去南山塔与景福宫",
+        priceRange: "¥680 - ¥1,500 / 晚",
+        transitAccess: "地铁 2 号线与 4 号线双轨交汇，机场大巴 6015 路直达酒店门口",
+        bestFor: "家庭出游、首次赴韩需要全中文购物环境与高密度换汇所的旅客",
+      },
+      {
+        name: "圣水与汉南江南片区",
+        vibe: "买手店旗舰建筑 · 艺术美术馆 · 精致高端餐饮",
+        priceRange: "¥900 - ¥2,400 / 晚",
+        transitAccess: "地铁 2 号线东段与过江大桥，打车往返各旗舰店 10 分钟内",
+        bestFor: "注重审美体验、冲着设计师品牌、建筑摄影与精品探店而来的深度玩家",
+      },
+    ],
+  },
+  "global-to-beijing": {
+    id: "global-to-beijing",
+    originLabel: "国际入境旅客与国内自由行",
+    destinationCity: "北京 Beijing",
+    destinationCountry: "中国 China · 皇城中轴线",
+    heroHeadline: "TERRA · 北京皇城中轴",
+    heroSubheadline:
+      "由 testUi-1 北京旅游地点工程全面升维改造：不仅为入境旅客一键打通 Alipay 外卡支付、大兴与首都机场快轨和 BEIJING PASS，更内置故宫太和殿、颐和园昆明湖、什刹海钟鼓楼的三维高斯点云空间漫游舱，终结故宫抢不到票与走冤枉路排长队的痛点。",
+    touchdownAirports: "北京大兴国际机场 (PKX) · 北京首都国际机场 (PEK T2/T3)",
+    emergencyNumber: "12345 (北京市多语种市民服务热线) / 110",
+    currencyInfo: "人民币 CNY · 全城 99% 普及移动扫码支付 (Alipay / WeChat Pay)",
+    plugType: "国标两扁与三扁插头 (Type A / I, 220V)",
+    timeline: [
+      {
+        window: "落地后第 0 至 20 分钟 · 首都与大兴机场",
+        title: "跨境双栈联网与免签通关",
+        painPoint:
+          "海外入境旅客落地后若使用普通本地电话卡，无法打开国际邮箱与海外银行软件接收信用卡支付验证码。",
+        solution:
+          "国际旅客落地前启用 Airalo China eSIM（自带合规漫游网关，同时秒开支付宝、高德与海外邮箱）；国内旅客直接开启亿通行或支付宝地铁乘车码。",
+        actionTag: "双栈无感漫游网络",
+        affiliateUrl: "https://www.airalo.com/china-esim",
+        affiliateLabel: "获取中国大陆全网通 5G eSIM",
+        image: "/images/beijing-forbidden-city.jpg",
+      },
+      {
+        window: "落地后第 20 至 45 分钟 · 机场轨道交通层",
+        title: "支付宝外卡直绑与乘车码",
+        painPoint:
+          "北京从胡同小吃摊、故宫饮水机到出租车均已全面普及二维码支付，只带外币现金在街头寸步难行。",
+        solution:
+          "打开支付宝切换为国际版，直接绑定 Visa 或 Mastercard 外卡（单笔 200 元以内免收 3% 手续费）；在北京地铁闸机可直接拍外卡或刷乘车码通行。",
+        actionTag: "一部手机刷遍北京地铁",
+        affiliateUrl: "https://www.trip.com/guide/info/alipay-for-foreigners.html",
+        affiliateLabel: "查看支付宝外卡免手续费绑定指南",
+        image: "/images/beijing-summer-palace.jpg",
+      },
+      {
+        window: "落地后第 45 至 75 分钟 · 核心景区预约",
+        title: "故宫提前预约与东华门捷径",
+        painPoint:
+          "无数游客直接打车到天安门或故宫门口，才发现当天门票早已售罄，且误入天安门广场安检排队长达 90 分钟。",
+        solution:
+          "故宫博物院每晚八点放第 7 天票，务必提前实名预约。已约好故宫门票请直接打车定位故宫东华门，沿筒子河步行 8 分钟直达午门检票口，完美绕开广场安检长队。",
+        actionTag: "东华门免排广场安检",
+        affiliateUrl: "https://www.trip.com/travel-guide/attraction/beijing/the-palace-museum-75595/",
+        affiliateLabel: "预订故宫与颐和园官方实名联票",
+        image: "/images/beijing-shichahai.jpg",
+      },
+      {
+        window: "落地后第 75 至 120 分钟 · 皇城入住",
+        title: "机场快轨换乘与二环交通",
+        painPoint:
+          "晚高峰北京二环、三环与长安街地面交通极易拥堵，且故宫与南锣鼓巷周边胡同严禁网约车随意停靠。",
+        solution:
+          "大兴机场搭乘大兴机场线 19 分钟直达草桥站换乘 19 号线；首都机场搭乘首都机场线 20 分钟直达东直门或北新桥（簋街美食中心）。",
+        actionTag: "轨道优先避开二环拥堵",
+        affiliateUrl: "https://www.trip.com/hotels/beijing-hotel-list-1/",
+        affiliateLabel: "查看北京二环地铁口四合院与酒店清单",
+        image: "/images/seoul-gyeongbokgung.jpg",
+      },
+    ],
+    appMatrix: [
+      {
+        category: "皇城胡同与地铁出口导航",
+        originApp: "Google Maps",
+        whyItFails: "Google Maps 在中国大陆存在坐标偏移，且无实时地铁换乘车厢引导。",
+        localChampion: "高德地图英文版与 Apple Maps",
+        setupGuide: "海外手机打开高德地图可切换为英文界面；iPhone 用户进入北京后自带地图会自动切换为高德高精度数据。",
+        proTip: "在北京坐地铁换乘一定要看高德提示的进站第几节车厢离换乘扶梯最近，可少走几百米通道。",
+      },
+      {
+        category: "全城网约车与出租车呼叫",
+        originApp: "Uber / Lyft / Kakao T",
+        whyItFails: "Uber 国际版在中国大陆无法叫车，且在故宫与什刹海路边很难拦到空驶出租车。",
+        localChampion: "支付宝内置滴滴出行小程序",
+        setupGuide: "打开支付宝首页点击出行或 DiDi，支持全英文输入起点终点，司乘聊天消息自动中英互译。",
+        proTip: "从故宫神武门出来时切勿在正门口叫车（全路段禁停），请步行至景山公园西门再发单。",
+      },
+      {
+        category: "铜锅涮肉与北京烤鸭排队",
+        originApp: "Yelp / TripAdvisor",
+        whyItFails: "四季民福烤鸭、南门涮肉、聚宝源在饭点现场排队往往超过两小时。",
+        localChampion: "大众点评与微信远程取号",
+        setupGuide: "下午三点半逛故宫到一半时，直接在大众点评或四季民福公众号线上取晚市号。",
+        proTip: "四季民福故宫东华门店靠窗位可直接看到东华门城楼与护城河，务必提前线上取小桌号。",
+      },
+      {
+        category: "景点门票实名预约中枢",
+        originApp: "现场售票窗口买票",
+        whyItFails: "北京一类文博场馆已全面取消现场散客纸质售票窗口，未提前预约无法入场。",
+        localChampion: "Trip.com 与故宫官方小程序",
+        setupGuide: "持中国身份证用微信小程序；持外国护照或港澳台证件推荐直接用 Trip.com 一键录入预约。",
+        proTip: "如果故宫实在没抢到票，景山公园加太庙（劳动人民文化宫，同规格金丝楠木大殿，现场可买票）是最强平替。",
+      },
+    ],
+    worldScenes: [
+      {
+        id: "beijing-forbidden-city",
+        name: "故宫太和殿至景山中轴线",
+        subtitle: "Forbidden City Central Meridian & Jingshan Overlook",
+        coordinates: "39.9163° N, 116.3972° E",
+        elevation: "海拔 52 米 · 世界文化遗产核心",
+        image: "/images/beijing-forbidden-city.jpg",
+        splatPalette: ["#f59e0b", "#ef4444", "#fbbf24"],
+        bestTime: "上午 08:30 第一批检票入园 或 15:00 后夕阳斜照红墙",
+        bookingRule: "提前 7 天 20:00 实名抢票（旺季 ¥60 / 淡季 ¥40），周一闭馆。务必携带身份证或护照原件。",
+        spatialSummary:
+          "基于 testUi-1 北京地标库升级的三维高斯空间场景。完整呈现东华门筒子河捷径、午门五凤楼、太和殿丹陛石、珍宝馆九龙壁、神武门出宫至景山公园万春亭俯瞰紫禁城琉璃瓦海的黄金四小时立体动线。",
+        hotspots: [
+          {
+            id: "donghuamen-shortcut",
+            x: 24,
+            y: 62,
+            label: "东华门筒子河捷径",
+            detail: "打车到故宫东华门，沿护城河柳树步道走 8 分钟直达午门检票口，省去天安门广场一小时安检排队。",
+            cameraPreset: { yaw: -26, pitch: 6, zoom: 1.16 },
+          },
+          {
+            id: "hall-of-supreme-harmony",
+            x: 52,
+            y: 42,
+            label: "太和殿须弥座中轴",
+            detail: "中国现存最大木结构宫殿。建议站在太和殿广场西侧弘义阁回廊台阶上，利用廊柱做前景框景拍摄。",
+            cameraPreset: { yaw: 0, pitch: 12, zoom: 1.3 },
+          },
+          {
+            id: "jingshan-wanchunting",
+            x: 74,
+            y: 28,
+            label: "景山万春亭制高点",
+            detail: "从故宫神武门出来过地下通道即达景山公园南门，登顶万春亭向南俯瞰整座紫禁城金顶与中轴线落日。",
+            cameraPreset: { yaw: 24, pitch: 22, zoom: 1.24 },
+          },
+        ],
+      },
+      {
+        id: "beijing-summer-palace",
+        name: "颐和园昆明湖与十七孔桥",
+        subtitle: "Summer Palace Kunming Lake & Longevity Hill Spatial Twin",
+        coordinates: "39.9999° N, 116.2755° E",
+        elevation: "海拔 68 米 · 皇家山水园林",
+        image: "/images/beijing-summer-palace.jpg",
+        splatPalette: ["#34d399", "#38bdf8", "#f59e0b"],
+        bestTime: "下午 15:30 至 18:00（冬至前后下午四点十七孔桥出现金光穿洞奇观）",
+        bookingRule: "联票 ¥60（含大门票、佛香阁、德和园、苏州街），支持现场扫码或提前预约，刷证件秒进。",
+        spatialSummary:
+          "颐和园面积相当于四个故宫，选错大门会多走一万步。三维空间模型标定了两条最优动线：想拍十七孔桥日落请直接从新建宫门入园；想俯瞰昆明湖请从地铁北宫门站入园翻越万寿山至佛香阁。",
+        hotspots: [
+          {
+            id: "seventeen-arch-bridge",
+            x: 36,
+            y: 58,
+            label: "十七孔桥金光穿洞",
+            detail: "从新建宫门进园步行 3 分钟即达铜牛与十七孔桥东端。傍晚斜阳将桥洞全部照亮成金色。",
+            cameraPreset: { yaw: -20, pitch: 8, zoom: 1.22 },
+          },
+          {
+            id: "foxiangge-tower",
+            x: 58,
+            y: 32,
+            label: "万寿山佛香阁全景",
+            detail: "全园视觉核心。登上八角三层四重檐的佛香阁平台，可将昆明湖、南湖岛与西山玉泉山尽收眼底。",
+            cameraPreset: { yaw: 8, pitch: 18, zoom: 1.28 },
+          },
+          {
+            id: "painted-boat-dock",
+            x: 72,
+            y: 54,
+            label: "石舫古画舫游船处",
+            detail: "走完 728 米彩绘长廊后，可在石舫码头乘画舫直接横渡昆明湖返回南湖岛，免走回头路。",
+            cameraPreset: { yaw: 26, pitch: 6, zoom: 1.15 },
+          },
+        ],
+      },
+      {
+        id: "beijing-shichahai",
+        name: "什刹海钟鼓楼与胡同肌理",
+        subtitle: "Shichahai Lake, Bell-Drum Towers & Siheyuan Alleys",
+        coordinates: "39.9405° N, 116.3887° E",
+        elevation: "海拔 46 米 · 老北京水系胡同",
+        image: "/images/beijing-shichahai.jpg",
+        splatPalette: ["#ff5a26", "#f43f5e", "#38bdf8"],
+        bestTime: "下午 16:30 至 21:00（傍晚蓝调时刻鼓楼亮灯与什刹海晚风）",
+        bookingRule: "什刹海历史文化街区、烟袋斜街、银锭桥全天免费开放；登钟鼓楼联票 ¥30。",
+        spatialSummary:
+          "老北京先有什刹海后有北京城的水系胡同活化石。三维模型串联起地铁什刹海站、鼓楼红墙机位、烟袋斜街、银锭桥观山与前海荷花市场摇橹船（冬季为什刹海冰场）的沉浸漫游路线。",
+        hotspots: [
+          {
+            id: "drum-tower-axis",
+            x: 32,
+            y: 40,
+            label: "地安门外鼓楼红墙",
+            detail: "北京中轴线北端点。站在鼓楼东大街路口斑马线安全岛，用长焦镜头拍出胡同电车与宏伟鼓楼同框。",
+            cameraPreset: { yaw: -18, pitch: 14, zoom: 1.25 },
+          },
+          {
+            id: "yinding-bridge",
+            x: 54,
+            y: 52,
+            label: "银锭桥前海交汇处",
+            detail: "燕京小八景之一银锭观山，桥旁就是百年老字号烤肉季与南门涮肉什刹海店。",
+            cameraPreset: { yaw: 4, pitch: 8, zoom: 1.2 },
+          },
+          {
+            id: "shichahai-boating",
+            x: 75,
+            y: 60,
+            label: "荷花市场码头四合院",
+            detail: "夏秋乘摇橹船听船夫讲恭王府与胡同典故；冬季湖面结冰后变身老北京什刹海滑冰车冰场。",
+            cameraPreset: { yaw: 24, pitch: 6, zoom: 1.15 },
+          },
+        ],
+      },
+    ],
+    driverCards: [
+      {
+        id: "bj-donghuamen",
+        tag: "故宫最快检票捷径（绕开广场安检）",
+        titleCn: "送我到故宫东华门落客区",
+        localHeadline: "师傅您好，请送我到【故宫东华门】路口落客区。",
+        phoneticOrSub: "Donghuamen Gate of the Forbidden City · Dongcheng District",
+        driverInstruction: "下车后沿着筒子河红墙往西走 8 分钟就是故宫午门检票口，不用排天安门广场安检长队。",
+        subwayBackup: "地铁路线：地铁 8 号线【金鱼胡同站】C 口出，步行至东华门",
+      },
+      {
+        id: "bj-jingshan",
+        tag: "俯瞰故宫全景制高点",
+        titleCn: "送我到景山公园西门",
+        localHeadline: "师傅您好，请送我到【景山公园西门】（景山西街）。",
+        phoneticOrSub: "West Gate of Jingshan Park · Xicheng District, Beijing",
+        driverInstruction: "注：故宫神武门外大街全线禁停网约车，定位景山公园西门最容易上下车。",
+        subwayBackup: "地铁路线：地铁 8 号线【什刹海站】或 6 号线【北海北站】",
+      },
+      {
+        id: "bj-summer-palace",
+        tag: "颐和园十七孔桥最近入口",
+        titleCn: "送我到颐和园新建宫门",
+        localHeadline: "师傅您好，请送我到【颐和园新建宫门】（昆明湖东岸）。",
+        phoneticOrSub: "Xinjian Gongmen Gate, Summer Palace · Haidian District",
+        driverInstruction: "进新建宫门走 150 米就是铜牛和十七孔桥，看日落最快不费腿。",
+        subwayBackup: "地铁路线：地铁 4 号线【北宫门站】D 口（适合从山上往下逛）",
+      },
+      {
+        id: "bj-shichahai",
+        tag: "鼓楼与什刹海胡同起点",
+        titleCn: "送我到地安门外鼓楼路口",
+        localHeadline: "师傅您好，请送我到【钟鼓楼广场 / 地安门外大街鼓楼路口】。",
+        phoneticOrSub: "Drum Tower (Gulou) Crossroads · Dongcheng District",
+        driverInstruction: "下车先拍鼓楼机位，再顺着烟袋斜街一路逛到什刹海银锭桥和后海。",
+        subwayBackup: "地铁路线：地铁 8 号线【什刹海站】A2 出口即达烟袋斜街与鼓楼",
+      },
+      {
+        id: "bj-daxing-airport",
+        tag: "返程赶飞机（大兴与首都机场）",
+        titleCn: "送我到大兴或首都机场出发层",
+        localHeadline: "师傅您好，请送我到【大兴机场四层出发 / 首都机场 T3 出发】。",
+        phoneticOrSub: "Beijing Daxing (PKX) / Capital Airport (PEK T3) Departures",
+        driverInstruction: "上车请务必跟师傅再次核对您的机票是 PKX（大兴）还是 PEK（首都顺义），两座机场相距 65 公里。",
+        subwayBackup: "地铁路线：地铁草桥站换乘【大兴机场线】（19 分钟直达航站楼）",
+      },
+    ],
+    stayDistricts: [
+      {
+        name: "王府井与东四皇城片区",
+        vibe: "步行可达故宫东华门 · 精品四合院酒店与五星酒店聚集",
+        priceRange: "¥650 - ¥1,800 / 晚",
+        transitAccess: "地铁 5 号线与 8 号线核心，去天安门、故宫、美术馆均在 15 分钟内",
+        bestFor: "第一次来北京的国内外游客、带父母孩子出行、希望早上第一批轻松进故宫的旅客",
+      },
+      {
+        name: "什刹海与北新桥胡同片区",
+        vibe: "老北京胡同烟火气 · 钟鼓楼与簋街宵夜 · 首都机场线终点",
+        priceRange: "¥500 - ¥1,300 / 晚",
+        transitAccess: "首都机场线直达北新桥站 + 地铁 2/5/6/8 号线四通八达",
+        bestFor: "喜欢胡同文化、精酿咖啡、铜锅涮肉与首都机场落地免换乘直达的玩家",
+      },
+      {
+        name: "前门大栅栏与草桥南轴线",
+        vibe: "百年老字号步行街 · 天坛公园旁 · 大兴机场快线直通",
+        priceRange: "¥450 - ¥1,100 / 晚",
+        transitAccess: "地铁 2/7/8 号线交汇，往南直通大兴国际机场草桥枢纽",
+        bestFor: "从大兴机场或北京南站抵京、想沉浸感受京剧茶馆与天坛晨练的旅客",
+      },
+    ],
+  },
+};
