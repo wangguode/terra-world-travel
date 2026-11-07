@@ -1,6 +1,4 @@
-import type { CapacitorConfig } from "@capacitor/cli";
-
-const config: CapacitorConfig = {
+const config = {
   appId: "com.wangguo.terraworld",
   appName: "TERRA 跨国生存",
   webDir: "out",
@@ -12,10 +10,10 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: "always",
     preferredContentMode: "mobile",
-    backgroundColor: "#090c12",
+    backgroundColor: "#F2F2F7",
   },
   android: {
-    backgroundColor: "#090c12",
+    backgroundColor: "#F2F2F7",
     allowMixedContent: false,
   },
 };

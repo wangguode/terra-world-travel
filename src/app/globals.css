@@ -13,6 +13,7 @@ html {
   scroll-behavior: smooth;
   background-color: #f5f5f7;
   color: #1d1d1f;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -27,4 +28,50 @@ body {
 
 nextjs-portal {
   display: none !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes iosTabFadeIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.ios-tab-enter {
+  animation: iosTabFadeIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes iosToastPop {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -8px, 0) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1);
+  }
+}
+
+.ios-toast-pop {
+  animation: iosToastPop 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-tab-enter,
+  .ios-toast-pop {
+    animation: none !important;
+  }
 }
