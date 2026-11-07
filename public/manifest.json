@@ -1,0 +1,10 @@
+{
+  "name": "TERRA 2.0 跨国落地生存与三维世界模型",
+  "short_name": "TERRA Travel",
+  "description": "解决跨国旅行下飞机黄金 120 分钟断网、换汇、打车、地图失效痛点，内置 3D 高斯点云实景漫游与出租车双语急救卡。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#ff5a26",
+  "orientation": "portrait-primary"
+}
