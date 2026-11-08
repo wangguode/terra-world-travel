@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TERRA 2.0 // 跨国落地生存指南与 3D 空间世界模型旅游平台 (Seoul & Beijing)",
+  title: "TERRA 3.0 // 跨国落地生存指南与空间世界模型漫游系统",
   description:
-    "专为 PC、Apple iPhone (iOS) 与 Android 打造的全端跨国落地生存系统：黄金 120 分钟时间轴、Web 3D 高斯点云世界模型漫游舱、本土 App 平替映射与出租车双语急救卡。",
+    "专为 iPhone、Android 与 PC 打造的全端跨国落地生存系统：首尔/北京/东京/曼谷黄金 120 分钟时间轴、空间世界模型第一视角动线推演、本土 App 平替映射与出租车双语急救卡。",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
