@@ -37,7 +37,7 @@ export function buildFallbackPlan(
     return {
       ok: true,
       provider: "terra-spatial-engine",
-      model: "deterministic-v3",
+      model: "deterministic-neural-engine",
       corridorId,
       summary: `已为【${arrivalTime} 落地仁川/金浦 · ${days}天 · ${travelerStyle} · 入住${hotelArea}】生成首尔零盲区落地生存与 3D 空间串联动线。`,
       steps: [
@@ -70,7 +70,7 @@ export function buildFallbackPlan(
     return {
       ok: true,
       provider: "terra-spatial-engine",
-      model: "deterministic-v3",
+      model: "deterministic-neural-engine",
       corridorId,
       summary: `已为【${arrivalTime} 落地羽田/成田 · ${days}天 · ${travelerStyle} · 入住${hotelArea}】生成东京极速通关与时空动线。`,
       steps: [
@@ -96,7 +96,7 @@ export function buildFallbackPlan(
     return {
       ok: true,
       provider: "terra-spatial-engine",
-      model: "deterministic-v3",
+      model: "deterministic-neural-engine",
       corridorId,
       summary: `已为【${arrivalTime} 落地素万那普/廊曼 · ${days}天 · ${travelerStyle} · 入住${hotelArea}】生成曼谷免签落地与打车防宰动线。`,
       steps: [

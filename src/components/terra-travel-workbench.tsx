@@ -284,19 +284,21 @@ export function TerraTravelWorkbench() {
         jpyInput?: string;
         thbInput?: string;
       };
-      if (parsed.corridorId && CORRIDORS[parsed.corridorId]) {
-        setCorridorId(parsed.corridorId);
-      }
-      if (parsed.completedSteps) {
-        setCompletedSteps(parsed.completedSteps);
-      }
-      if (typeof parsed.isProUnlocked === "boolean") {
-        setIsProUnlocked(parsed.isProUnlocked);
-      }
-      if (parsed.krwInput) setKrwInput(parsed.krwInput);
-      if (parsed.usdInput) setUsdInput(parsed.usdInput);
-      if (parsed.jpyInput) setJpyInput(parsed.jpyInput);
-      if (parsed.thbInput) setThbInput(parsed.thbInput);
+      queueMicrotask(() => {
+        if (parsed.corridorId && CORRIDORS[parsed.corridorId]) {
+          setCorridorId(parsed.corridorId);
+        }
+        if (parsed.completedSteps) {
+          setCompletedSteps(parsed.completedSteps);
+        }
+        if (typeof parsed.isProUnlocked === "boolean") {
+          setIsProUnlocked(parsed.isProUnlocked);
+        }
+        if (parsed.krwInput) setKrwInput(parsed.krwInput);
+        if (parsed.usdInput) setUsdInput(parsed.usdInput);
+        if (parsed.jpyInput) setJpyInput(parsed.jpyInput);
+        if (parsed.thbInput) setThbInput(parsed.thbInput);
+      });
     } catch {
       // ignore
     }

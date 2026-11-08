@@ -39,13 +39,12 @@ export function AppleShowcaseLanding({ onLaunchStudio }: AppleShowcaseLandingPro
   const [activeCity, setActiveCity] = useState<CorridorId>("cn-to-seoul");
 
   useEffect(() => {
-    const url =
+    const origin =
       typeof window !== "undefined" && window.location.origin.includes("workers.dev")
         ? window.location.origin
         : "https://terra-world-travel.153557421.workers.dev";
-    setCurrentUrl(url);
 
-    QRCode.toDataURL(url, {
+    QRCode.toDataURL(origin, {
       width: 400,
       margin: 1,
       color: {
@@ -53,7 +52,10 @@ export function AppleShowcaseLanding({ onLaunchStudio }: AppleShowcaseLandingPro
         light: "#00000000",
       },
     })
-      .then((dataUri) => setQrCodeDataUrl(dataUri))
+      .then((dataUri) => {
+        setCurrentUrl(origin);
+        setQrCodeDataUrl(dataUri);
+      })
       .catch((err) => console.error("QR Code Error:", err));
   }, []);
 
@@ -90,7 +92,7 @@ export function AppleShowcaseLanding({ onLaunchStudio }: AppleShowcaseLandingPro
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold tracking-tight text-white">TERRA</span>
-              <span className="text-[11px] font-medium text-zinc-500 tracking-wider">3.0 SPATIAL OS</span>
+              <span className="text-[11px] font-medium text-zinc-500 tracking-wider">SPATIAL WORLD MODEL OS</span>
             </div>
           </div>
 

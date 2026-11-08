@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TERRA 3.0 // 跨国落地生存指南与空间世界模型漫游系统",
+  title: "TERRA // 空间世界模型与跨国落地生存操作系统",
   description:
-    "专为 iPhone、Android 与 PC 打造的全端跨国落地生存系统：首尔/北京/东京/曼谷黄金 120 分钟时间轴、空间世界模型第一视角动线推演、本土 App 平替映射与出租车双语急救卡。",
+    "面向跨国出行与复杂物理空间的神经世界模型操作系统：支持首尔/北京/东京/曼谷空间动线推演、24小时时空光影孪生、历史遗址空间对齐与落地生存应急工作站。",
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.png",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TERRA Travel",
+    title: "TERRA",
   },
 };
 

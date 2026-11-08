@@ -19,10 +19,10 @@
 
 ---
 
-## 2. 系统架构图（AgentScope 2.0 级全景分层架构）
+## 2. 系统架构图（全景空间神经世界模型架构）
 
 <p align="center">
-  <img src="./docs/architecture/terra-panoramic-architecture.png" alt="TERRA 2.0 Panoramic Architecture" width="100%" />
+  <img src="./docs/architecture/terra-panoramic-architecture.png" alt="TERRA Panoramic Architecture" width="100%" />
 </p>
 
 > 仓库内同时提供可交互式 HTML 架构图：[docs/architecture/terra-architecture.html](docs/architecture/terra-architecture.html)
