@@ -9,6 +9,7 @@ import {
   type DriverCard,
 } from "@/lib/corridors-data";
 import { WorldModelViewport } from "@/components/world-model-viewport";
+import { buildFallbackPlan } from "@/lib/survival-engine";
 import beijingAttractions from "@/lib/beijing-pulse-attractions.json";
 
 interface AiStep {
@@ -419,25 +420,18 @@ export function TerraTravelWorkbench() {
     e.preventDefault();
     setAiLoading(true);
     try {
-      const res = await fetch("/api/survival-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          corridorId,
-          arrivalTime,
-          days,
-          hotelArea,
-          travelerStyle,
-        }),
-      });
-      const data = (await res.json()) as {
-        summary?: string;
-        provider?: string;
-        steps?: AiStep[];
-      };
-      setAiSummary(data.summary ?? null);
-      setAiProvider(data.provider ?? "qwen-plus");
-      setAiSteps(Array.isArray(data.steps) ? data.steps : []);
+      // 离线即时与端侧轻量计算：0.4s 平滑过渡提供极致手感
+      await new Promise((r) => setTimeout(r, 450));
+      const plan = buildFallbackPlan(
+        corridorId,
+        arrivalTime,
+        days,
+        travelerStyle,
+        hotelArea
+      );
+      setAiSummary(plan.summary);
+      setAiProvider(plan.provider);
+      setAiSteps(plan.steps);
       triggerIslandToast("专属时空行程已生成");
     } catch {
       setAiSummary("已切换至本地离线生存引擎生成方案。");
