@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import QRCode from "qrcode";
 import { BeijingSpatialWorldModel } from "@/components/beijing-pulse-world-model";
 import {
@@ -78,7 +79,7 @@ export function AppleFlagshipWebsite() {
 
   const handleOpenSpatial = (id: string) => {
     setActiveSpatialAttractionId(id);
-    const element = document.getElementById("spatial-world-model-section");
+    const element = document.getElementById("spatial-viewer-section");
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
     }
@@ -131,14 +132,14 @@ export function AppleFlagshipWebsite() {
             <a href="#explore" className="text-white/80 hover:text-[#ff6b6b] no-underline">
               探索
             </a>
-            <a href="#spatial-world-model-section" className="text-white/80 hover:text-[#ff6b6b] no-underline">
-              4D 空间世界模型
+            <a href="#spatial-viewer-section" className="text-white/80 hover:text-[#ff6b6b] no-underline">
+              3D 实景空间漫游
             </a>
             <a href="#featured-spots" className="text-white/80 hover:text-[#ff6b6b] no-underline">
               精选地标
             </a>
             <a href="#suggested-routes" className="text-white/80 hover:text-[#ff6b6b] no-underline">
-              规划路线
+              经典行程
             </a>
             <a
               href="#mobile-handoff"
@@ -154,11 +155,12 @@ export function AppleFlagshipWebsite() {
         {/* Cinematic Hero Banner */}
         <section id="explore" className="relative min-h-[75vh] flex items-end overflow-hidden pb-16 sm:pb-24">
           <div className="absolute inset-0 z-0">
-            <img
+            <Image
               src="/assets/forbidden-city.jpg"
               alt="紫禁城全景晨曦"
               width={1600}
               height={900}
+              priority
               className="h-full w-full object-cover object-center brightness-90"
             />
             <div className="absolute inset-0 bg-[#070707]/60" />
@@ -170,10 +172,10 @@ export function AppleFlagshipWebsite() {
                 Discover Beijing beyond guidebooks.
               </h1>
               <p className="mt-4 text-[22px] font-medium text-white/90">
-                发现指南之外的北京。通过 4D 空间世界模型，实景预演古都中轴与山峦动线。
+                发现指南之外的北京。精选地标实景呈现，360° 空间环顾与四日光影变化。
               </p>
 
-              {/* 搜索栏 */}
+              {/* 搜索与快捷按钮 */}
               <div className="mt-8 flex flex-wrap gap-3 max-w-xl">
                 <input
                   type="text"
@@ -187,7 +189,7 @@ export function AppleFlagshipWebsite() {
                   onClick={() => handleOpenSpatial("forbidden-city")}
                   className="terra-btn rounded-full bg-[#c23b3b] px-6 py-3 text-[18px] font-semibold text-white"
                 >
-                  4D 空间世界模型
+                  3D 空间漫游
                 </button>
               </div>
 
@@ -202,7 +204,7 @@ export function AppleFlagshipWebsite() {
                   href="#suggested-routes"
                   className="terra-btn rounded-full bg-white/10 px-6 py-2.5 text-[18px] font-medium text-white no-underline"
                 >
-                  精选动线路书
+                  经典游览路线
                 </a>
               </div>
             </div>
@@ -227,16 +229,16 @@ export function AppleFlagshipWebsite() {
                   3
                 </div>
                 <div className="text-[14px] text-white/60">
-                  动线推演路书 (Route plans)
+                  经典行程参考 (Route plans)
                 </div>
               </a>
 
-              <a href="#spatial-world-model-section" className="no-underline group">
+              <a href="#spatial-viewer-section" className="no-underline group">
                 <div className="text-[36px] font-bold text-[#ff6b6b] tnum">
                   6
                 </div>
                 <div className="text-[14px] text-white/60">
-                  4D 空间世界模型 (Spatial Twins)
+                  360° 实景漫游 (3D Panorama)
                 </div>
               </a>
 
@@ -252,16 +254,16 @@ export function AppleFlagshipWebsite() {
           </div>
         </section>
 
-        {/* 4D 空间世界模型交互舞台 */}
-        <section id="spatial-world-model-section" className="py-20 sm:py-28">
+        {/* 核心功能：3D 实景空间漫游视窗 (3D Spatial Environment) */}
+        <section id="spatial-viewer-section" className="py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
             <div className="flex flex-wrap items-end justify-between gap-6 terra-reveal">
               <div>
                 <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                  4D 空间世界模型视窗
+                  360° 实景空间漫游
                 </h2>
                 <p className="mt-3 max-w-[60ch] text-[18px] text-white/70">
-                  在肉身抵达之前，先在 3D 体素世界中第一人称穿行。支持 24 小时太阳因果推演、古建筑体素点云漫游与关键物理决策点指引。
+                  鼠标拖拽即可自由旋转环顾四周。切换右下角光影时段，直观感受晨曦、正午、黄昏金辉与夜间光影。
                 </p>
               </div>
 
@@ -289,7 +291,7 @@ export function AppleFlagshipWebsite() {
               />
             </div>
 
-            {/* 4D 空间辐射场扫描循环视频 */}
+            {/* 真实空间全景视频 */}
             <figure className="mt-12 m-0 overflow-hidden rounded-3xl terra-reveal">
               <video
                 src="/images/spatial-scan-loop.webm"
@@ -301,7 +303,7 @@ export function AppleFlagshipWebsite() {
                 className="h-64 sm:h-80 w-full object-cover rounded-3xl"
               />
               <figcaption className="mt-3 text-[14px] text-white/50">
-                三维辐射场扫描：实时重构相机运动轨迹与物理几何深度。
+                三维空间全景视角：沉浸式呈现建筑空间尺度与纵深。
               </figcaption>
             </figure>
           </div>
@@ -316,7 +318,7 @@ export function AppleFlagshipWebsite() {
                   精选地标探索
                 </h2>
                 <p className="mt-3 max-w-[56ch] text-[18px] text-white/70">
-                  每一个地标均通过实地测绘与空间建模，配齐最佳观览时段与游览动线。
+                  每一处地标配齐实拍图、开放时间与门票，点击即可展开 3D 空间环顾。
                 </p>
               </div>
 
@@ -346,7 +348,7 @@ export function AppleFlagshipWebsite() {
                 >
                   <div>
                     <div className="overflow-hidden rounded-2xl relative">
-                      <img
+                      <Image
                         src={spot.image}
                         alt={spot.name.zh}
                         width={600}
@@ -385,7 +387,7 @@ export function AppleFlagshipWebsite() {
                       onClick={() => handleOpenSpatial(spot.id)}
                       className="terra-btn rounded-full bg-[#c23b3b] px-4 py-2 text-[14px] font-semibold text-white"
                     >
-                      开启 4D 空间视窗 →
+                      3D 空间环顾 →
                     </button>
                     <span className="text-[14px] text-white/50">
                       {spot.hours.zh}
@@ -397,20 +399,20 @@ export function AppleFlagshipWebsite() {
           </div>
         </section>
 
-        {/* 规划路线与动线推演 */}
+        {/* 实用经典行程参考 (Practical Routes) */}
         <section id="suggested-routes" className="py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
             <div className="max-w-3xl terra-reveal">
               <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                精选动线路书与空间推演
+                经典游览行程参考
               </h2>
               <p className="mt-3 text-[18px] text-white/70">
-                从一日中轴到三日长城园林全览，每一步都经过物理空间实测，避开人流高峰。
+                经过实践检验的游览路线，包含真实游览次序与换乘地铁，可一键复制进手机备忘录。
               </p>
             </div>
 
             <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-              {/* 左侧路线切换选项栏 */}
+              {/* 左侧路线选择列表 */}
               <div className="lg:col-span-4 space-y-2 terra-reveal">
                 {ROUTES.map((route) => {
                   const isSel = route.id === selectedRoute.id;
@@ -459,7 +461,7 @@ export function AppleFlagshipWebsite() {
                     onClick={() => handleCopyRoute(selectedRoute)}
                     className="terra-btn rounded-full bg-white px-5 py-2 text-[14px] font-semibold text-black"
                   >
-                    {copiedRoute === selectedRoute.id ? "已复制路书" : "一键复制行程"}
+                    {copiedRoute === selectedRoute.id ? "已复制行程" : "一键复制行程"}
                   </button>
                 </div>
 
@@ -489,7 +491,7 @@ export function AppleFlagshipWebsite() {
                               onClick={() => handleOpenSpatial(stop.attractionId)}
                               className="text-[#ff6b6b] font-semibold hover:underline"
                             >
-                              开启该点位 4D 预演 →
+                              查看 3D 实景 →
                             </button>
                             <span className="text-white/40">
                               {spot?.transport.zh}
@@ -505,16 +507,16 @@ export function AppleFlagshipWebsite() {
           </div>
         </section>
 
-        {/* 手机离线流转 */}
+        {/* 手机扫码离线漫游 (Mobile Handoff) */}
         <section id="mobile-handoff" className="bg-[#121212] py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               <div className="lg:col-span-7 terra-reveal">
                 <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                  大屏预演，装进手机
+                  装进手机，离线可用
                 </h2>
                 <p className="mt-4 max-w-[56ch] text-[18px] text-white/70">
-                  在电脑上完成 4D 空间预演后，扫码带走行程。支持 Safari 与 Chrome 添加至主屏幕，无信号环境下依然秒开动线路书与地标指南。
+                  扫码直接带走行程与地标指南。支持 Safari 与 Chrome 添加至主屏幕，在地铁或信号不佳时依然秒开。
                 </p>
 
                 <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -534,11 +536,12 @@ export function AppleFlagshipWebsite() {
               <div className="lg:col-span-5 flex justify-center lg:justify-end terra-reveal">
                 <div className="rounded-3xl bg-white p-6 text-center">
                   {qrCodeDataUrl ? (
-                    <img
+                    <Image
                       src={qrCodeDataUrl}
                       alt="手机扫码体验"
                       width={240}
                       height={240}
+                      unoptimized
                       className="h-56 w-56 rounded-2xl object-contain mx-auto"
                     />
                   ) : (
@@ -547,7 +550,7 @@ export function AppleFlagshipWebsite() {
                     </div>
                   )}
                   <div className="mt-3 text-[18px] font-bold text-black">
-                    手机扫码即刻同步行程
+                    手机扫码即刻同步
                   </div>
                   <div className="text-[14px] text-gray-500">
                     支持 iOS Safari 与 Android 离线运行
@@ -563,7 +566,7 @@ export function AppleFlagshipWebsite() {
       <footer className="py-12 text-center text-[14px] text-white/40">
         <div className="mx-auto max-w-7xl px-6 sm:px-10 flex flex-wrap items-center justify-between gap-4">
           <div className="font-semibold text-white/70">
-            BEIJING PULSE · 4D 空间世界模型导览系统
+            BEIJING PULSE · 发现指南之外的北京
           </div>
           <div className="flex items-center gap-6">
             <a

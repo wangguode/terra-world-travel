@@ -1,11 +1,11 @@
 {
-  "name": "TERRA 3.0 // 跨国落地生存与空间世界模型",
-  "short_name": "TERRA Travel",
-  "description": "解决跨国旅行下飞机黄金 120 分钟断网、换汇、打车、地图失效痛点，内置第一视角空间动线推演、时空孪生对比与出租车双语急救卡。",
+  "name": "BEIJING PULSE // 360° 实景空间漫游与四时光影世界模型",
+  "short_name": "Beijing Pulse",
+  "description": "精选北京经典地标实景呈现，360° 真实空间漫游与四时光影变幻世界模型。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#ff5a26",
+  "background_color": "#070707",
+  "theme_color": "#070707",
   "orientation": "portrait-primary",
   "icons": [
     {
