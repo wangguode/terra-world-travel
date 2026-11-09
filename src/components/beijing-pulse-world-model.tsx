@@ -2,15 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { ATTRACTIONS } from "@/lib/beijing-pulse-data";
+import { ATTRACTIONS, type Attraction } from "@/lib/beijing-pulse-data";
 
-interface BeijingSpatialViewerProps {
-  initialAttractionId?: string;
-  onClose?: () => void;
-}
-
-interface LightingMode {
-  id: string;
+export interface LightingMode {
+  id: "dawn" | "noon" | "sunset" | "night";
   label: string;
   time: string;
   color: number;
@@ -18,14 +13,14 @@ interface LightingMode {
   tip: string;
 }
 
-const LIGHTING_MODES: LightingMode[] = [
+export const LIGHTING_MODES: LightingMode[] = [
   {
     id: "dawn",
     label: "清晨晨曦",
     time: "06:30",
     color: 0xffd8b3,
     intensity: 1.1,
-    tip: "斜阳初升，低角度柔光勾勒建筑立面，游客最少、空气清透",
+    tip: "低角度柔金晨光，古建飞檐立体勾勒，空气最清透",
   },
   {
     id: "noon",
@@ -33,7 +28,7 @@ const LIGHTING_MODES: LightingMode[] = [
     time: "12:00",
     color: 0xffffff,
     intensity: 1.25,
-    tip: "顶光充足、红墙金瓦反差鲜明，视野最辽阔",
+    tip: "顶光充足，红墙金瓦与蓝琉璃对比鲜明，视野最辽阔",
   },
   {
     id: "sunset",
@@ -41,7 +36,7 @@ const LIGHTING_MODES: LightingMode[] = [
     time: "17:30",
     color: 0xffaa55,
     intensity: 1.15,
-    tip: "夕阳低角度漫射，飞檐与水面呈现暖金轮廓，全天最佳摄影时段",
+    tip: "夕阳漫射暖金光晕，水面与殿顶金瓦交相辉映，最佳摄影时段",
   },
   {
     id: "night",
@@ -49,16 +44,44 @@ const LIGHTING_MODES: LightingMode[] = [
     time: "20:00",
     color: 0x6688cc,
     intensity: 0.75,
-    tip: "天幕转为深蓝，古建轮廓灯亮起，静谧庄重",
+    tip: "深邃蓝调夜幕，古建轮廓灯亮起，静谧庄重",
   },
 ];
 
+interface BeijingSpatialViewerProps {
+  selectedId?: string;
+  onSelectAttraction?: (id: string) => void;
+  lightModeId?: "dawn" | "noon" | "sunset" | "night";
+  onSelectLightMode?: (modeId: "dawn" | "noon" | "sunset" | "night") => void;
+}
+
 export function BeijingSpatialWorldModel({
-  initialAttractionId = "forbidden-city",
-  onClose,
+  selectedId: propSelectedId,
+  onSelectAttraction,
+  lightModeId: propLightModeId,
+  onSelectLightMode,
 }: BeijingSpatialViewerProps) {
-  const [selectedId, setSelectedId] = useState<string>(initialAttractionId);
-  const [lightModeId, setLightModeId] = useState<string>("sunset");
+  const [internalSelectedId, setInternalSelectedId] = useState<string>("forbidden-city");
+  const [internalLightModeId, setInternalLightModeId] = useState<"dawn" | "noon" | "sunset" | "night">("sunset");
+
+  const currentSelectedId = propSelectedId ?? internalSelectedId;
+  const currentLightModeId = propLightModeId ?? internalLightModeId;
+
+  const handleSelectAttraction = (id: string) => {
+    if (onSelectAttraction) {
+      onSelectAttraction(id);
+    } else {
+      setInternalSelectedId(id);
+    }
+  };
+
+  const handleSelectLightMode = (mode: "dawn" | "noon" | "sunset" | "night") => {
+    if (onSelectLightMode) {
+      onSelectLightMode(mode);
+    } else {
+      setInternalLightModeId(mode);
+    }
+  };
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const threeRef = useRef<{
@@ -74,13 +97,13 @@ export function BeijingSpatialWorldModel({
     targetLat: number;
   } | null>(null);
 
-  const currentAttraction = useMemo(() => {
-    return ATTRACTIONS.find((a) => a.id === selectedId) ?? ATTRACTIONS[0];
-  }, [selectedId]);
+  const currentAttraction: Attraction = useMemo(() => {
+    return ATTRACTIONS.find((a) => a.id === currentSelectedId) ?? ATTRACTIONS[0];
+  }, [currentSelectedId]);
 
-  const currentLighting = useMemo(() => {
-    return LIGHTING_MODES.find((l) => l.id === lightModeId) ?? LIGHTING_MODES[2];
-  }, [lightModeId]);
+  const currentLighting: LightingMode = useMemo(() => {
+    return LIGHTING_MODES.find((l) => l.id === currentLightModeId) ?? LIGHTING_MODES[2];
+  }, [currentLightModeId]);
 
   // 初始化真实 360° 全景空间球
   useEffect(() => {
@@ -102,7 +125,7 @@ export function BeijingSpatialWorldModel({
     const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
     camera.position.set(0, 0, 0);
 
-    // 全景球模型
+    // 全景球体模型：内表面反向映射
     const geometry = new THREE.SphereGeometry(50, 60, 40);
     geometry.scale(-1, 1, 1);
 
@@ -139,7 +162,7 @@ export function BeijingSpatialWorldModel({
       const state = threeRef.current;
       if (!state) return;
 
-      autoRot += 0.03;
+      autoRot += 0.025;
       state.lon += (state.targetLon + autoRot - state.lon) * 0.05;
       state.lat += (state.targetLat - state.lat) * 0.05;
 
@@ -191,14 +214,16 @@ export function BeijingSpatialWorldModel({
     });
   }, [currentAttraction]);
 
-  // 切换光影时更新材质色调
+  // 切换光影时更新材质色调与环境光
   useEffect(() => {
     if (!threeRef.current) return;
     const mat = threeRef.current.mesh.material as THREE.MeshBasicMaterial;
     mat.color.setHex(currentLighting.color);
+    threeRef.current.light.color.setHex(currentLighting.color);
+    threeRef.current.light.intensity = currentLighting.intensity;
   }, [currentLighting]);
 
-  // 鼠标与触屏拖拽 360° 环顾
+  // 鼠标与触控拖拽 360° 环顾
   const isDragging = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
 
@@ -248,49 +273,52 @@ export function BeijingSpatialWorldModel({
     isDragging.current = false;
   };
 
+  const featuredNav = ATTRACTIONS.slice(0, 6);
+
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-[#0c0c0e]">
-      {/* 顶部控制栏 */}
+    <div className="relative overflow-hidden rounded-[32px] bg-[#0c0c0e]">
+      {/* 顶部控制栏：地标横滑胶囊条 */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-[#141418] px-6 py-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#c23b3b]" />
-          <span className="text-[18px] font-bold text-white">
-            {currentAttraction.name.zh} · 360° 实景空间漫游
-          </span>
-          <span className="text-[14px] text-white/60">
-            按住鼠标自由拖拽环顾四周
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {featuredNav.map((a) => {
+            const isSel = a.id === currentSelectedId;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => handleSelectAttraction(a.id)}
+                className={`terra-btn rounded-full px-4 py-1.5 text-[14px] font-medium transition ${
+                  isSel
+                    ? "bg-[#c23b3b] text-white font-bold"
+                    : "bg-white/5 text-white/80 hover:bg-white/10"
+                }`}
+              >
+                {a.name.zh}
+              </button>
+            );
+          })}
         </div>
 
-        {/* 快速切换地标 */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* 完整 10 处地标下拉切换 */}
+        <div className="flex items-center gap-2">
           <select
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
+            value={currentSelectedId}
+            onChange={(e) => handleSelectAttraction(e.target.value)}
             className="rounded-full bg-white/10 px-4 py-1.5 text-[14px] font-medium text-white focus:outline-none"
+            aria-label="选择全部地标"
           >
             {ATTRACTIONS.map((a) => (
               <option key={a.id} value={a.id} className="bg-[#141418] text-white">
-                {a.name.zh}
+                {a.name.zh} ({a.districtZh})
               </option>
             ))}
           </select>
-
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="terra-btn rounded-full bg-white/10 px-3 py-1.5 text-[14px] text-white"
-            >
-              关闭
-            </button>
-          )}
         </div>
       </div>
 
       {/* 核心 360° 三维空间环顾视窗 */}
       <div
-        className="relative h-[480px] sm:h-[560px] w-full cursor-grab active:cursor-grabbing select-none touch-none"
+        className="relative h-[500px] sm:h-[620px] w-full cursor-grab active:cursor-grabbing select-none touch-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -301,38 +329,45 @@ export function BeijingSpatialWorldModel({
       >
         <canvas ref={canvasRef} className="h-full w-full" />
 
-        {/* 左下角：当前地标极简资讯 */}
-        <div className="absolute bottom-6 left-6 z-10 max-w-sm rounded-2xl bg-[#141418]/90 p-5">
-          <div className="text-[18px] font-bold text-white">
+        {/* 左上角 HUD：地标坐标与时空状态 */}
+        <div className="absolute top-6 left-6 z-10 max-w-md rounded-2xl bg-[#070707]/80 p-4">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[#ff6b6b]">
+            <span className="h-2 w-2 rounded-full bg-[#c23b3b]" />
+            360° 实景时空漫游
+          </div>
+          <div className="mt-1 text-[22px] font-bold text-white">
             {currentAttraction.name.zh}
           </div>
-          <div className="mt-1 text-[14px] text-white/70">
-            {currentAttraction.description.zh}
-          </div>
-          <div className="mt-3 flex items-center justify-between text-[14px] text-white/60">
-            <span>门票：{currentAttraction.ticket.zh}</span>
-            <span>开放：{currentAttraction.hours.zh}</span>
+          <div className="mt-0.5 text-[14px] text-white/60">
+            {currentAttraction.coordinates} · {currentAttraction.elevation}
           </div>
         </div>
 
-        {/* 右下角：时光光影四时切换 */}
-        <div className="absolute bottom-6 right-6 z-10 rounded-2xl bg-[#141418]/90 p-4">
-          <div className="text-[14px] font-semibold text-white/70 mb-2">
-            所见即所得 · 光影时段：
+        {/* 左下角 HUD：人文意境一句话提炼 */}
+        <div className="absolute bottom-6 left-6 z-10 max-w-md rounded-2xl bg-[#070707]/80 p-4 hidden sm:block">
+          <p className="text-[14px] text-white/90 leading-relaxed m-0">
+            “{currentAttraction.essence}”
+          </p>
+        </div>
+
+        {/* 右下角 HUD：四时光影切换器 */}
+        <div className="absolute bottom-6 right-6 z-10 rounded-2xl bg-[#070707]/85 p-4">
+          <div className="text-[14px] font-semibold text-white/70 mb-2.5">
+            四时光影变幻：
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             {LIGHTING_MODES.map((mode) => {
-              const isSel = mode.id === lightModeId;
+              const isSel = mode.id === currentLightModeId;
               return (
                 <button
                   key={mode.id}
                   type="button"
-                  onClick={() => setLightModeId(mode.id)}
+                  onClick={() => handleSelectLightMode(mode.id)}
                   className={`terra-btn rounded-xl px-3 py-1.5 text-[14px] font-medium transition ${
                     isSel
                       ? "bg-[#c23b3b] text-white font-bold"
-                      : "bg-white/5 text-white/80 hover:bg-white/10"
+                      : "bg-white/10 text-white/80 hover:bg-white/15"
                   }`}
                 >
                   {mode.label}
@@ -341,7 +376,7 @@ export function BeijingSpatialWorldModel({
             })}
           </div>
 
-          <div className="mt-3 max-w-[220px] text-[14px] text-white/60 leading-tight">
+          <div className="mt-2.5 max-w-[240px] text-[14px] text-white/60 leading-tight">
             {currentLighting.tip}
           </div>
         </div>
