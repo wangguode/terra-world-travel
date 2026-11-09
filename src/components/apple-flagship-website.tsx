@@ -1,79 +1,231 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import {
-  Smartphone,
-  Copy,
-  Check,
-  Compass,
-  ArrowRight,
-  QrCode,
-  Sparkles,
-  ExternalLink,
-  ChevronRight,
-  Navigation,
-  SlidersHorizontal,
-  Eye,
-  ShieldCheck,
-  Clock,
-  Radio,
-  FileText,
-  MapPin,
-  Car,
-  Volume2,
-  Search,
-  Maximize2,
-  Calendar,
-  Layers,
-  CheckCircle2,
-  Circle,
-  HelpCircle,
-  Globe2,
-  Download,
-  Share2,
-  Cpu,
-  Sun,
-} from "lucide-react";
 import { WorldModelViewport } from "@/components/world-model-viewport";
 import { CORRIDORS, type CorridorId, type DriverCard } from "@/lib/corridors-data";
 import { buildFallbackPlan, type GeneratedPlanItem } from "@/lib/survival-engine";
 
-const CITIES = [
-  { id: "cn-to-seoul" as CorridorId, name: "首尔 Seoul", hub: "ICN 仁川 / GMP 金浦", currencySymbol: "₩", rate: 0.0053, desc: "AREX 直通快轨 · 景福宫中轴线 · 圣水洞街区" },
-  { id: "global-to-beijing" as CorridorId, name: "北京 Beijing", hub: "PKX 大兴 / PEK 首都", currencySymbol: "¥", rate: 1.0, desc: "大兴机场线 · 紫禁城东华门捷径 · 皇城中轴线" },
-  { id: "cn-to-tokyo" as CorridorId, name: "东京 Tokyo", hub: "HND 羽田 / NRT 成田", currencySymbol: "¥", rate: 0.048, desc: "京急线与 Skyliner · Suica 手机交通卡 · 涩谷十字路口" },
-  { id: "cn-to-bangkok" as CorridorId, name: "曼谷 Bangkok", hub: "BKK 素万那普 / DMK 廊曼", currencySymbol: "฿", rate: 0.21, desc: "ARL 机场快线 · 永久免签快速通关 · 湄南河水运避堵" },
+interface CityQuickFacts {
+  id: CorridorId;
+  shortName: string;
+  fullName: string;
+  hub: string;
+  currencySymbol: string;
+  currencyCode: string;
+  rateToRmb: number;
+  speechLang: string;
+  mentalMathTip: string;
+  avoidPitfallTip: string;
+  priceBenchmarks: { label: string; amount: string }[];
+  extraEmpathyCards: DriverCard[];
+}
+
+const CITY_FACTS: CityQuickFacts[] = [
+  {
+    id: "cn-to-seoul",
+    shortName: "首尔",
+    fullName: "首尔 Seoul",
+    hub: "仁川 ICN · 金浦 GMP",
+    currencySymbol: "₩",
+    currencyCode: "KRW",
+    rateToRmb: 0.0053,
+    speechLang: "ko-KR",
+    mentalMathTip: "去掉末尾三个零再乘 5.3（例：10,000 韩元 ≈ 53 元人民币）",
+    avoidPitfallTip: "Google 地图在韩国无法步行导航，下飞机请立即换用 Naver Map 中文版；景福宫每周二闭馆。",
+    priceBenchmarks: [
+      { label: "便利店香蕉牛奶", amount: "1800" },
+      { label: "圣水洞冰美式", amount: "4500" },
+      { label: "AREX 机场快轨", amount: "11000" },
+      { label: "双人韩牛烤肉", amount: "65000" },
+    ],
+    extraEmpathyCards: [
+      {
+        id: "kr-subway-gate",
+        tag: "地铁站务员求助 · 走错闸机",
+        titleCn: "我不小心刷错方向了，能帮我开一下门去对面站台吗？",
+        localHeadline: "죄송합니다, 반대편 개찰구로 잘못 들어왔어요. 건너갈 수 있을까요?",
+        phoneticOrSub: "Joesonghamnida, bandaepyeon gaechalguro jalmot deureowasseoyo.",
+        driverInstruction: "请向地铁闸机口的工作人员出示此卡，或按闸机旁的求助按钮。",
+        subwayBackup: "韩国地铁多数老站台左右不互通，刷卡前先看清终点站方向",
+      },
+      {
+        id: "kr-dining-card",
+        tag: "餐厅点餐与结账沟通",
+        titleCn: "请问这里可以刷海外银行卡或 WOWPASS 吗？",
+        localHeadline: "여기 해외 카드나 와우패스(WOWPASS)로 결제 가능한가요?",
+        phoneticOrSub: "Yeogi haeoe kadeuna WOWPASS-ro gyeolje ganeunghangayo?",
+        driverInstruction: "结账前出示给店员确认；韩国几乎所有餐厅均支持 IC 芯片卡刷卡。",
+        subwayBackup: "路边鱼饼摊与传统市场请备少量一万韩元纸币",
+      },
+    ],
+  },
+  {
+    id: "global-to-beijing",
+    shortName: "北京",
+    fullName: "北京 Beijing",
+    hub: "大兴 PKX · 首都 PEK",
+    currencySymbol: "¥",
+    currencyCode: "CNY",
+    rateToRmb: 1.0,
+    speechLang: "zh-CN",
+    mentalMathTip: "人民币本币计价，全城 99% 场所支持支付宝与微信扫码，地铁可直接刷乘车码",
+    avoidPitfallTip: "故宫每周一闭馆且必须提前 7 天 20:00 实名预约；打车定位『故宫东华门』沿筒子河走 8 分钟直达午门，避开天安门正门长队。",
+    priceBenchmarks: [
+      { label: "豆汁焦圈早餐", amount: "15" },
+      { label: "大兴机场草桥快轨", amount: "35" },
+      { label: "故宫旺季门票", amount: "60" },
+      { label: "四季民福烤鸭双人餐", amount: "260" },
+    ],
+    extraEmpathyCards: [
+      {
+        id: "bj-donghuamen-tip",
+        tag: "出租车避堵指令 · 故宫捷径",
+        titleCn: "师傅麻烦停在故宫东华门外筒子河路口，我不走天安门广场安检",
+        localHeadline: "师傅您好，请送我到故宫东华门外路口落客，我们沿筒子河步道走到午门。",
+        phoneticOrSub: "Donghuamen Gate · Express Walk to Meridian Gate (Wumen)",
+        driverInstruction: "天安门广场散客安检常需排队 60 分钟以上，从东华门步行仅需 8 分钟直达午门检票口。",
+        subwayBackup: "备选地铁：地铁 8 号线【金鱼胡同站】C 口出步行 12 分钟",
+      },
+    ],
+  },
+  {
+    id: "cn-to-tokyo",
+    shortName: "东京",
+    fullName: "东京 Tokyo",
+    hub: "羽田 HND · 成田 NRT",
+    currencySymbol: "¥",
+    currencyCode: "JPY",
+    rateToRmb: 0.048,
+    speechLang: "ja-JP",
+    mentalMathTip: "直接除以 20（例：1,000 日元 ≈ 48 元人民币；10,000 日元 ≈ 480 元人民币）",
+    avoidPitfallTip: "iPhone 打开自带『钱包』点加号即可直接添加 Suica 西瓜卡，无需在机场排队买实体卡；成田进城认准 Skyliner 或 N'EX。",
+    priceBenchmarks: [
+      { label: "便利店饭团与茶", amount: "450" },
+      { label: "一兰拉面标准碗", amount: "1080" },
+      { label: "成田 Skyliner 快轨", amount: "2570" },
+      { label: "新宿市区出租车", amount: "3200" },
+    ],
+    extraEmpathyCards: [
+      {
+        id: "jp-station-help",
+        tag: "电车站务员求助 · 找无障碍电梯",
+        titleCn: "我带着大件行李，请问去站台的电梯（Elevator）在哪里？",
+        localHeadline: "すみません、大きな荷物があります。ホーム行きのエレベーターはどこですか？",
+        phoneticOrSub: "Sumimasen, ookina nimotsu ga arimasu. Erebeetaa wa doko desu ka?",
+        driverInstruction: "新宿、涩谷等大站台阶极多，向改札口站务员出示此卡可获最近直梯指引。",
+        subwayBackup: "手机打开 Google Maps 选择『轮椅无障碍』路线即可只走直梯",
+      },
+    ],
+  },
+  {
+    id: "cn-to-bangkok",
+    shortName: "曼谷",
+    fullName: "曼谷 Bangkok",
+    hub: "素万那普 BKK · 廊曼 DMK",
+    currencySymbol: "฿",
+    currencyCode: "THB",
+    rateToRmb: 0.215,
+    speechLang: "th-TH",
+    mentalMathTip: "直接除以 4.7（例：100 泰铢 ≈ 21.5 元人民币；1,000 泰铢 ≈ 215 元人民币）",
+    avoidPitfallTip: "中泰已永久互免签证，下飞机直接走『Passport Control』护照查验通道，千万别拐进 Visa on Arrival 落地签长队！",
+    priceBenchmarks: [
+      { label: "湄南河过江渡轮", amount: "5" },
+      { label: "素万那普机场快线", amount: "45" },
+      { label: "郑王庙门票", amount: "200" },
+      { label: "暹罗商圈泰式按摩", amount: "600" },
+    ],
+    extraEmpathyCards: [
+      {
+        id: "th-food-allergy",
+        tag: "餐厅与夜市点餐 · 少辣不加香菜",
+        titleCn: "请做成微辣，并且不要放香菜，谢谢！",
+        localHeadline: "เอาเผ็ดน้อย และไม่ใส่ผักชีนะครับ ขอบคุณครับ",
+        phoneticOrSub: "Ao phet noi, lae mai sai phak-chee na khrap. Khawp khun khrap.",
+        driverInstruction: "泰国本土菜肴默认极辣且多香菜，点冬阴功或青木瓜沙拉前出示给店员。",
+        subwayBackup: "7-11 便利店与大型商场餐厅全面支持支付宝直接扫码结账",
+      },
+    ],
+  },
 ];
 
 export function AppleFlagshipWebsite() {
   const [currentUrl, setCurrentUrl] = useState<string>("https://terra-world-travel.153557421.workers.dev");
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
-  const [copied, setCopied] = useState<boolean>(false);
-  const [activeCity, setActiveCity] = useState<CorridorId>("cn-to-seoul");
-  const [activeConsoleTab, setActiveConsoleTab] = useState<"checklist" | "currency" | "driver" | "generator">("checklist");
-  const [downloadModal, setDownloadModal] = useState<"apple" | "android" | null>(null);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [copiedPlan, setCopiedPlan] = useState<boolean>(false);
 
-  // 1. 落地清单交互状态 (持久化可打卡)
+  const [activeCity, setActiveCity] = useState<CorridorId>("cn-to-seoul");
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({
     "cn-to-seoul-0": true,
   });
 
-  // 2. 汇率换算交互状态
-  const [foreignAmount, setForeignAmount] = useState<string>("50000");
-  const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
+  const [foreignAmount, setForeignAmount] = useState<string>("10000");
+  const [cardSearch, setCardSearch] = useState<string>("");
+  const [speakingCardId, setSpeakingCardId] = useState<string | null>(null);
+  const [fullscreenCard, setFullscreenCard] = useState<DriverCard | null>(null);
 
-  // 3. 出租车大卡搜索与全屏弹窗
-  const [taxiSearch, setTaxiSearch] = useState<string>("");
-  const [fullscreenDriverCard, setFullscreenDriverCard] = useState<DriverCard | null>(null);
-
-  // 4. 专属行程定制生成器交互状态
-  const [arrivalTime, setArrivalTime] = useState<string>("09:30");
+  const [arrivalTime, setArrivalTime] = useState<string>("13:30");
   const [tripDays, setTripDays] = useState<number>(3);
-  const [travelerStyle, setTravelerStyle] = useState<string>("商务特快与效率第一");
-  const [hotelDistrict, setHotelDistrict] = useState<string>("明洞 / 弘大核心区");
-  const [generatedPlan, setGeneratedPlan] = useState<{ summary: string; steps: GeneratedPlanItem[] } | null>(null);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [travelerStyle, setTravelerStyle] = useState<string>("第一次去 · 稳妥省心与避坑优先");
+  const [hotelDistrict, setHotelDistrict] = useState<string>("弘大入口 / 明洞商圈");
+  const [generatedPlan, setGeneratedPlan] = useState<{
+    summary: string;
+    steps: GeneratedPlanItem[];
+  } | null>(() =>
+    buildFallbackPlan(
+      "cn-to-seoul",
+      "13:30",
+      3,
+      "第一次去 · 稳妥省心与避坑优先",
+      "弘大入口 / 明洞商圈"
+    )
+  );
+
+  // 滚动进场动画观察器
+  useEffect(() => {
+    const nodes = document.querySelectorAll(".terra-reveal");
+    if (!("IntersectionObserver" in window)) {
+      nodes.forEach((n) => n.classList.add("is-visible"));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+          }
+        });
+      },
+      { threshold: 0.08 }
+    );
+    nodes.forEach((n) => io.observe(n));
+    return () => io.disconnect();
+  }, [activeCity]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("terra_checklist_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, boolean>;
+        queueMicrotask(() => setCompletedSteps(parsed));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleStep = (stepKey: string) => {
+    setCompletedSteps((prev) => {
+      const next = { ...prev, [stepKey]: !prev[stepKey] };
+      try {
+        window.localStorage.setItem("terra_checklist_v1", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     const origin =
@@ -82,930 +234,870 @@ export function AppleFlagshipWebsite() {
         : "https://terra-world-travel.153557421.workers.dev";
 
     QRCode.toDataURL(origin, {
-      width: 480,
+      width: 440,
       margin: 1,
       color: {
-        dark: "#ffffff",
-        light: "#00000000",
+        dark: "#141416",
+        light: "#ececee",
       },
     })
       .then((dataUri) => {
         setCurrentUrl(origin);
         setQrCodeDataUrl(dataUri);
       })
-      .catch((err) => console.error("QR Code Error:", err));
+      .catch(() => {});
   }, []);
 
-  const handleCopyUrl = async () => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(currentUrl);
-      } else {
-        const input = document.createElement("input");
-        input.value = currentUrl;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand("copy");
-        document.body.removeChild(input);
-      }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const corridorData = CORRIDORS[activeCity] ?? CORRIDORS["cn-to-seoul"];
+  const cityFact = useMemo(
+    () => CITY_FACTS.find((c) => c.id === activeCity) ?? CITY_FACTS[0],
+    [activeCity]
+  );
+
+  const handleSelectCity = (id: CorridorId) => {
+    setActiveCity(id);
+    const nextFact = CITY_FACTS.find((c) => c.id === id) ?? CITY_FACTS[0];
+    setForeignAmount(nextFact.priceBenchmarks[2]?.amount ?? "1000");
+    const defaultArea =
+      id === "cn-to-seoul"
+        ? "弘大入口 / 明洞商圈"
+        : id === "global-to-beijing"
+        ? "东直门 / 王府井商圈"
+        : id === "cn-to-tokyo"
+        ? "新宿南口 / 上野商圈"
+        : "暹罗广场 / 素坤逸商圈";
+    setHotelDistrict(defaultArea);
+    setGeneratedPlan(
+      buildFallbackPlan(id, arrivalTime, tripDays, travelerStyle, defaultArea)
+    );
   };
 
-  const corridorData = CORRIDORS[activeCity] ?? CORRIDORS["cn-to-seoul"];
-  const currentCityConfig = useMemo(() => CITIES.find((c) => c.id === activeCity) ?? CITIES[0], [activeCity]);
-
-  // 计算汇率
   const cnyEquivalent = useMemo(() => {
     const val = parseFloat(foreignAmount) || 0;
-    return (val * currentCityConfig.rate).toFixed(1);
-  }, [foreignAmount, currentCityConfig]);
+    return (val * cityFact.rateToRmb).toFixed(1);
+  }, [foreignAmount, cityFact]);
 
-  // 切换打卡状态
-  const toggleStep = (stepKey: string) => {
-    setCompletedSteps((prev) => ({
-      ...prev,
-      [stepKey]: !prev[stepKey],
-    }));
-  };
-
-  // 语音播报司机卡发音 (Web Speech API)
-  const speakText = (text: string, lang = "ko-KR") => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      alert("当前浏览器暂不支持语音合成，请在手机端使用。");
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    utterance.rate = 0.9;
-    setIsPlayingAudio(true);
-    utterance.onend = () => setIsPlayingAudio(false);
-    utterance.onerror = () => setIsPlayingAudio(false);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  // 生成行程计划
-  const handleGeneratePlan = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      const plan = buildFallbackPlan(
-        activeCity,
-        arrivalTime,
-        tripDays,
-        travelerStyle,
-        hotelDistrict
-      );
-      setGeneratedPlan(plan);
-      setIsGenerating(false);
-    }, 600);
-  };
-
-  // 过滤司机卡
-  const filteredDriverCards = useMemo(() => {
-    if (!taxiSearch.trim()) return corridorData.driverCards;
-    const q = taxiSearch.toLowerCase();
-    return corridorData.driverCards.filter(
+  const allCards = useMemo(() => {
+    const merged = [...corridorData.driverCards, ...cityFact.extraEmpathyCards];
+    if (!cardSearch.trim()) return merged;
+    const q = cardSearch.toLowerCase();
+    return merged.filter(
       (c) =>
         c.titleCn.toLowerCase().includes(q) ||
+        c.tag.toLowerCase().includes(q) ||
         c.localHeadline.toLowerCase().includes(q) ||
         c.phoneticOrSub.toLowerCase().includes(q)
     );
-  }, [corridorData, taxiSearch]);
+  }, [corridorData, cityFact, cardSearch]);
+
+  const speakPhrase = (card: DriverCard) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(card.localHeadline);
+    u.lang = cityFact.speechLang;
+    u.rate = 0.9;
+    setSpeakingCardId(card.id);
+    u.onend = () => setSpeakingCardId(null);
+    u.onerror = () => setSpeakingCardId(null);
+    window.speechSynthesis.speak(u);
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2400);
+    } catch {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2400);
+    }
+  };
+
+  const handleGeneratePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    const plan = buildFallbackPlan(
+      activeCity,
+      arrivalTime,
+      tripDays,
+      travelerStyle,
+      hotelDistrict
+    );
+    setGeneratedPlan(plan);
+  };
+
+  const completedCount = corridorData.timeline.filter(
+    (_, idx) => completedSteps[`${activeCity}-${idx}`]
+  ).length;
 
   return (
-    <div className="min-h-screen bg-[#050507] text-[#f5f5f7] font-sans antialiased selection:bg-[#ff5a26]/30 selection:text-white">
-      {/* 顶部 Apple 极简晶透玻璃导航 */}
-      <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#050507]/80 backdrop-blur-2xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6 lg:px-12">
-          {/* Brand Logo & Name */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#ff5a26] to-[#d63f0a] text-white shadow-md shadow-[#ff5a26]/25">
-              <Compass className="h-4 w-4" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-display text-sm font-semibold tracking-tight text-white">TERRA</span>
-              <span className="hidden sm:inline-block font-mono-numbers text-[10px] tracking-widest text-zinc-500 uppercase">
-                SPATIAL WORLD MODEL OS
-              </span>
-            </div>
-          </div>
+    <div className="min-h-[100dvh] bg-[#0a0a0c] text-[#f5f5f7]">
+      {/* 顶部极简导航栏：统一左右外边距 */}
+      <header className="sticky top-0 z-40 bg-[#0a0a0c] py-4">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 sm:px-10">
+          <a href="#top" className="text-[18px] font-bold tracking-tight text-[#f5f5f7] no-underline">
+            TERRA
+          </a>
 
-          {/* 城市快速切换 */}
-          <div className="flex items-center gap-1 rounded-full border border-white/[0.1] bg-white/[0.03] p-1">
-            {CITIES.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setActiveCity(c.id)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                  activeCity === c.id
-                    ? "bg-white text-black shadow-sm"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                {c.name.split(" ")[0]}
-              </button>
-            ))}
-          </div>
-
-          {/* Download Buttons */}
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setDownloadModal("apple")}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-medium text-white transition hover:border-white/30 hover:bg-white/[0.12] active:scale-95"
-            >
-              <span></span>
-              <span>iPhone 版</span>
-            </button>
-            <button
-              onClick={() => setDownloadModal("android")}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200 active:scale-95"
-            >
-              <Smartphone className="h-3.5 w-3.5" />
-              <span>真机体验</span>
-            </button>
-          </div>
+          <nav aria-label="主导航" className="flex flex-wrap items-center gap-4 sm:gap-7 text-[18px]">
+            <a href="#world-model" className="text-[#f5f5f7] hover:text-[#ff6b3d] no-underline">
+              实景空间预演
+            </a>
+            <a href="#touchdown-steps" className="text-[#f5f5f7] hover:text-[#ff6b3d] no-underline">
+              落地两小时清单
+            </a>
+            <a href="#pocket-tools" className="text-[#f5f5f7] hover:text-[#ff6b3d] no-underline">
+              算钱与双语卡
+            </a>
+            <a href="#route-planner" className="text-[#f5f5f7] hover:text-[#ff6b3d] no-underline">
+              首日动线定制
+            </a>
+            <a href="#mobile-handoff" className="terra-btn rounded-full bg-[#ff6b3d] px-5 py-1.5 font-semibold text-[#0a0a0c] no-underline">
+              装进手机
+            </a>
+          </nav>
         </div>
       </header>
 
-      {/* 复制成功全局 Toast */}
-      {copied && (
-        <div className="fixed top-16 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-zinc-950/90 px-4 py-2 text-xs font-medium text-emerald-400 shadow-2xl backdrop-blur-xl">
-            <Check className="h-4 w-4" />
-            <span>真机在线链接已复制，可在手机 Safari 或微信中直接打开</span>
-          </div>
-        </div>
-      )}
+      <main id="top">
+        {/* 第一屏：左对齐大标题 + 城市切换 + 真实 3DGS 空间预演舱 + 安心速查条 */}
+        <section id="world-model" className="py-8 sm:py-12">
+          <div className="mx-auto max-w-7xl px-6 sm:px-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+              <div className="lg:col-span-7 terra-enter">
+                <h1 className="text-[36px] sm:text-[80px] font-bold tracking-tight text-[#f5f5f7]">
+                  TERRA 落地前先走一遍
+                </h1>
+                <p className="mt-4 max-w-[58ch] text-[18px] text-[#f5f5f7]">
+                  面向跨国自由行的三维空间预演与落地生存向导。基于 World Labs 开源的 3D 高斯泼溅渲染器，在出发前实景走通首尔、北京、东京、曼谷的机场快轨换乘、光影机位与双语打车。
+                </p>
+              </div>
 
-      {/* Hero 空间世界模型首屏舞台 */}
-      <section className="relative overflow-hidden pt-12 pb-16 md:pt-16 md:pb-24">
-        {/* 背景钛金微光 */}
-        <div className="pointer-events-none absolute top-1/4 left-1/2 h-[500px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-[#ff5a26]/10 via-orange-600/5 to-transparent blur-[140px]" />
-
-        <div className="relative mx-auto max-w-7xl px-6 lg:px-12">
-          {/* 标语区 */}
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-1.5 text-xs font-medium text-zinc-300 backdrop-blur-md">
-              <Sparkles className="h-3.5 w-3.5 text-[#ff5a26]" />
-              <span className="font-mono-numbers tracking-wide">SPATIAL WORLD MODEL & TOUCHDOWN PROTOCOL</span>
-            </div>
-
-            <h1 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-6xl md:text-7xl">
-              <span className="block text-white">看见空间。</span>
-              <span className="block bg-gradient-to-r from-zinc-100 via-zinc-400 to-zinc-600 bg-clip-text text-transparent">
-                预演跨国落地的每一步物理因果。
-              </span>
-            </h1>
-
-            <p className="mx-auto mt-4 max-w-2xl text-sm sm:text-base font-normal leading-relaxed text-zinc-400">
-              大语言模型理解文字，世界模型理解三维物理空间与时空推演。
-              在出发前，第一视角 1:1 连续漫游真实动线、推演 24 小时光影与复杂枢纽换乘。
-            </p>
-          </div>
-
-          {/* 核心舞台：高保真空间世界模型推演舱 (Hero Centerpiece) */}
-          <div className="mt-10 rounded-3xl border border-white/[0.1] bg-black/60 p-4 md:p-6 backdrop-blur-2xl shadow-2xl">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
-                <div>
-                  <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                    <span>{currentCityConfig.name}</span>
-                    <span className="text-xs font-normal text-zinc-400">({currentCityConfig.hub})</span>
-                  </h2>
-                  <p className="text-xs text-zinc-400">{currentCityConfig.desc}</p>
+              {/* 目的地切换器（填满右侧栅格） */}
+              <div className="lg:col-span-5 terra-enter rounded-2xl bg-[#141418] p-5">
+                <div className="text-[18px] font-semibold text-[#f5f5f7]">
+                  选择目的地走廊（全站清单与汇率同步切换）：
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCopyUrl}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-white/20 hover:text-white transition"
-                >
-                  <Share2 className="h-3.5 w-3.5" />
-                  <span>分享推演视窗</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 世界模型视窗组件 */}
-            <WorldModelViewport
-              scenes={corridorData.worldScenes}
-              destinationCity={corridorData.destinationCity}
-              compact={false}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* 第二屏：PC 端全功能实战控制台 (Touchdown Tactical Station) */}
-      <section id="interactive-console" className="relative border-t border-white/[0.08] py-16 md:py-24 bg-[#08080a]">
-        <div className="mx-auto max-w-7xl px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-1 text-xs font-medium text-zinc-400">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                <span>实战控制舱 · 100% 真实交互</span>
-              </div>
-              <h2 className="mt-3 text-3xl font-extrabold text-white tracking-tight sm:text-4xl">
-                下飞机黄金 120 分钟落地生存规程
-              </h2>
-              <p className="mt-2 text-sm text-zinc-400 max-w-2xl">
-                脱离了纸上谈兵。在 PC 端直接打卡落地步骤、实时换算多国外币、调用带语音播报的出租车求助卡、并生成专属时空路书。
-              </p>
-            </div>
-
-            {/* 功能切换 Tab */}
-            <div className="flex items-center gap-1 rounded-2xl border border-white/[0.1] bg-black/40 p-1.5 backdrop-blur-md">
-              <button
-                onClick={() => setActiveConsoleTab("checklist")}
-                className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                  activeConsoleTab === "checklist"
-                    ? "bg-[#ff5a26] text-white shadow-lg shadow-[#ff5a26]/20"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                落地通关清单
-              </button>
-              <button
-                onClick={() => setActiveConsoleTab("currency")}
-                className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                  activeConsoleTab === "currency"
-                    ? "bg-[#ff5a26] text-white shadow-lg shadow-[#ff5a26]/20"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                多币种实时换算
-              </button>
-              <button
-                onClick={() => setActiveConsoleTab("driver")}
-                className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                  activeConsoleTab === "driver"
-                    ? "bg-[#ff5a26] text-white shadow-lg shadow-[#ff5a26]/20"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                双语司机求助卡
-              </button>
-              <button
-                onClick={() => setActiveConsoleTab("generator")}
-                className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                  activeConsoleTab === "generator"
-                    ? "bg-[#ff5a26] text-white shadow-lg shadow-[#ff5a26]/20"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                时空路书生成器
-              </button>
-            </div>
-          </div>
-
-          {/* TAB 1: 落地打卡清单 */}
-          {activeConsoleTab === "checklist" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
-              {corridorData.timeline.map((step, idx) => {
-                const stepKey = `${activeCity}-${idx}`;
-                const isDone = completedSteps[stepKey];
-                return (
-                  <div
-                    key={step.title}
-                    className={`group relative rounded-2xl border p-6 transition-all ${
-                      isDone
-                        ? "border-emerald-500/30 bg-emerald-950/10"
-                        : "border-white/[0.08] bg-white/[0.02] hover:border-white/20"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono-numbers text-xs text-zinc-500 font-semibold uppercase">
-                            {step.window}
-                          </span>
-                          <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-[10px] text-zinc-300">
-                            {step.actionTag}
-                          </span>
-                        </div>
-                        <h3 className="mt-2 text-lg font-bold text-white tracking-tight">
-                          {step.title}
-                        </h3>
-                        <p className="mt-2 text-xs text-rose-300/90 leading-relaxed">
-                          ⚠️ 痛点断层：{step.painPoint}
-                        </p>
-                        <p className="mt-2 text-xs text-zinc-300 leading-relaxed">
-                          ✅ 确定性解法：{step.solution}
-                        </p>
-                      </div>
-
-                      {/* 真实打卡复选框 */}
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {CITY_FACTS.map((c) => {
+                    const active = activeCity === c.id;
+                    return (
                       <button
-                        onClick={() => toggleStep(stepKey)}
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
-                          isDone
-                            ? "border-emerald-500 bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
-                            : "border-white/20 bg-white/5 text-zinc-500 hover:border-white/40 hover:text-white"
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelectCity(c.id)}
+                        className={`terra-btn rounded-full py-2 text-[18px] font-semibold ${
+                          active
+                            ? "bg-[#ff6b3d] text-[#0a0a0c]"
+                            : "bg-[#1e1e24] text-[#f5f5f7]"
                         }`}
                       >
-                        {isDone ? <Check className="h-4 w-4 stroke-[3]" /> : idx + 1}
+                        {c.shortName}
                       </button>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3 text-xs">
-                      <span className="text-zinc-500">
-                        {isDone ? "已通过预演验证" : "点击右上方确认该步骤已准备就绪"}
-                      </span>
-                      <a
-                        href={step.affiliateUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 font-medium text-[#ff5a26] hover:underline"
-                      >
-                        <span>{step.affiliateLabel}</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* TAB 2: 多币种实时换算器 */}
-          {activeConsoleTab === "currency" && (
-            <div className="mx-auto max-w-3xl rounded-3xl border border-white/[0.1] bg-white/[0.02] p-8 backdrop-blur-xl animate-in fade-in duration-300">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-6">
-                <div>
-                  <h3 className="text-xl font-bold text-white">跨国即时汇率无级换算器</h3>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    当前目的地：{currentCityConfig.name} ({corridorData.currencyInfo})
-                  </p>
-                </div>
-                <div className="rounded-xl bg-white/[0.05] px-3 py-1.5 font-mono-numbers text-xs text-emerald-400 border border-emerald-500/20">
-                  实时中间价：1 {currentCityConfig.currencySymbol} ≈ {currentCityConfig.rate} RMB
-                </div>
-              </div>
-
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                <div className="rounded-2xl border border-white/[0.08] bg-black/40 p-5">
-                  <label className="block text-xs font-mono-numbers text-zinc-500 uppercase">
-                    外币输入 ({currentCityConfig.currencySymbol})
-                  </label>
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className="text-2xl font-bold text-white">{currentCityConfig.currencySymbol}</span>
-                    <input
-                      type="number"
-                      value={foreignAmount}
-                      onChange={(e) => setForeignAmount(e.target.value)}
-                      className="w-full bg-transparent text-2xl font-bold font-mono-numbers text-white focus:outline-none"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/[0.08] bg-black/40 p-5">
-                  <label className="block text-xs font-mono-numbers text-zinc-500 uppercase">
-                    折合人民币 (RMB)
-                  </label>
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className="text-2xl font-bold text-emerald-400">¥</span>
-                    <span className="text-3xl font-bold font-mono-numbers text-emerald-400">
-                      {cnyEquivalent}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 常用面额快捷换算表 */}
-              <div className="mt-8">
-                <div className="text-xs font-mono-numbers text-zinc-500 uppercase mb-3">
-                  常用日常消费标尺 (点击快速填入)
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: "便利店便当/咖啡", amt: "5000" },
-                    { label: "单程地铁快轨", amt: "15000" },
-                    { label: "街头烤肉/简餐", amt: "45000" },
-                    { label: "核心商圈出租车", amt: "25000" },
-                  ].map((item) => (
-                    <button
-                      key={item.label}
-                      onClick={() => setForeignAmount(item.amt)}
-                      className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left transition hover:border-white/20 hover:bg-white/[0.05]"
-                    >
-                      <div className="text-[11px] text-zinc-400">{item.label}</div>
-                      <div className="mt-1 font-mono-numbers text-xs font-bold text-white">
-                        {currentCityConfig.currencySymbol} {item.amt}
-                      </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
-          )}
 
-          {/* TAB 3: 双语出租车大卡 */}
-          {activeConsoleTab === "driver" && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="relative w-full sm:w-80">
-                  <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                  <input
-                    type="text"
-                    value={taxiSearch}
-                    onChange={(e) => setTaxiSearch(e.target.value)}
-                    placeholder="搜索目的地 (例如：弘大、明洞、东大门)..."
-                    className="w-full rounded-full border border-white/[0.1] bg-black/40 py-2 pl-10 pr-4 text-xs text-white placeholder-zinc-500 focus:border-[#ff5a26] focus:outline-none"
+            {/* 真实 3DGS 世界模型交互舞台：紧贴首屏标题下方 */}
+            <div className="mt-8 terra-reveal">
+              <WorldModelViewport
+                scenes={corridorData.worldScenes}
+                destinationCity={cityFact.shortName}
+              />
+            </div>
+
+            {/* 贴心安心速查条：不套盒子，采用纯净排版横条 */}
+            <dl className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 terra-reveal">
+              <div>
+                <dt className="text-[18px] font-bold text-[#ff6b3d]">
+                  到达枢纽与插座
+                </dt>
+                <dd className="mt-1 m-0 text-[18px] font-semibold text-[#f5f5f7]">
+                  {cityFact.hub}
+                </dd>
+                <dd className="mt-1 m-0 max-w-[44ch] text-[18px] text-[#d4d4dc]">
+                  {corridorData.plugType}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-[18px] font-bold text-[#ff6b3d]">
+                  物价心算口诀
+                </dt>
+                <dd className="mt-1 m-0 text-[18px] font-semibold text-[#f5f5f7] tnum">
+                  {corridorData.currencyInfo}
+                </dd>
+                <dd className="mt-1 m-0 max-w-[44ch] text-[18px] text-[#d4d4dc]">
+                  {cityFact.mentalMathTip}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-[18px] font-bold text-[#ff6b3d]">
+                  24 小时中文求助热线
+                </dt>
+                <dd className="mt-1 m-0 text-[18px] font-semibold text-[#f5f5f7] tnum">
+                  {corridorData.emergencyNumber}
+                </dd>
+                <dd className="mt-1 m-0 max-w-[44ch] text-[18px] text-[#d4d4dc]">
+                  遇到迷路、丢护照或司乘纠纷，拨打即有中文翻译介入。
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-[18px] font-bold text-[#ff6b3d]">
+                  落地头号防踩坑提醒
+                </dt>
+                <dd className="mt-1 m-0 max-w-[44ch] text-[18px] text-[#f5f5f7]">
+                  {cityFact.avoidPitfallTip}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        {/* 第二屏：为什么用真实 3D 高斯泼溅扫描，而不是一张静态全景图 */}
+        <section className="bg-[#141418] py-24 sm:py-32">
+          <div className="mx-auto max-w-7xl px-6 sm:px-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+              <div className="lg:col-span-5 terra-reveal">
+                <h2 className="text-[36px] font-bold text-[#f5f5f7]">
+                  实景扫描，不止照片
+                </h2>
+                <p className="mt-4 max-w-[56ch] text-[18px] text-[#f5f5f7]">
+                  普通旅游攻略只给你一张修过的打卡照，到了现场才发现站台分不清方向、下午去全是背光。TERRA 引入三维高斯泼溅（3D Gaussian Splatting），把真实物理空间还原为可自由走动的体素场。
+                </p>
+                <ol className="mt-6 space-y-4 pl-5 text-[18px] text-[#f5f5f7]">
+                  <li className="terra-reveal">
+                    <strong>任意新视角合成：</strong>右侧两张画面来自同一份 50 万高斯基元扫描（Tanks and Temples 公开站台数据集），从月台正面走到车厢侧后方，遮挡关系与景深实时重算。
+                  </li>
+                  <li className="terra-reveal">
+                    <strong>时段光照在 GPU 上实时推演：</strong>拖动上方时间滑块，50 万个高斯基元同步重算冷暖色温，提前看清几点去最出片。
+                  </li>
+                  <li className="terra-reveal">
+                    <strong>诚实标注数据来源：</strong>三维站台采用公开实测 3DGS 数据集演示空间引擎能力；首尔、北京、东京、曼谷四大走廊配齐实地拍摄照片与实测通关动线。
+                  </li>
+                </ol>
+              </div>
+
+              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-8">
+                <figure className="m-0 terra-reveal">
+                  <img
+                    src="/splats/transit-platform-poster.jpg"
+                    alt="同一份 3DGS 实景扫描的视角 A：站台车头正面"
+                    width={640}
+                    height={360}
+                    className="h-52 w-full rounded-xl object-cover terra-drift"
                   />
-                </div>
-                <div className="text-xs text-zinc-400">
-                  支持点击扬声器调用真实发音，或点击卡片展开全屏大字模式递给司机
-                </div>
+                  <figcaption className="mt-3 max-w-[50ch] text-[18px] text-[#f5f5f7] tnum">
+                    视角 A（坐标 -3.0, 0.1, 3.75）：站在月台落客区正面看列车与路锥。
+                  </figcaption>
+                </figure>
+
+                <figure className="m-0 terra-reveal">
+                  <img
+                    src="/splats/transit-platform-view-b.jpg"
+                    alt="同一份 3DGS 实景扫描的视角 B：沿轨道走入车厢侧方"
+                    width={640}
+                    height={360}
+                    className="h-52 w-full rounded-xl object-cover"
+                  />
+                  <figcaption className="mt-3 max-w-[50ch] text-[18px] text-[#f5f5f7] tnum">
+                    视角 B（坐标 -5.0, 0.5, 1.0）：在同一个三维体素场中向里走 4 米后的新视角。
+                  </figcaption>
+                </figure>
+
+                <figure className="m-0 sm:col-span-2 terra-reveal">
+                  <video
+                    src="/images/spatial-scan-loop.webm"
+                    poster="/images/spatial-scan-poster.jpg"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="h-64 w-full rounded-xl object-cover"
+                  />
+                  <figcaption className="mt-3 max-w-[60ch] text-[18px] text-[#f5f5f7]">
+                    三维空间点云扫描与相机轨迹重建示意：将离散多视角影像融合为可连续漫游的三维辐射场。
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 第三屏：中性石材亮色底（#ececee）—— 落地头两小时 */}
+        <section id="touchdown-steps" className="bg-[#ececee] text-[#141416] py-24 sm:py-32">
+          <div className="mx-auto max-w-7xl px-6 sm:px-10">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div className="terra-reveal">
+                <h2 className="text-[36px] font-bold text-[#141416]">
+                  落地头两小时清单
+                </h2>
+                <p className="mt-3 max-w-[58ch] text-[18px] text-[#141416]">
+                  第一次落地异国机场，最慌乱的就是出舱门到住进酒店的 120 分钟。我们把 {cityFact.fullName} 的通关、换卡、快轨和本土软件拆成一步步可勾选的行动项，进度自动保存在浏览器里。
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredDriverCards.map((card) => (
-                  <div
-                    key={card.id}
-                    className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 transition hover:border-white/20"
+              <div className="flex flex-wrap items-center gap-2">
+                {CITY_FACTS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleSelectCity(c.id)}
+                    className={`terra-btn rounded-full px-4 py-2 text-[18px] font-semibold ${
+                      activeCity === c.id
+                        ? "bg-[#141416] text-[#ececee]"
+                        : "bg-[#dfdfe4] text-[#141416]"
+                    }`}
                   >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="rounded-md bg-[#ff5a26]/10 px-2 py-0.5 text-[10px] font-semibold text-[#ff5a26]">
-                          {card.tag}
+                    {c.shortName}
+                  </button>
+                ))}
+                <span className="rounded-full bg-[#141416] px-4 py-2 text-[18px] font-semibold text-[#ececee] tnum">
+                  已准备 {completedCount} / {corridorData.timeline.length} 项
+                </span>
+              </div>
+            </div>
+
+            {/* 落地步骤：杂志图文并置排版（不堆叠重复卡片框） */}
+            <div className="mt-12 space-y-12">
+              {corridorData.timeline.map((step, idx) => {
+                const stepKey = `${activeCity}-${idx}`;
+                const isDone = Boolean(completedSteps[stepKey]);
+                return (
+                  <article
+                    key={step.title}
+                    className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center terra-reveal"
+                  >
+                    <div className="lg:col-span-5">
+                      <img
+                        src={step.image}
+                        alt={step.title}
+                        width={560}
+                        height={340}
+                        className="h-60 w-full rounded-2xl object-cover"
+                      />
+                    </div>
+
+                    <div className="lg:col-span-7">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="text-[18px] font-bold text-[#3c3c44] tnum">
+                          {step.window} · {step.actionTag}
                         </span>
                         <button
-                          onClick={() => speakText(card.localHeadline)}
-                          className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
-                          title="发音朗读"
+                          type="button"
+                          onClick={() => toggleStep(stepKey)}
+                          className={`terra-btn rounded-full px-5 py-2 text-[18px] font-semibold ${
+                            isDone
+                              ? "bg-[#141416] text-[#ececee]"
+                              : "bg-[#dfdfe4] text-[#141416]"
+                          }`}
                         >
-                          <Volume2 className="h-3.5 w-3.5" />
+                          {isDone ? "已准备就绪" : "标记为已备好"}
                         </button>
                       </div>
 
-                      <h4 className="mt-3 text-base font-bold text-white">{card.titleCn}</h4>
-                      <p className="mt-1 text-sm font-semibold text-amber-300 leading-snug">
-                        {card.localHeadline}
-                      </p>
-                      <p className="mt-1 text-xs text-zinc-400 font-mono-numbers">
-                        {card.phoneticOrSub}
-                      </p>
-                      <p className="mt-3 rounded-lg bg-black/40 p-2.5 text-xs text-zinc-300">
-                        {card.driverInstruction}
-                      </p>
-                    </div>
+                      <h3 className="mt-3 text-[18px] font-bold text-[#141416]">
+                        {step.title}
+                      </h3>
 
-                    <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3 text-xs">
-                      <span className="text-[11px] text-zinc-500">备选：{card.subwayBackup}</span>
-                      <button
-                        onClick={() => setFullscreenDriverCard(card)}
-                        className="inline-flex items-center gap-1 font-semibold text-[#ff5a26] hover:underline"
-                      >
-                        <Maximize2 className="h-3 w-3" />
-                        <span>全屏大字卡</span>
-                      </button>
+                      <p className="mt-2 mb-0 max-w-[60ch] text-[18px] text-[#3c3c44]">
+                        常见踩坑：{step.painPoint}
+                      </p>
+
+                      <p className="mt-2 mb-0 max-w-[60ch] text-[18px] text-[#141416]">
+                        解决动作：{step.solution}
+                      </p>
+
+                      <div className="mt-4">
+                        <a
+                          href={step.affiliateUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[18px] font-bold text-[#141416] underline"
+                        >
+                          {step.affiliateLabel} →
+                        </a>
+                      </div>
                     </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {/* 本土必装 App 平替对照（纯净三列排版） */}
+            <div className="mt-20 rounded-2xl bg-[#dfdfe4] p-6 sm:p-10 terra-reveal">
+              <h3 className="text-[18px] font-bold text-[#141416]">
+                {cityFact.shortName}本土软件平替对照（国内习惯软件为何在当地失灵）
+              </h3>
+              <dl className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+                {corridorData.appMatrix.map((app) => (
+                  <div key={app.category}>
+                    <dt className="text-[18px] font-bold text-[#141416]">
+                      {app.category} → 换用 {app.localChampion}
+                    </dt>
+                    <dd className="mt-2 m-0 max-w-[46ch] text-[18px] text-[#3c3c44]">
+                      原习惯（{app.originApp}）：{app.whyItFails}
+                    </dd>
+                    <dd className="mt-2 m-0 max-w-[46ch] text-[18px] text-[#141416]">
+                      贴心设置：{app.setupGuide} {app.proTip}
+                    </dd>
                   </div>
                 ))}
-              </div>
+              </dl>
             </div>
-          )}
+          </div>
+        </section>
 
-          {/* TAB 4: 时空路书生成器 */}
-          {activeConsoleTab === "generator" && (
-            <div className="mx-auto max-w-4xl rounded-3xl border border-white/[0.1] bg-white/[0.02] p-8 backdrop-blur-xl animate-in fade-in duration-300">
-              <div className="border-b border-white/[0.08] pb-6">
-                <h3 className="text-xl font-bold text-white">时空世界模型路书自主推演生成器</h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  基于目的地世界模型节点与物理通关规律，自主推演最佳第一视角落地执行方案。
+        {/* 第四屏：算钱、问路与打车 */}
+        <section id="pocket-tools" className="bg-[#0a0a0c] py-24 sm:py-32">
+          <div className="mx-auto max-w-7xl px-6 sm:px-10">
+            <div className="terra-reveal">
+              <h2 className="text-[36px] font-bold text-[#f5f5f7]">
+                算钱、问路与打车
+              </h2>
+              <p className="mt-3 max-w-[58ch] text-[18px] text-[#f5f5f7]">
+                在便利店结账不知道几个零、在街头拦出租车或走错地铁闸机说不清诉求？左边一键换算当地物价，右边直接播放母语发音或展开全屏大字递给对方看。
+              </p>
+            </div>
+
+            <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+              {/* 左栏：汇率换算与住宿选区 */}
+              <div className="lg:col-span-5 rounded-2xl bg-[#141418] p-6 sm:p-8 terra-reveal">
+                <h3 className="text-[18px] font-bold text-[#f5f5f7]">
+                  {cityFact.shortName}即时汇率与物价标尺
+                </h3>
+                <p className="mt-2 max-w-[52ch] text-[18px] text-[#d4d4dc]">
+                  {cityFact.mentalMathTip}
                 </p>
-              </div>
 
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400">预计到达时间</label>
-                  <input
-                    type="time"
-                    value={arrivalTime}
-                    onChange={(e) => setArrivalTime(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-[#ff5a26] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400">停留天数</label>
-                  <select
-                    value={tripDays}
-                    onChange={(e) => setTripDays(parseInt(e.target.value, 10))}
-                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-[#ff5a26] focus:outline-none"
-                  >
-                    <option value={2}>2 天 (极速过境)</option>
-                    <option value={3}>3 天 (经典漫游)</option>
-                    <option value={5}>5 天 (深度体验)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400">出行风格偏好</label>
-                  <select
-                    value={travelerStyle}
-                    onChange={(e) => setTravelerStyle(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-[#ff5a26] focus:outline-none"
-                  >
-                    <option value="商务特快与效率第一">商务特快与效率第一</option>
-                    <option value="独立摄影与机位扫街">独立摄影与机位扫街</option>
-                    <option value="亲子家庭与舒适避坑">亲子家庭与舒适避坑</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400">预选住宿商圈</label>
-                  <input
-                    type="text"
-                    value={hotelDistrict}
-                    onChange={(e) => setHotelDistrict(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-[#ff5a26] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={handleGeneratePlan}
-                  disabled={isGenerating}
-                  className="inline-flex items-center gap-2 rounded-full bg-[#ff5a26] px-6 py-2.5 text-xs font-semibold text-white shadow-lg shadow-[#ff5a26]/25 transition hover:bg-[#ff6c3d] disabled:opacity-50"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>{isGenerating ? "正在空间建模推演..." : "开始自主空间推演"}</span>
-                </button>
-              </div>
-
-              {/* 生成结果展示 */}
-              {generatedPlan && (
-                <div className="mt-8 rounded-2xl border border-emerald-500/20 bg-emerald-950/10 p-6 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between border-b border-emerald-500/20 pb-4">
-                    <div className="text-sm font-bold text-white">
-                      推演成功 · {generatedPlan.summary}
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-xl bg-[#1e1e24] p-4">
+                    <label htmlFor="terra-currency-input" className="block text-[18px] text-[#d4d4dc]">
+                      当地货币 ({cityFact.currencyCode})
+                    </label>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[18px] font-bold text-[#f5f5f7]">
+                        {cityFact.currencySymbol}
+                      </span>
+                      <input
+                        id="terra-currency-input"
+                        type="number"
+                        value={foreignAmount}
+                        onChange={(e) => setForeignAmount(e.target.value)}
+                        className="w-full bg-transparent text-[18px] font-bold text-[#f5f5f7] tnum focus:outline-none"
+                      />
                     </div>
-                    <button
-                      onClick={() => {
-                        const content = generatedPlan.steps
-                          .map((s) => `${s.timeSlot} | ${s.phase}: ${s.action} (提示: ${s.localAppTip})`)
-                          .join("\n");
-                        navigator.clipboard.writeText(content);
-                        alert("路书已成功复制到剪贴板！");
-                      }}
-                      className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:underline"
-                    >
-                      <Copy className="h-3 w-3" />
-                      <span>复制全文本路书</span>
-                    </button>
                   </div>
 
-                  <div className="mt-4 space-y-4">
-                    {generatedPlan.steps.map((st, i) => (
-                      <div key={i} className="flex flex-col sm:flex-row items-start gap-3 rounded-xl bg-black/40 p-4 border border-white/5">
-                        <span className="font-mono-numbers text-xs font-bold text-emerald-400 shrink-0 bg-emerald-500/10 px-2 py-1 rounded-md">
-                          {st.timeSlot}
-                        </span>
-                        <div className="space-y-1.5 flex-1">
-                          <div className="text-xs font-bold text-white flex items-center gap-2">
-                            <span>{st.phase}</span>
-                          </div>
-                          <p className="text-xs text-zinc-300 leading-relaxed">
-                            {st.action}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px]">
-                            <span className="text-[#ff5a26] font-medium">💡 本土协同：{st.localAppTip}</span>
-                            <span className="text-amber-300/90 font-mono-numbers">🚕 双语卡：{st.driverPhrase}</span>
-                          </div>
-                        </div>
-                      </div>
+                  <div className="rounded-xl bg-[#1e1e24] p-4">
+                    <div className="text-[18px] text-[#d4d4dc]">
+                      折合人民币 (RMB)
+                    </div>
+                    <div className="mt-2 text-[18px] font-bold text-[#ff6b3d] tnum">
+                      ¥ {cnyEquivalent}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <div className="text-[18px] font-semibold text-[#f5f5f7]">
+                    常见日常消费（点击直接换算）：
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {cityFact.priceBenchmarks.map((item) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => setForeignAmount(item.amount)}
+                        className="terra-btn rounded-full bg-[#1e1e24] px-4 py-2 text-[18px] text-[#f5f5f7] tnum"
+                      >
+                        {item.label} {cityFact.currencySymbol}
+                        {Number(item.amount).toLocaleString()}
+                      </button>
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
 
-      {/* 第三屏：世界模型核心技术深度解密 (Architecture & Depth) */}
-      <section className="relative border-t border-white/[0.08] py-20 bg-[#050507]">
-        <div className="mx-auto max-w-7xl px-6 lg:px-12">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-1.5 text-xs font-medium text-zinc-300">
-              <Cpu className="h-3.5 w-3.5 text-[#ff5a26]" />
-              <span className="font-mono-numbers tracking-wide">CORE NEURAL ENGINE ARCHITECTURE</span>
-            </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-white tracking-tight sm:text-5xl">
-              为什么世界模型是空间智能的终局？
-            </h2>
-            <p className="mt-4 text-base text-zinc-400 leading-relaxed">
-              传统的二维全景拼贴无法理解物理深度的遮挡关系，更无法模拟光照、人流与时间的因果演进。
-              TERRA 基于三层空间神经世界模型架构，打造确定性的空间生存底座。
-            </p>
-          </div>
-
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-8">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20">
-                <Layers className="h-6 w-6" />
-              </div>
-              <h3 className="mt-6 text-xl font-bold text-white tracking-tight">
-                3D 高斯泼溅 (3DGS) 空间底座
-              </h3>
-              <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-                放弃低效的网格建模，以数百万个带有协方差矩阵的三维高斯椭球体连续表征真实空间。
-                在手机浏览器中即可实现 120 FPS 的第一视角平滑穿梭与任意自由机位渲染。
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-8">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20">
-                <Sun className="h-6 w-6" />
-              </div>
-              <h3 className="mt-6 text-xl font-bold text-white tracking-tight">
-                24 小时时空光影与物理因果推演
-              </h3>
-              <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-                世界模型具备“What-If”因果推理能力。输入不同到达时刻，系统自主推演太阳高度角、长投影分布与人流高峰波谷，
-                消除因现场施工、背光或排队导致的旅行踩坑。
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-8">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20">
-                <ShieldCheck className="h-6 w-6" />
-              </div>
-              <h3 className="mt-6 text-xl font-bold text-white tracking-tight">
-                零网络依赖的离线生存引擎
-              </h3>
-              <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-                所有核心地理坐标、双语司机急救卡、离线汇率换算与通关规程全部编译进本地 ServiceWorker。
-                即便在机舱尚未联网或地下隧道无信号时，关键生存功能 100% 毫秒级立即可用。
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 第四屏：无缝流转移动端与获取客户端 (Mobile Handoff & Download Hub) */}
-      <section id="download-hub" className="relative border-t border-white/[0.08] py-20 bg-[#08080a]">
-        <div className="mx-auto max-w-7xl px-6 lg:px-12">
-          <div className="rounded-3xl border border-white/[0.1] bg-gradient-to-b from-white/[0.04] to-transparent p-8 md:p-14 backdrop-blur-2xl">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-1 text-xs font-medium text-[#ff5a26]">
-                  <Smartphone className="h-3.5 w-3.5" />
-                  <span>全端无缝流转体验</span>
+                <div className="mt-8">
+                  <h3 className="text-[18px] font-bold text-[#f5f5f7]">
+                    {cityFact.shortName}住宿片区对比
+                  </h3>
+                  <dl className="mt-4 space-y-4">
+                    {corridorData.stayDistricts.map((d) => (
+                      <div key={d.name}>
+                        <dt className="text-[18px] font-bold text-[#f5f5f7]">
+                          {d.name} · <span className="text-[#ff6b3d] tnum">{d.priceRange}</span>
+                        </dt>
+                        <dd className="mt-1 m-0 max-w-[50ch] text-[18px] text-[#d4d4dc]">
+                          {d.transitAccess}（适合：{d.bestFor}）
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
-                <h2 className="mt-4 text-3xl font-extrabold text-white tracking-tight sm:text-5xl">
-                  在 PC 上完成预演，<br />
-                  在手机端随时随地使用。
+              </div>
+
+              {/* 右栏：贴心「指指通」双语救急卡（纯净列表，不套多层小盒子） */}
+              <div className="lg:col-span-7 rounded-2xl bg-[#141418] p-6 sm:p-8 terra-reveal">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-[18px] font-bold text-[#f5f5f7]">
+                      双语「指指通」沟通卡（带真人发音与全屏展示）
+                    </h3>
+                    <p className="mt-1 max-w-[54ch] text-[18px] text-[#d4d4dc]">
+                      涵盖热门商圈打车、地铁走错闸机求助、餐厅点餐忌口与结账询问。
+                    </p>
+                  </div>
+
+                  <div className="w-full sm:w-72">
+                    <label htmlFor="terra-card-search" className="sr-only">
+                      搜索沟通卡
+                    </label>
+                    <input
+                      id="terra-card-search"
+                      type="text"
+                      value={cardSearch}
+                      onChange={(e) => setCardSearch(e.target.value)}
+                      placeholder="搜索地点或场景（如：弘大、电梯）"
+                      className="w-full rounded-full bg-[#1e1e24] px-4 py-2 text-[18px] text-[#f5f5f7] placeholder-[#d4d4dc] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <ol className="mt-6 space-y-6 pl-5 text-[18px] text-[#f5f5f7]">
+                  {allCards.map((card) => {
+                    const isSpeaking = speakingCardId === card.id;
+                    return (
+                      <li key={card.id}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[18px] font-bold text-[#ff6b3d]">
+                            {card.tag} · {card.titleCn}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => speakPhrase(card)}
+                              className="terra-btn rounded-full bg-[#1e1e24] px-4 py-1.5 text-[18px] font-medium text-[#f5f5f7]"
+                            >
+                              {isSpeaking ? "朗读中..." : "播放发音"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFullscreenCard(card)}
+                              className="terra-btn rounded-full bg-[#f5f5f7] px-4 py-1.5 text-[18px] font-semibold text-[#0a0a0c]"
+                            >
+                              全屏给对方看
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="mt-2 mb-0 max-w-[60ch] text-[18px] font-bold text-[#f5f5f7]">
+                          {card.localHeadline}
+                        </p>
+                        <p className="mt-1 mb-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
+                          读音：{card.phoneticOrSub} · {card.subwayBackup}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 第五屏：按航班落地时间定制首日动线 */}
+        <section id="route-planner" className="bg-[#141418] py-24 sm:py-32">
+          <div className="mx-auto max-w-7xl px-6 sm:px-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+              <div className="lg:col-span-5 terra-reveal">
+                <h2 className="text-[36px] font-bold text-[#f5f5f7]">
+                  定制首日落地动线
                 </h2>
-                <p className="mt-4 text-sm text-zinc-400 leading-relaxed max-w-lg">
-                  支持 iPhone 16 Pro 与 Android 全系旗舰设备。扫描右侧二维码，秒级唤起 120Hz 离线 PWA 原生应用，
-                  无需等待 App Store 审核下载，随时随地保驾护航。
+                <p className="mt-3 max-w-[56ch] text-[18px] text-[#f5f5f7]">
+                  早上九点落地和深夜十一点落地，出关后的交通与换汇方案完全不同。填入你的航班预计到达时间与住宿片区，生成可直接复制进备忘录的首日行动表。
                 </p>
 
-                <div className="mt-8 flex flex-wrap gap-4">
-                  <button
-                    onClick={() => setDownloadModal("apple")}
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-xs font-bold text-black transition hover:bg-zinc-200 active:scale-95"
-                  >
-                    <span className="text-sm"></span>
-                    <span>Apple iPhone 安装指南</span>
-                  </button>
+                <form
+                  onSubmit={handleGeneratePlan}
+                  className="mt-6 space-y-4 rounded-2xl bg-[#0a0a0c] p-6"
+                >
+                  <div>
+                    <label htmlFor="plan-arrival-time" className="block text-[18px] font-medium text-[#f5f5f7]">
+                      航班预计落地时间
+                    </label>
+                    <input
+                      id="plan-arrival-time"
+                      type="time"
+                      value={arrivalTime}
+                      onChange={(e) => setArrivalTime(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl bg-[#1e1e24] px-4 py-2.5 text-[18px] text-[#f5f5f7] tnum"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="plan-trip-days" className="block text-[18px] font-medium text-[#f5f5f7]">
+                      停留天数
+                    </label>
+                    <select
+                      id="plan-trip-days"
+                      value={tripDays}
+                      onChange={(e) => setTripDays(parseInt(e.target.value, 10))}
+                      className="mt-1.5 w-full rounded-xl bg-[#1e1e24] px-4 py-2.5 text-[18px] text-[#f5f5f7]"
+                    >
+                      <option value={2}>2 天（周末快闪）</option>
+                      <option value={3}>3 天（经典城市漫游）</option>
+                      <option value={5}>5 天（深度街区探索）</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="plan-style" className="block text-[18px] font-medium text-[#f5f5f7]">
+                      同行偏好
+                    </label>
+                    <select
+                      id="plan-style"
+                      value={travelerStyle}
+                      onChange={(e) => setTravelerStyle(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl bg-[#1e1e24] px-4 py-2.5 text-[18px] text-[#f5f5f7]"
+                    >
+                      <option value="第一次去 · 稳妥省心与避坑优先">第一次去 · 稳妥省心与避坑优先</option>
+                      <option value="建筑摄影与黄金光影机位优先">建筑摄影与黄金光影机位优先</option>
+                      <option value="带着父母或大件行李 · 少走台阶">带着父母或大件行李 · 少走台阶</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="plan-hotel" className="block text-[18px] font-medium text-[#f5f5f7]">
+                      预订酒店所在商圈
+                    </label>
+                    <input
+                      id="plan-hotel"
+                      type="text"
+                      value={hotelDistrict}
+                      onChange={(e) => setHotelDistrict(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl bg-[#1e1e24] px-4 py-2.5 text-[18px] text-[#f5f5f7]"
+                    />
+                  </div>
 
                   <button
-                    onClick={() => setDownloadModal("android")}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.08] px-6 py-3 text-xs font-semibold text-white transition hover:bg-white/[0.14] active:scale-95"
+                    type="submit"
+                    className="terra-btn w-full rounded-full bg-[#ff6b3d] py-3 text-[18px] font-semibold text-[#0a0a0c]"
                   >
-                    <Smartphone className="h-3.5 w-3.5" />
-                    <span>Android 独立端配置</span>
+                    更新 {cityFact.shortName} 首日落地路书
                   </button>
+                </form>
+              </div>
 
+              <div className="lg:col-span-7 terra-reveal">
+                {generatedPlan && (
+                  <div className="rounded-2xl bg-[#0a0a0c] p-6 sm:p-8">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <h3 className="text-[18px] font-bold text-[#f5f5f7]">
+                        {cityFact.shortName}专属落地执行单
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const text = generatedPlan.steps
+                            .map(
+                              (s) =>
+                                `${s.timeSlot} 【${s.phase}】\n动作：${s.action}\n提示：${s.localAppTip}\n给司机看：${s.driverPhrase}`
+                            )
+                            .join("\n\n");
+                          navigator.clipboard.writeText(text);
+                          setCopiedPlan(true);
+                          setTimeout(() => setCopiedPlan(false), 2200);
+                        }}
+                        className="terra-btn rounded-full bg-[#ff6b3d] px-5 py-2 text-[18px] font-semibold text-[#0a0a0c]"
+                      >
+                        {copiedPlan ? "已复制到剪贴板" : "一键复制整份路书"}
+                      </button>
+                    </div>
+
+                    <p className="mt-3 max-w-[60ch] text-[18px] text-[#d4d4dc]">
+                      {generatedPlan.summary}
+                    </p>
+
+                    <ol className="mt-6 space-y-6 pl-5 text-[18px] text-[#f5f5f7]">
+                      {generatedPlan.steps.map((st) => (
+                        <li key={st.phase}>
+                          <div className="font-bold text-[#f5f5f7]">
+                            {st.timeSlot} · {st.phase}
+                          </div>
+                          <p className="mt-1 mb-0 max-w-[60ch] text-[18px] text-[#f5f5f7]">
+                            {st.action}
+                          </p>
+                          <p className="mt-1 mb-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
+                            软件配合：{st.localAppTip}
+                          </p>
+                          <p className="mt-1 mb-0 max-w-[60ch] text-[18px] text-[#f5f5f7]">
+                            双语备忘：{st.driverPhrase}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 第六屏：石材亮色底（#ececee）—— 扫码装进手机，断网也能查 */}
+        <section id="mobile-handoff" className="bg-[#ececee] text-[#141416] py-24 sm:py-32">
+          <div className="mx-auto max-w-7xl px-6 sm:px-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+              <div className="lg:col-span-7 terra-reveal">
+                <h2 className="text-[36px] font-bold text-[#141416]">
+                  装进手机，离线可查
+                </h2>
+                <p className="mt-4 max-w-[58ch] text-[18px] text-[#141416]">
+                  在电脑上预演完动线后，用手机相机或微信扫描右侧二维码即可同步打开。将网页添加到主屏幕后，即使在机舱滑行或地下隧道没有信号，通关清单、汇率换算与双语打车卡依然可以离线打开。
+                </p>
+
+                <ol className="mt-6 space-y-2 pl-5 text-[18px] text-[#141416]">
+                  <li>
+                    <strong>iPhone 用户：</strong>用 Safari 打开后点底部『分享』按钮，选择『添加到主屏幕』。
+                  </li>
+                  <li>
+                    <strong>Android 用户：</strong>用 Chrome 或系统浏览器打开，点右上角菜单选择『安装应用』或『添加到主屏幕』。
+                  </li>
+                </ol>
+
+                <div className="mt-8 flex flex-wrap items-center gap-4">
                   <button
+                    type="button"
                     onClick={handleCopyUrl}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-xs font-medium text-zinc-300 hover:text-white transition"
+                    className="terra-btn rounded-full bg-[#141416] px-6 py-3 text-[18px] font-semibold text-[#ececee]"
                   >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>复制真机链接</span>
+                    {copiedLink ? "已复制在线网址" : "复制网址发到手机微信"}
                   </button>
+                  <span className="text-[18px] text-[#3c3c44] tnum">
+                    {currentUrl}
+                  </span>
                 </div>
               </div>
 
-              {/* 右侧动态高保真真机二维码 */}
-              <div className="flex flex-col items-center justify-center">
-                <div className="rounded-3xl border border-white/15 bg-black/60 p-6 shadow-2xl backdrop-blur-2xl">
+              <div className="lg:col-span-5 flex flex-col items-start lg:items-end terra-reveal">
+                <div className="rounded-2xl bg-[#dfdfe4] p-6 text-center">
                   {qrCodeDataUrl ? (
                     <img
                       src={qrCodeDataUrl}
-                      alt="TERRA 真机体验二维码"
-                      className="h-64 w-64 rounded-2xl object-contain ring-1 ring-white/10"
+                      alt="TERRA 手机端体验二维码"
+                      width={240}
+                      height={240}
+                      className="h-56 w-56 rounded-xl object-contain"
                     />
                   ) : (
-                    <div className="flex h-64 w-64 items-center justify-center rounded-2xl bg-zinc-900 text-zinc-500 text-xs">
-                      生成二维码中...
+                    <div className="flex h-56 w-56 items-center justify-center rounded-xl bg-[#ececee] text-[18px] text-[#3c3c44]">
+                      正在生成二维码...
                     </div>
                   )}
-                  <div className="mt-4 text-center">
-                    <p className="text-xs font-semibold text-white">使用 iPhone 或 Android 微信 / 相机扫码</p>
-                    <p className="mt-1 text-[11px] font-mono-numbers text-zinc-500 truncate max-w-[260px]">
-                      {currentUrl}
-                    </p>
+                  <div className="mt-3 text-[18px] font-semibold text-[#141416]">
+                    手机扫码即刻同步当前走廊
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* 极简 Apple 风格页脚 */}
-      <footer className="border-t border-white/[0.08] py-12 bg-[#050507] text-zinc-500 text-xs">
-        <div className="mx-auto max-w-7xl px-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-white">TERRA</span>
-            <span>· 物理空间世界模型与跨国落地生存操作系统</span>
+      {/* 页脚：全宽品牌收尾 + 开源与摄影作品署名 */}
+      <footer className="bg-[#0a0a0c] text-[#d4d4dc] py-16">
+        <div className="mx-auto max-w-7xl px-6 sm:px-10 space-y-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <div className="text-[18px] font-bold text-[#f5f5f7]">
+              TERRA · 跨国自由行三维空间预演与落地生存向导
+            </div>
+            <div className="flex flex-wrap gap-6 text-[18px]">
+              <a
+                href="https://github.com/wangguode/terra-world-travel"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#f5f5f7] hover:underline"
+              >
+                GitHub 开源仓库
+              </a>
+              <a href="#world-model" className="text-[#d4d4dc] hover:text-white">
+                回到顶部三维视窗
+              </a>
+            </div>
           </div>
-          <div className="flex items-center gap-6">
-            <a href="https://github.com/wangguode/terra-world-travel" target="_blank" rel="noreferrer" className="hover:text-white transition">
-              GitHub 源码
-            </a>
-            <a href="#interactive-console" className="hover:text-white transition">
-              实战控制舱
-            </a>
-            <a href="#download-hub" className="hover:text-white transition">
-              真机获取
-            </a>
-          </div>
+
+          <p className="m-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
+            三维高斯泼溅渲染引擎基于 World Labs 开源的 Spark (@sparkjsdev/spark, MIT License)，站台三维实景数据来自 Tanks and Temples 公开学术数据集。
+          </p>
+
+          <p className="m-0 max-w-[60ch] text-[14px] text-[#d4d4dc]">
+            摄影素材署名（Wikimedia Commons 开放许可）：
+            <a href="https://commons.wikimedia.org/w/index.php?curid=21101086" target="_blank" rel="noreferrer" className="text-[#f5f5f7] underline ml-1">“1 shibuya crossing 2012”</a> by chensiyuan (CC BY-SA 4.0);
+            <a href="https://commons.wikimedia.org/w/index.php?curid=9662365" target="_blank" rel="noreferrer" className="text-[#f5f5f7] underline ml-1">“Keikyu HanedaAirport Station”</a> by RGB256 (CC BY-SA 3.0);
+            <a href="https://commons.wikimedia.org/w/index.php?curid=60525211" target="_blank" rel="noreferrer" className="text-[#f5f5f7] underline ml-1">“Bangkok Airport Rail Link”</a> by Edward Russell (CC BY 2.0);
+            <a href="https://commons.wikimedia.org/w/index.php?curid=28363649" target="_blank" rel="noreferrer" className="text-[#f5f5f7] underline ml-1">“Templo Wat Arun, Bangkok”</a> by Diego Delso (CC BY-SA 3.0);
+            <a href="https://commons.wikimedia.org/w/index.php?curid=87842985" target="_blank" rel="noreferrer" className="text-[#f5f5f7] underline ml-1">“Incheon Airport Railroad Express”</a> (CC BY-SA 4.0);
+            <a href="https://commons.wikimedia.org/wiki/File:Snowy_shopping_street_in_Seongsu-dong.jpg" target="_blank" rel="noreferrer" className="text-[#f5f5f7] underline ml-1">“Snowy shopping street in Seongsu-dong”</a> by CartoonChess (CC BY-SA 4.0).
+          </p>
         </div>
       </footer>
 
-      {/* 全屏中外双语司机大卡弹窗 */}
-      {fullscreenDriverCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-6 backdrop-blur-2xl animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl rounded-3xl border border-white/20 bg-zinc-950 p-8 shadow-2xl">
-            <button
-              onClick={() => setFullscreenDriverCard(null)}
-              className="absolute top-6 right-6 rounded-full bg-white/10 p-2 text-zinc-400 hover:text-white transition"
-            >
-              ✕
-            </button>
-
-            <span className="rounded-md bg-[#ff5a26] px-2.5 py-1 text-xs font-bold text-white uppercase">
-              {fullscreenDriverCard.tag} · 请向出租车司机出示
-            </span>
-
-            <h3 className="mt-6 text-2xl font-bold text-zinc-400">{fullscreenDriverCard.titleCn}</h3>
-
-            <div className="mt-4 rounded-2xl bg-white/[0.05] p-6 border border-white/10">
-              <div className="text-3xl md:text-4xl font-extrabold text-amber-300 leading-snug">
-                {fullscreenDriverCard.localHeadline}
-              </div>
-              <div className="mt-3 text-sm text-zinc-400 font-mono-numbers">
-                {fullscreenDriverCard.phoneticOrSub}
-              </div>
-            </div>
-
-            <div className="mt-6 rounded-xl bg-black/40 p-4 text-sm text-zinc-200 leading-relaxed">
-              👉 {fullscreenDriverCard.driverInstruction}
-            </div>
-
-            <div className="mt-6 flex items-center justify-between">
+      {/* 全屏双语给司机/店员看弹窗 */}
+      {fullscreenCard && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={fullscreenCard.titleCn}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0a0c]/95 p-4 sm:p-8"
+        >
+          <div className="w-full max-w-2xl rounded-2xl bg-[#141418] p-6 sm:p-10">
+            <div className="flex items-center justify-between gap-4">
+              <span className="rounded-full bg-[#ff6b3d] px-4 py-1 text-[18px] font-semibold text-[#0a0a0c]">
+                {fullscreenCard.tag} · 请直接展示给对方
+              </span>
               <button
-                onClick={() => speakText(fullscreenDriverCard.localHeadline)}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-bold text-black hover:bg-zinc-200 transition"
+                type="button"
+                onClick={() => setFullscreenCard(null)}
+                className="terra-btn rounded-full bg-[#1e1e24] px-4 py-1.5 text-[18px] font-semibold text-[#f5f5f7]"
               >
-                <Volume2 className="h-4 w-4" />
-                <span>{isPlayingAudio ? "正在发音播报..." : "语音发音朗读"}</span>
-              </button>
-
-              <button
-                onClick={() => setFullscreenDriverCard(null)}
-                className="rounded-full border border-white/20 px-6 py-2.5 text-xs font-medium text-white hover:bg-white/10 transition"
-              >
-                返回控制台
+                关闭全屏
               </button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Apple iPhone 获取指南弹窗 */}
-      {downloadModal === "apple" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6 backdrop-blur-2xl animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md rounded-3xl border border-white/20 bg-zinc-950 p-8 shadow-2xl">
-            <button
-              onClick={() => setDownloadModal(null)}
-              className="absolute top-6 right-6 rounded-full bg-white/10 p-2 text-zinc-400 hover:text-white transition"
-            >
-              ✕
-            </button>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-black text-2xl font-bold mb-4">
-              
-            </div>
-
-            <h3 className="text-xl font-bold text-white">iPhone 原生离线添加指南</h3>
-            <p className="mt-2 text-xs text-zinc-400 leading-relaxed">
-              TERRA 采用原生 PWA 与 WebGL 架构，享有 120Hz 丝滑渲染与全屏沉浸感：
+            <p className="mt-5 mb-0 max-w-[56ch] text-[18px] text-[#d4d4dc]">
+              中文原意：{fullscreenCard.titleCn}
             </p>
 
-            <div className="mt-6 space-y-4 text-xs">
-              <div className="flex items-start gap-3">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff5a26] text-white font-bold text-[10px]">
-                  1
-                </span>
-                <span className="text-zinc-300">用 iPhone 原生 Safari 浏览器扫描或打开当前网址。</span>
+            <div className="mt-4 rounded-xl bg-[#0a0a0c] p-6">
+              <div className="text-[36px] font-bold text-[#f5f5f7]">
+                {fullscreenCard.localHeadline}
               </div>
-              <div className="flex items-start gap-3">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff5a26] text-white font-bold text-[10px]">
-                  2
-                </span>
-                <span className="text-zinc-300">点击 Safari 底部中间的「分享 (Share)」图标。</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff5a26] text-white font-bold text-[10px]">
-                  3
-                </span>
-                <span className="text-zinc-300">向下滑动并选择「添加到主屏幕 (Add to Home Screen)」。</span>
+              <div className="mt-3 text-[18px] text-[#d4d4dc]">
+                发音参考：{fullscreenCard.phoneticOrSub}
               </div>
             </div>
 
-            <div className="mt-8 flex gap-3">
-              <button
-                onClick={handleCopyUrl}
-                className="flex-1 rounded-full bg-[#ff5a26] py-2.5 text-xs font-bold text-white hover:bg-[#ff6c3d] transition"
-              >
-                复制体验链接
-              </button>
-              <button
-                onClick={() => setDownloadModal(null)}
-                className="rounded-full border border-white/20 px-5 py-2.5 text-xs font-medium text-white hover:bg-white/10 transition"
-              >
-                我知道了
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Android 获取指南弹窗 */}
-      {downloadModal === "android" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6 backdrop-blur-2xl animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md rounded-3xl border border-white/20 bg-zinc-950 p-8 shadow-2xl">
-            <button
-              onClick={() => setDownloadModal(null)}
-              className="absolute top-6 right-6 rounded-full bg-white/10 p-2 text-zinc-400 hover:text-white transition"
-            >
-              ✕
-            </button>
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-black text-2xl font-bold mb-4">
-              <Smartphone className="h-6 w-6" />
-            </div>
-
-            <h3 className="text-xl font-bold text-white">Android 原生快速安装</h3>
-            <p className="mt-2 text-xs text-zinc-400 leading-relaxed">
-              在 Chrome 或系统浏览器中打开后，即可一键安装至桌面：
+            <p className="mt-4 mb-0 max-w-[56ch] text-[18px] text-[#f5f5f7]">
+              补充说明：{fullscreenCard.driverInstruction}
             </p>
 
-            <div className="mt-6 space-y-4 text-xs">
-              <div className="flex items-start gap-3">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-black font-bold text-[10px]">
-                  1
-                </span>
-                <span className="text-zinc-300">使用 Android 浏览器扫描或直接访问网址。</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-black font-bold text-[10px]">
-                  2
-                </span>
-                <span className="text-zinc-300">点击右上角菜单，选择「安装应用」或「添加到主屏幕」。</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-black font-bold text-[10px]">
-                  3
-                </span>
-                <span className="text-zinc-300">即可生成独立应用图标，支持离线缓存运行。</span>
-              </div>
-            </div>
-
-            <div className="mt-8 flex gap-3">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <button
-                onClick={handleCopyUrl}
-                className="flex-1 rounded-full bg-white py-2.5 text-xs font-bold text-black hover:bg-zinc-200 transition"
+                type="button"
+                onClick={() => speakPhrase(fullscreenCard)}
+                className="terra-btn rounded-full bg-[#ff6b3d] px-6 py-2.5 text-[18px] font-semibold text-[#0a0a0c]"
               >
-                复制体验链接
+                {speakingCardId === fullscreenCard.id ? "正在朗读外语..." : "播放外语真人发音"}
               </button>
               <button
-                onClick={() => setDownloadModal(null)}
-                className="rounded-full border border-white/20 px-5 py-2.5 text-xs font-medium text-white hover:bg-white/10 transition"
+                type="button"
+                onClick={() => setFullscreenCard(null)}
+                className="terra-btn rounded-full bg-[#1e1e24] px-6 py-2.5 text-[18px] font-medium text-[#f5f5f7]"
               >
-                我知道了
+                返回页面
               </button>
             </div>
           </div>

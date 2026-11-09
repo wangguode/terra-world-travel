@@ -1,400 +1,317 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo } from "react";
-import {
-  Compass,
-  Sun,
-  Moon,
-  Clock,
-  Play,
-  Pause,
-  RotateCcw,
-  Sliders,
-  Eye,
-  Layers,
-  ChevronRight,
-  Maximize2,
-  Sparkles,
-} from "lucide-react";
-import type {
-  SpatialHotspot,
-  WorldModelScene,
-  TrajectoryWaypoint,
-} from "@/lib/corridors-data";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import type { WorldModelScene } from "@/lib/corridors-data";
 
 interface WorldModelViewportProps {
   scenes: WorldModelScene[];
   destinationCity: string;
-  compact?: boolean;
 }
 
-interface SplatParticle {
-  x: number;
-  y: number;
-  z: number;
-  size: number;
-  colorIndex: number;
+interface SplatCameraPose {
+  pos: [number, number, number];
+  lookAt: [number, number, number];
+  title: string;
+  advice: string;
 }
 
-type SpatialFeatureMode = "trajectory" | "temporal" | "explore";
+const SPLAT_WAYPOINTS: SplatCameraPose[] = [
+  {
+    pos: [-3.0, 0.1, 3.75],
+    lookAt: [0, 0, 0],
+    title: "第一站 · 月台落客点与车头方向辨认",
+    advice: "下车后先在月台立柱旁停三秒，核对车厢朝向与出站扶梯指示牌，切勿盲目跟着人群反方向出闸。",
+  },
+  {
+    pos: [-5.0, 0.5, 1.0],
+    lookAt: [1.0, 0, -1.0],
+    title: "第二站 · 沿站台中段走廊向前",
+    advice: "避开列车门正对的拥挤队列，从外侧宽敞步道快步走向换乘连廊，节省约 10 分钟排队时间。",
+  },
+  {
+    pos: [-4.5, 0.4, -1.5],
+    lookAt: [0, 0, -5.0],
+    title: "第三站 · 抵达出站走廊与刷卡点",
+    advice: "提前在手机钱包调出交通卡或准备好 IC 卡，经过宽通道无障碍闸机直接推行李出站。",
+  },
+];
 
-function createSceneParticles(seedKey: string): SplatParticle[] {
-  let seed = 0;
-  for (let i = 0; i < seedKey.length; i++) {
-    seed = (seed * 31 + seedKey.charCodeAt(i)) % 1000003;
+function computeSolarTint(hour: number): {
+  r: number;
+  g: number;
+  b: number;
+  elevation: number;
+  kelvin: number;
+  cssFilter: string;
+  label: string;
+  advice: string;
+} {
+  if (hour < 8.5) {
+    return {
+      r: 0.92,
+      g: 0.95,
+      b: 1.08,
+      elevation: Math.round(8 + (hour - 6) * 8),
+      kelvin: 4300,
+      cssFilter: "brightness(0.92) contrast(1.06) saturate(1.08)",
+      label: "清晨柔光",
+      advice: "空气通透、旅行团尚未入场，侧顺光下建筑立面细节清楚，是最从容的拍照与通关时段。",
+    };
   }
-  const nextRand = () => {
-    seed = (seed * 16807 + 11) % 2147483647;
-    return (seed & 0x7fffffff) / 2147483647;
+  if (hour < 16.0) {
+    return {
+      r: 1.0,
+      g: 1.0,
+      b: 1.0,
+      elevation: Math.round(64 - Math.abs(hour - 12.5) * 6),
+      kelvin: 6000,
+      cssFilter: "brightness(1.04) contrast(1.08)",
+      label: "正午顶光",
+      advice: "日照充足、视野最远，但户外反差较大，建议优先安排室内展馆、地下换乘或买手店街区。",
+    };
+  }
+  if (hour < 19.0) {
+    return {
+      r: 1.12,
+      g: 0.92,
+      b: 0.76,
+      elevation: Math.max(3, Math.round(22 - (hour - 16) * 6)),
+      kelvin: 3100,
+      cssFilter: "brightness(0.96) contrast(1.16) saturate(1.26) sepia(0.18)",
+      label: "日落金辉",
+      advice: "夕阳低角度漫射，宫殿飞檐、河岸佛塔与街区红砖墙呈现暖金色轮廓光，是全天最佳出片时刻。",
+    };
+  }
+  return {
+    r: 0.72,
+    g: 0.82,
+    b: 1.12,
+    elevation: -8,
+    kelvin: 7800,
+    cssFilter: "brightness(0.68) contrast(1.22) saturate(1.18)",
+    label: "夜间蓝调",
+    advice: "夜景灯光亮起，请留意机场快线末班车时间，提前保存好全屏双语司机卡以备夜间打车返程。",
   };
-
-  const particles: SplatParticle[] = [];
-
-  // 天空与远景穹顶粒子
-  for (let i = 0; i < 220; i++) {
-    particles.push({
-      x: (nextRand() - 0.5) * 360,
-      y: 60 + nextRand() * 30,
-      z: (nextRand() - 0.5) * 360,
-      size: 1.2 + nextRand() * 1.8,
-      colorIndex: 2,
-    });
-  }
-
-  // 建筑与地面实体特征点云
-  for (let i = 0; i < 340; i++) {
-    const tier = i % 3;
-    const widthScale = tier === 0 ? 190 : tier === 1 ? 140 : 85;
-    const heightBase = tier === 0 ? 35 : tier === 1 ? -5 : -45;
-    particles.push({
-      x: (nextRand() - 0.5) * widthScale,
-      y: heightBase + (nextRand() - 0.5) * 36,
-      z: (nextRand() - 0.5) * (widthScale * 0.75),
-      size: 1.6 + nextRand() * 3.0,
-      colorIndex: tier === 2 ? 0 : tier === 1 ? 1 : 0,
-    });
-  }
-
-  return particles;
 }
 
-// 物理太阳光影与色温计算
-function calculateSolarLighting(hour: number) {
-  // hour: 6.0 ~ 23.0
-  let elevation = 0;
-  let kelvin = 5500;
-  let filterCss = "";
-  let lightDescription = "";
-
-  if (hour < 6.5) {
-    // 黎明晨曦 (06:00 - 06:30)
-    elevation = 2 + (hour - 6.0) * 8;
-    kelvin = 3200;
-    filterCss = "brightness(0.75) contrast(1.1) saturate(1.2) hue-rotate(-15deg)";
-    lightDescription = "晨曦破晓 · 低角侧光，建筑长投影拉伸，空气透光度极高";
-  } else if (hour < 9.0) {
-    // 清晨柔光 (06:30 - 09:00)
-    elevation = 6 + (hour - 6.5) * 12;
-    kelvin = 4200;
-    filterCss = "brightness(0.92) contrast(1.05) saturate(1.15)";
-    lightDescription = "清晨柔和侧顺光 · 建筑细部质感分明，晨间客流低谷最佳取景";
-  } else if (hour < 16.5) {
-    // 正午高照 (09:00 - 16:30)
-    const middayOffset = Math.abs(hour - 12.5);
-    elevation = 68 - middayOffset * 8;
-    kelvin = 6200;
-    filterCss = "brightness(1.06) contrast(1.12) saturate(1.05)";
-    lightDescription = "高照顶光 · 色温纯净通透，阴影收缩于建筑基座，视野纵深最远";
-  } else if (hour < 19.0) {
-    // 黄金日落 (16:30 - 19:00) Golden Hour
-    elevation = Math.max(1, 18 - (hour - 16.5) * 7);
-    kelvin = 2800;
-    filterCss = "brightness(0.95) contrast(1.25) saturate(1.4) sepia(0.25) hue-rotate(-10deg)";
-    lightDescription = "黄金时刻 (Golden Hour) · 暖金落日漫射，飞檐与天际线轮廓光绝美";
-  } else {
-    // 蓝调与暗夜 (19:00 - 23:00) Blue Hour / Night
-    elevation = -5 - (hour - 19.0) * 3;
-    kelvin = 8500;
-    filterCss = "brightness(0.55) contrast(1.35) saturate(1.3) hue-rotate(25deg)";
-    lightDescription = "蓝调与深夜 · 城市霓虹泛光与历史建筑泛光照明交织，极具赛博氛围";
-  }
-
-  return { elevation: Math.round(elevation), kelvin, filterCss, lightDescription };
+function formatClock(val: number): string {
+  const h = Math.floor(val);
+  const m = Math.round((val - h) * 60);
+  const mm = m === 0 ? "00" : m < 10 ? `0${m}` : String(m);
+  return `${h}:${mm}`;
 }
 
 export function WorldModelViewport({
   scenes,
   destinationCity,
-  compact = false,
 }: WorldModelViewportProps) {
+  const [viewSource, setViewSource] = useState<"splat3d" | "landmark">("splat3d");
   const [selectedSceneIdx, setSelectedSceneIdx] = useState(0);
   const activeScene = scenes[selectedSceneIdx] ?? scenes[0];
 
-  const [activeFeatureMode, setActiveFeatureMode] = useState<SpatialFeatureMode>("trajectory");
+  const [stepIdx, setStepIdx] = useState(0);
+  const [autoWalk, setAutoWalk] = useState(false);
+  const [hour, setHour] = useState<number>(17.5);
+  const [splatStatus, setSplatStatus] = useState<"loading" | "ready" | "fallback">("loading");
+  const [splatCount, setSplatCount] = useState<number>(500000);
+  const [yawDeg, setYawDeg] = useState<number>(0);
+  const [pitchDeg, setPitchDeg] = useState<number>(0);
 
-  // 1. 动线推演状态
-  const [activeStepIdx, setActiveStepIdx] = useState(0);
-  const [isAutoCruising, setIsAutoCruising] = useState(false);
-
-  // 2. 24小时物理光影时空演变滑块 (默认下午 17:30 黄金时刻)
-  const [simulatedHour, setSimulatedHour] = useState<number>(17.5);
-
-  // 3. 历史孪生滑块对比位置 (0-100%)
-  const [splitPos, setSplitPos] = useState(50);
-  const [renderMode, setRenderMode] = useState<"hybrid" | "splat">("hybrid");
-
-  // 陀螺仪遥测角度
-  const [hudAngles, setHudAngles] = useState({ yaw: -12, pitch: 10 });
-
-  // 120Hz 物理相机与动画状态
-  const targetCamRef = useRef({ yaw: -12, pitch: 10, zoom: 1.15 });
-  const currentCamRef = useRef({ yaw: -12, pitch: 10, zoom: 1.15 });
-  const renderModeRef = useRef<"hybrid" | "splat">("hybrid");
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const poseTargetRef = useRef<{
+    pos: [number, number, number];
+    lookAt: [number, number, number];
+    yawOffset: number;
+    pitchOffset: number;
+  }>({
+    pos: [...SPLAT_WAYPOINTS[0].pos],
+    lookAt: [...SPLAT_WAYPOINTS[0].lookAt],
+    yawOffset: 0,
+    pitchOffset: 0,
+  });
+  const solarRef = useRef(computeSolarTint(17.5));
   const isDraggingRef = useRef(false);
-  const dragStartRef = useRef({ x: 0, y: 0, yaw: -12, pitch: 10 });
-  const velocityRef = useRef({ vx: 0, vy: 0 });
-  const lastMoveRef = useRef({ x: 0, y: 0, t: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0, yaw: 0, pitch: 0 });
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-
-  const waypoints = useMemo(() => {
-    return (
-      activeScene.trajectoryWaypoints ?? [
-        {
-          step: 1,
-          title: "核心到达与换乘口",
-          hint: "第一视角沿无障碍指示直行，避开拥挤旅行团通道",
-          cameraPreset: { yaw: -24, pitch: 6, zoom: 1.1 },
-        },
-        {
-          step: 2,
-          title: "中轴全景观察机位",
-          hint: "空间模型标定最佳机位，建筑对称度与景深完美",
-          cameraPreset: { yaw: 0, pitch: 12, zoom: 1.25 },
-        },
-        {
-          step: 3,
-          title: "快速出站与接驳通道",
-          hint: "右转直通出租车乘车点与外币兑换机，节省15分钟",
-          cameraPreset: { yaw: 24, pitch: 8, zoom: 1.18 },
-        },
-      ]
-    );
-  }, [activeScene]);
-
-  const temporal = useMemo(() => {
-    return (
-      activeScene.temporalComparison ?? {
-        labelA: "盛世原貌 / 历史数字复原",
-        labelB: "现代实景 / 空间实测点云",
-        descA: "严格基于历史营造则例构建的数字原貌，斗拱飞檐雕梁画栋重现辉煌盛景。",
-        descB: "2026 年现代高斯点云精准扫描实景，历经风雨修缮的历史沉淀与现代城市共生。",
-      }
-    );
-  }, [activeScene]);
-
-  const solarInfo = useMemo(() => calculateSolarLighting(simulatedHour), [simulatedHour]);
+  const solar = useMemo(() => computeSolarTint(hour), [hour]);
 
   useEffect(() => {
-    renderModeRef.current = renderMode;
-  }, [renderMode]);
+    solarRef.current = solar;
+  }, [solar]);
 
-  const handleSceneSelect = (idx: number) => {
-    setSelectedSceneIdx(idx);
-    setActiveStepIdx(0);
-    setIsAutoCruising(false);
-    const nextScene = scenes[idx] ?? scenes[0];
-    if (nextScene?.hotspots[0]) {
-      const preset = nextScene.hotspots[0].cameraPreset;
-      targetCamRef.current = { ...preset };
-      setHudAngles({ yaw: preset.yaw, pitch: preset.pitch });
-    }
+  const jumpToStep = (idx: number) => {
+    const wp = SPLAT_WAYPOINTS[idx] ?? SPLAT_WAYPOINTS[0];
+    setStepIdx(idx);
+    poseTargetRef.current = {
+      pos: [...wp.pos],
+      lookAt: [...wp.lookAt],
+      yawOffset: 0,
+      pitchOffset: 0,
+    };
+    setYawDeg(0);
+    setPitchDeg(0);
   };
 
-  const flyToPreset = (preset: { yaw: number; pitch: number; zoom: number }) => {
-    velocityRef.current = { vx: 0, vy: 0 };
-    targetCamRef.current = { ...preset };
-    setHudAngles({ yaw: Math.round(preset.yaw), pitch: Math.round(preset.pitch) });
-  };
-
-  const handleStepJump = (idx: number, wp: TrajectoryWaypoint) => {
-    setActiveStepIdx(idx);
-    flyToPreset(wp.cameraPreset);
-  };
-
-  // 连续自动运镜巡航逻辑
   useEffect(() => {
-    if (!isAutoCruising) return;
-
-    const interval = setInterval(() => {
-      setActiveStepIdx((prev) => {
-        const next = (prev + 1) % waypoints.length;
-        const targetWp = waypoints[next];
-        if (targetWp) {
-          flyToPreset(targetWp.cameraPreset);
+    if (!autoWalk) return;
+    const timer = window.setInterval(() => {
+      setStepIdx((prev) => {
+        const next = (prev + 1) % SPLAT_WAYPOINTS.length;
+        const wp = SPLAT_WAYPOINTS[next];
+        if (wp) {
+          poseTargetRef.current = {
+            pos: [...wp.pos],
+            lookAt: [...wp.lookAt],
+            yawOffset: 0,
+            pitchOffset: 0,
+          };
         }
         return next;
       });
-    }, 3600);
+    }, 3400);
+    return () => window.clearInterval(timer);
+  }, [autoWalk]);
 
-    return () => clearInterval(interval);
-  }, [isAutoCruising, waypoints]);
-
-  // 120Hz 连续物理相机运镜与高斯点云粒子渲染
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: true });
-    if (!ctx) return;
+    let disposed = false;
+    let stopLoop = () => {};
 
-    const particles = createSceneParticles(activeScene.id);
-    const projected = particles.map(() => ({
-      sx: 0,
-      sy: 0,
-      zDepth: 0,
-      r: 1,
-      color: "#ffffff",
-      alpha: 0.5,
-    }));
+    (async () => {
+      try {
+        const THREE = await import("three");
+        const { SparkRenderer, SplatMesh } = await import("@sparkjsdev/spark");
+        const host = hostRef.current;
+        if (!host || disposed) return;
 
-    let animId = 0;
-    let tick = 0;
-    let frameCount = 0;
+        const width = Math.max(320, host.clientWidth);
+        const height = Math.max(260, host.clientHeight);
 
-    const render = () => {
-      tick += 0.008;
-      frameCount += 1;
+        const renderer = new THREE.WebGLRenderer({
+          antialias: false,
+          powerPreference: "high-performance",
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setSize(width, height);
+        host.innerHTML = "";
+        host.appendChild(renderer.domElement);
 
-      if (!isDraggingRef.current) {
-        if (
-          Math.abs(velocityRef.current.vx) > 0.02 ||
-          Math.abs(velocityRef.current.vy) > 0.02
-        ) {
-          targetCamRef.current.yaw = Math.max(
-            -75,
-            Math.min(75, targetCamRef.current.yaw + velocityRef.current.vx)
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(58, width / height, 0.05, 800);
+        const spark = new SparkRenderer({ renderer });
+        scene.add(spark);
+
+        const mesh = new SplatMesh({ url: "/splats/transit-platform.splat" });
+        mesh.quaternion.set(1, 0, 0, 0);
+        scene.add(mesh);
+
+        const curPos = new THREE.Vector3(...SPLAT_WAYPOINTS[0].pos);
+        const curLook = new THREE.Vector3(...SPLAT_WAYPOINTS[0].lookAt);
+        camera.position.copy(curPos);
+        camera.lookAt(curLook);
+
+        const onResize = () => {
+          if (!host || disposed) return;
+          const nw = Math.max(320, host.clientWidth);
+          const nh = Math.max(260, host.clientHeight);
+          camera.aspect = nw / nh;
+          camera.updateProjectionMatrix();
+          renderer.setSize(nw, nh);
+        };
+        window.addEventListener("resize", onResize);
+
+        await mesh.initialized;
+        if (disposed) {
+          window.removeEventListener("resize", onResize);
+          renderer.dispose();
+          return;
+        }
+
+        setSplatCount(mesh.numSplats || 500000);
+        setSplatStatus("ready");
+
+        let frame = 0;
+        renderer.setAnimationLoop(() => {
+          frame += 1;
+          const tgt = poseTargetRef.current;
+          const targetPosVec = new THREE.Vector3(
+            tgt.pos[0],
+            tgt.pos[1],
+            tgt.pos[2]
           );
-          targetCamRef.current.pitch = Math.max(
-            -15,
-            Math.min(45, targetCamRef.current.pitch + velocityRef.current.vy)
+
+          const baseDx = tgt.lookAt[0] - tgt.pos[0];
+          const baseDy = tgt.lookAt[1] - tgt.pos[1];
+          const baseDz = tgt.lookAt[2] - tgt.pos[2];
+          const yawRad = (tgt.yawOffset * Math.PI) / 180;
+          const pitchRad = (tgt.pitchOffset * Math.PI) / 180;
+          const cosY = Math.cos(yawRad);
+          const sinY = Math.sin(yawRad);
+          const rotX = baseDx * cosY - baseDz * sinY;
+          const rotZ = baseDx * sinY + baseDz * cosY;
+          const rotY = baseDy + Math.tan(pitchRad) * 2.2;
+
+          const targetLookVec = new THREE.Vector3(
+            tgt.pos[0] + rotX,
+            tgt.pos[1] + rotY,
+            tgt.pos[2] + rotZ
           );
-          velocityRef.current.vx *= 0.92;
-          velocityRef.current.vy *= 0.92;
+
+          curPos.lerp(targetPosVec, 0.08);
+          curLook.lerp(targetLookVec, 0.12);
+          camera.position.copy(curPos);
+          camera.lookAt(curLook);
+
+          const s = solarRef.current;
+          mesh.recolor.setRGB(s.r, s.g, s.b);
+
+          if (frame % 10 === 0) {
+            setYawDeg(Math.round(tgt.yawOffset));
+            setPitchDeg(Math.round(tgt.pitchOffset));
+          }
+
+          renderer.render(scene, camera);
+        });
+
+        stopLoop = () => {
+          window.removeEventListener("resize", onResize);
+          renderer.setAnimationLoop(null);
+          renderer.dispose();
+        };
+      } catch {
+        if (!disposed) {
+          setSplatStatus("fallback");
         }
       }
+    })();
 
-      // 相机平滑插值 (Camera Trajectory Smoothing)
-      const cur = currentCamRef.current;
-      const tgt = targetCamRef.current;
-      cur.yaw += (tgt.yaw - cur.yaw) * 0.12;
-      cur.pitch += (tgt.pitch - cur.pitch) * 0.12;
-      cur.zoom += (tgt.zoom - cur.zoom) * 0.12;
-
-      // 背景微视差映射
-      if (imgRef.current) {
-        const px = (-cur.yaw * 0.26).toFixed(2);
-        const py = (-cur.pitch * 0.2).toFixed(2);
-        imgRef.current.style.transform = `scale(${cur.zoom * 1.05}) translate3d(${px}px, ${py}px, 0)`;
-      }
-
-      if (frameCount % 8 === 0) {
-        const ry = Math.round(cur.yaw);
-        const rp = Math.round(cur.pitch);
-        setHudAngles((prev) =>
-          prev.yaw === ry && prev.pitch === rp ? prev : { yaw: ry, pitch: rp }
-        );
-      }
-
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      const yawRad = ((cur.yaw + Math.sin(tick) * 1.2) * Math.PI) / 180;
-      const pitchRad = (cur.pitch * Math.PI) / 180;
-      const cosY = Math.cos(yawRad);
-      const sinY = Math.sin(yawRad);
-      const cosP = Math.cos(pitchRad);
-      const sinP = Math.sin(pitchRad);
-
-      const fov = 350 * cur.zoom;
-      const isSplatOnly = renderModeRef.current === "splat";
-
-      let count = 0;
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        const rx = p.x * cosY - p.z * sinY;
-        const rz1 = p.x * sinY + p.z * cosY;
-        const ry = p.y * cosP - rz1 * sinP;
-        const rz = p.y * sinP + rz1 * cosP + 290;
-
-        if (rz <= 25) continue;
-        const scale = fov / rz;
-        const slot = projected[count++];
-        slot.sx = w / 2 + rx * scale;
-        slot.sy = h * 0.52 + ry * scale;
-        slot.zDepth = rz;
-        slot.r = Math.max(1.1, p.size * scale * 0.7);
-        slot.color = activeScene.splatPalette[p.colorIndex] ?? "#ffffff";
-        slot.alpha = Math.min(
-          0.9,
-          Math.max(0.15, (390 - rz) / 320) * (isSplatOnly ? 0.95 : 0.45)
-        );
-      }
-
-      for (let i = 0; i < count; i++) {
-        const pt = projected[i];
-        ctx.beginPath();
-        ctx.fillStyle = pt.color;
-        ctx.globalAlpha = pt.alpha;
-        ctx.arc(pt.sx, pt.sy, pt.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-
-      animId = window.requestAnimationFrame(render);
+    return () => {
+      disposed = true;
+      stopLoop();
     };
+  }, []);
 
-    animId = window.requestAnimationFrame(render);
-    return () => window.cancelAnimationFrame(animId);
-  }, [activeScene]);
-
-  // 鼠标与触控拖拽监听
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     isDraggingRef.current = true;
-    velocityRef.current = { vx: 0, vy: 0 };
     dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
-      yaw: targetCamRef.current.yaw,
-      pitch: targetCamRef.current.pitch,
-    };
-    lastMoveRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      t: performance.now(),
+      yaw: poseTargetRef.current.yawOffset,
+      pitch: poseTargetRef.current.pitchOffset,
     };
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return;
-    const now = performance.now();
-    const dt = Math.max(8, now - lastMoveRef.current.t);
-    const vx = ((e.clientX - lastMoveRef.current.x) / dt) * 4.2;
-    const vy = ((e.clientY - lastMoveRef.current.y) / dt) * 2.8;
-    velocityRef.current = { vx, vy };
-    lastMoveRef.current = { x: e.clientX, y: e.clientY, t: now };
-
     const dx = e.clientX - dragStartRef.current.x;
     const dy = e.clientY - dragStartRef.current.y;
-    targetCamRef.current.yaw = Math.max(
-      -75,
-      Math.min(75, dragStartRef.current.yaw + dx * 0.32)
+    poseTargetRef.current.yawOffset = Math.max(
+      -55,
+      Math.min(55, dragStartRef.current.yaw + dx * 0.22)
     );
-    targetCamRef.current.pitch = Math.max(
-      -15,
-      Math.min(45, dragStartRef.current.pitch + dy * 0.22)
+    poseTargetRef.current.pitchOffset = Math.max(
+      -25,
+      Math.min(25, dragStartRef.current.pitch - dy * 0.16)
     );
   };
 
@@ -405,368 +322,238 @@ export function WorldModelViewport({
     isDraggingRef.current = false;
   };
 
-  // 格式化模拟时间 (e.g. 17.5 -> 17:30)
-  const formatSimTime = (val: number) => {
-    const hours = Math.floor(val);
-    const minutes = Math.round((val - hours) * 60);
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-  };
+  const currentWaypoint = SPLAT_WAYPOINTS[stepIdx] ?? SPLAT_WAYPOINTS[0];
+  const cityWaypoints = activeScene.trajectoryWaypoints ?? [];
 
   return (
-    <div className="space-y-4">
-      {/* 1. 核心世界模型模式控制切换器 */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
-        <div className="flex items-center gap-1 rounded-xl bg-white/[0.05] p-1 border border-white/[0.08]">
+    <div className="rounded-2xl bg-[#141418] p-5 sm:p-7">
+      {/* 顶栏：模式切换与实时状态 */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-5">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => {
-              setActiveFeatureMode("trajectory");
-              setIsAutoCruising(false);
-            }}
-            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              activeFeatureMode === "trajectory"
-                ? "bg-white text-black shadow-md shadow-white/10"
-                : "text-zinc-400 hover:text-white"
+            onClick={() => setViewSource("splat3d")}
+            className={`terra-btn rounded-full px-5 py-2 text-[18px] font-semibold ${
+              viewSource === "splat3d"
+                ? "bg-[#ff6b3d] text-[#0a0a0c]"
+                : "bg-[#1e1e24] text-[#f5f5f7]"
             }`}
           >
-            <span>第一视角空间动线推演</span>
+            3D 高斯实景扫描舱 (50万体素)
           </button>
-
           <button
             type="button"
-            onClick={() => {
-              setActiveFeatureMode("temporal");
-              setIsAutoCruising(false);
-            }}
-            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              activeFeatureMode === "temporal"
-                ? "bg-white text-black shadow-md shadow-white/10"
-                : "text-zinc-400 hover:text-white"
+            onClick={() => setViewSource("landmark")}
+            className={`terra-btn rounded-full px-5 py-2 text-[18px] font-semibold ${
+              viewSource === "landmark"
+                ? "bg-[#ff6b3d] text-[#0a0a0c]"
+                : "bg-[#1e1e24] text-[#f5f5f7]"
             }`}
           >
-            <Sun className="h-3.5 w-3.5 text-amber-400" />
-            <span>24h 时空光影与物理孪生</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveFeatureMode("explore");
-              setIsAutoCruising(false);
-            }}
-            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              activeFeatureMode === "explore"
-                ? "bg-white text-black shadow-md shadow-white/10"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-            <span>3D 高斯点云自由漫游</span>
+            {destinationCity} 地标动线预演
           </button>
         </div>
 
-        {/* 场景选择标签 */}
-        <div className="flex items-center gap-2 overflow-x-auto py-1">
-          {scenes.map((scene, idx) => {
-            const isSelected = idx === selectedSceneIdx;
-            return (
-              <button
-                key={scene.id}
-                type="button"
-                onClick={() => handleSceneSelect(idx)}
-                className={`group flex shrink-0 items-center gap-2 rounded-xl border px-3 py-1.5 text-left transition-all ${
-                  isSelected
-                    ? "border-[#ff5a26] bg-[#ff5a26]/10 text-white shadow-sm shadow-[#ff5a26]/10"
-                    : "border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-white"
-                }`}
-              >
-                <img
-                  src={scene.image}
-                  alt={scene.name}
-                  className="h-6 w-9 shrink-0 rounded-md object-cover ring-1 ring-white/10"
-                />
-                <div className="text-left">
-                  <div className="text-xs font-medium leading-none">{scene.name}</div>
-                  <div className="text-[10px] font-mono-numbers text-zinc-500 mt-0.5">{scene.elevation}</div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-4 text-[18px] text-[#f5f5f7] tnum">
+          <span>
+            World Labs Spark ({splatCount.toLocaleString()} 高斯点)
+          </span>
+          <span>
+            偏航 {yawDeg}° / 俯仰 {pitchDeg}°
+          </span>
         </div>
       </div>
 
-      {/* 2. 主三维世界模型视窗舞台 (World Model Canvas Stage) */}
+      {/* 3D 视窗主体 */}
       <div
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        className={`group relative cursor-grab touch-none select-none overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0c0c0e] shadow-2xl active:cursor-grabbing ${
-          compact ? "h-[320px]" : "h-[440px] md:h-[520px]"
-        }`}
+        className="relative h-[440px] sm:h-[540px] w-full cursor-grab overflow-hidden rounded-xl bg-[#0a0a0c] select-none touch-none active:cursor-grabbing"
       >
-        {/* 背景高保真摄影与时空光影着色层 */}
-        <img
-          ref={imgRef}
-          src={activeScene.image}
-          alt={activeScene.name}
-          className={`pointer-events-none absolute inset-0 h-full w-full object-cover will-change-transform transition-opacity duration-300 ${
-            renderMode === "hybrid" ? "opacity-95" : "opacity-25"
+        <div
+          ref={hostRef}
+          className={`absolute inset-0 h-full w-full ${
+            viewSource === "splat3d" && splatStatus === "ready"
+              ? "opacity-100"
+              : "opacity-0 pointer-events-none"
           }`}
-          style={{
-            transform: "scale(1.1)",
-            filter:
-              activeFeatureMode === "temporal"
-                ? solarInfo.filterCss
-                : undefined,
-          }}
         />
 
-        {/* 历史时空孪生滑块对比层 (Temporal Spatiotemporal Twin Overlay) */}
-        {activeFeatureMode === "temporal" && (
-          <div
-            className="pointer-events-none absolute inset-0 overflow-hidden"
-            style={{ width: `${splitPos}%`, borderRight: "2px solid #ff5a26" }}
-          >
-            <div
-              className="absolute inset-0 h-full w-full bg-cover bg-center"
-              style={{
-                backgroundImage: `url(${activeScene.image})`,
-                filter: "sepia(0.8) contrast(1.2) brightness(0.85) hue-rotate(-20deg)",
-                transform: "scale(1.1)",
-              }}
-            >
-              <div className="absolute top-14 left-4 rounded-md border border-amber-500/30 bg-black/80 px-2.5 py-1 text-[10px] font-mono-numbers font-medium text-amber-400 backdrop-blur-md">
-                {temporal.labelA}
-              </div>
-            </div>
-          </div>
+        {viewSource === "splat3d" && splatStatus !== "ready" && (
+          <img
+            src="/splats/transit-platform-poster.jpg"
+            alt="交通枢纽站台三维高斯泼溅实景扫描"
+            width={1280}
+            height={720}
+            style={{ filter: solar.cssFilter }}
+            className="h-full w-full object-cover"
+          />
         )}
 
-        {/* 3D 高斯点云动态投影画布 (3DGS Splat Canvas) */}
-        <canvas
-          ref={canvasRef}
-          width={920}
-          height={560}
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-        />
+        {viewSource === "landmark" && (
+          <img
+            src={activeScene.image}
+            alt={activeScene.name}
+            width={1280}
+            height={720}
+            style={{
+              filter: solar.cssFilter,
+              transform: `scale(1.06) translate3d(${(-yawDeg * 0.35).toFixed(1)}px, ${(-pitchDeg * 0.25).toFixed(1)}px, 0)`,
+            }}
+            className="h-full w-full object-cover"
+          />
+        )}
 
-        {/* 顶部专业 HUD 遥测仪表盘 */}
-        <div className="absolute inset-x-4 top-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/75 px-3 py-1 text-[11px] font-mono-numbers text-white backdrop-blur-xl shadow-lg">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-semibold text-zinc-200">
-              {activeFeatureMode === "trajectory"
-                ? `航路动线推演 · 航点 ${activeStepIdx + 1}/${waypoints.length}`
-                : activeFeatureMode === "temporal"
-                ? `物理光影孪生 · ${formatSimTime(simulatedHour)} (${solarInfo.elevation}° Elev / ${solarInfo.kelvin}K)`
-                : `3D 自由漫游 · ${activeScene.coordinates}`}
-            </span>
-          </div>
-
-          {/* 渲染模式与遥测参数 */}
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] font-mono-numbers text-zinc-400 backdrop-blur-md">
-              <span>YAW: {hudAngles.yaw}°</span>
-              <span className="text-zinc-600">|</span>
-              <span>PITCH: {hudAngles.pitch}°</span>
-              <span className="text-zinc-600">|</span>
-              <span>SPLAT: 1.42M</span>
-            </div>
-
-            <div className="flex shrink-0 items-center rounded-full border border-white/10 bg-black/70 p-0.5 backdrop-blur-xl">
-              <button
-                type="button"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRenderMode("hybrid");
-                }}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-all ${
-                  renderMode === "hybrid"
-                    ? "bg-white text-black shadow-sm"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                实景混合
-              </button>
-              <button
-                type="button"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRenderMode("splat");
-                }}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-all ${
-                  renderMode === "splat"
-                    ? "bg-white text-black shadow-sm"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                3D 高斯点云
-              </button>
-            </div>
-          </div>
+        {/* 左上角状态角标 */}
+        <div className="pointer-events-none absolute top-4 left-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-[#0a0a0c] px-4 py-1.5 text-[18px] font-medium text-[#f5f5f7] tnum">
+            {viewSource === "splat3d"
+              ? splatStatus === "ready"
+                ? "实时 3DGS 渲染 · 按住画面拖动可 360° 环顾"
+                : "正在加载 500,000 个三维高斯基元..."
+              : `${activeScene.name} · ${activeScene.coordinates}`}
+          </span>
+          <span className="rounded-full bg-[#0a0a0c] px-4 py-1.5 text-[18px] text-[#f5f5f7] tnum">
+            {formatClock(hour)} {solar.label} ({solar.kelvin}K)
+          </span>
         </div>
 
-        {/* 模式 1：动线巡航浮层提示与自动播放控制器 */}
-        {activeFeatureMode === "trajectory" && (
-          <div className="pointer-events-none absolute inset-x-4 bottom-5 flex flex-col items-center">
-            <div className="pointer-events-auto flex flex-col items-center gap-3 rounded-2xl border border-white/15 bg-black/85 p-3.5 text-white backdrop-blur-xl shadow-2xl max-w-lg w-full">
-              <div className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-[#ff5a26] px-2 py-0.5 text-[10px] font-mono-numbers font-bold text-white uppercase">
-                    STEP {activeStepIdx + 1}
-                  </span>
-                  <span className="text-sm font-bold text-white tracking-tight">
-                    {waypoints[activeStepIdx]?.title}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsAutoCruising(!isAutoCruising)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
-                    isAutoCruising
-                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
-                      : "border border-white/20 bg-white/10 text-white hover:bg-white/20"
-                  }`}
-                >
-                  {isAutoCruising ? (
-                    <>
-                      <Pause className="h-3 w-3" />
-                      <span>正在巡航</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-3 w-3" />
-                      <span>自动运镜巡航</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <p className="w-full text-xs text-zinc-300 leading-relaxed">
-                {waypoints[activeStepIdx]?.hint}
-              </p>
-
-              {/* 节点步进进度条 */}
-              <div className="flex w-full gap-1.5 pt-1">
-                {waypoints.map((wp, idx) => (
+        {/* 底部动线控制面板 */}
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute inset-x-4 bottom-4 rounded-xl bg-[#0a0a0c]/95 p-4 text-[#f5f5f7]"
+        >
+          {viewSource === "splat3d" ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="m-0 text-[18px] font-semibold">
+                  {currentWaypoint.title}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {SPLAT_WAYPOINTS.map((wp, idx) => (
+                    <button
+                      key={wp.title}
+                      type="button"
+                      onClick={() => {
+                        setAutoWalk(false);
+                        jumpToStep(idx);
+                      }}
+                      className={`terra-btn rounded-full px-3.5 py-1 text-[18px] font-semibold tnum ${
+                        stepIdx === idx
+                          ? "bg-[#ff6b3d] text-[#0a0a0c]"
+                          : "bg-[#1e1e24] text-[#f5f5f7]"
+                      }`}
+                    >
+                      节点 {idx + 1}
+                    </button>
+                  ))}
                   <button
-                    key={wp.step}
                     type="button"
-                    onClick={() => handleStepJump(idx, wp)}
-                    className={`h-1.5 flex-1 rounded-full transition-all ${
-                      idx === activeStepIdx
-                        ? "bg-[#ff5a26]"
-                        : "bg-white/20 hover:bg-white/40"
+                    onClick={() => setAutoWalk((v) => !v)}
+                    className={`terra-btn rounded-full px-4 py-1 text-[18px] font-semibold ${
+                      autoWalk
+                        ? "bg-white text-[#0a0a0c]"
+                        : "bg-[#1e1e24] text-[#f5f5f7]"
                     }`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 模式 2：24小时物理时空演化与光影推演控制条 */}
-        {activeFeatureMode === "temporal" && (
-          <div className="pointer-events-auto absolute inset-x-4 bottom-5 flex flex-col items-center">
-            <div className="flex flex-col gap-3 rounded-2xl border border-white/15 bg-black/85 p-4 text-white backdrop-blur-xl shadow-2xl max-w-xl w-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sun className="h-4 w-4 text-amber-400" />
-                  <span className="text-xs font-bold text-white">
-                    24小时太阳高度角与环境光影演算
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 font-mono-numbers text-xs">
-                  <span className="rounded bg-white/10 px-2 py-0.5 text-amber-300 font-semibold">
-                    {formatSimTime(simulatedHour)}
-                  </span>
-                  <span className="text-zinc-400">
-                    高度角: {solarInfo.elevation}° | 色温: {solarInfo.kelvin}K
-                  </span>
+                  >
+                    {autoWalk ? "暂停漫游" : "自动走一遍"}
+                  </button>
                 </div>
               </div>
-
-              {/* 时间滑块 */}
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono-numbers text-zinc-500">06:00 晨</span>
-                <input
-                  type="range"
-                  min="6.0"
-                  max="23.0"
-                  step="0.25"
-                  value={simulatedHour}
-                  onChange={(e) => setSimulatedHour(parseFloat(e.target.value))}
-                  className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-[#ff5a26]"
-                />
-                <span className="text-[11px] font-mono-numbers text-zinc-500">23:00 夜</span>
-              </div>
-
-              <div className="flex items-start gap-2 border-t border-white/10 pt-2 text-[11px] text-zinc-300">
-                <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#ff5a26] mt-0.5" />
-                <span>{solarInfo.lightDescription}</span>
-              </div>
-
-              {/* 历史原貌对比分割线滑块 */}
-              <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[10px] text-zinc-400">
-                <span>历史原貌 ({splitPos}%)</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={splitPos}
-                  onChange={(e) => setSplitPos(parseInt(e.target.value, 10))}
-                  className="mx-2 h-1.5 w-32 cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-amber-500"
-                />
-                <span>现代实景 ({100 - splitPos}%)</span>
-              </div>
+              <p className="m-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
+                {currentWaypoint.advice}
+              </p>
             </div>
-          </div>
-        )}
-
-        {/* 模式 3：3D 自由漫游操控指南 */}
-        {activeFeatureMode === "explore" && (
-          <div className="pointer-events-none absolute inset-x-4 bottom-5 flex justify-center">
-            <div className="flex items-center gap-3 rounded-full border border-white/10 bg-black/75 px-4 py-2 text-xs text-zinc-300 backdrop-blur-xl">
-              <span className="flex h-2 w-2 rounded-full bg-cyan-400" />
-              <span>按住鼠标左键或在屏幕滑动可 360° 旋转俯仰视角，滚轮可平滑推进距离</span>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="m-0 text-[18px] font-semibold">
+                  {activeScene.name} · {cityWaypoints[stepIdx]?.title ?? activeScene.elevation}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {scenes.map((sc, idx) => (
+                    <button
+                      key={sc.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSceneIdx(idx);
+                        setStepIdx(0);
+                      }}
+                      className={`terra-btn rounded-full px-3.5 py-1 text-[18px] font-semibold ${
+                        selectedSceneIdx === idx
+                          ? "bg-[#ff6b3d] text-[#0a0a0c]"
+                          : "bg-[#1e1e24] text-[#f5f5f7]"
+                      }`}
+                    >
+                      {sc.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="m-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
+                {cityWaypoints[stepIdx]?.hint ?? activeScene.spatialSummary}
+              </p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* 底部场景空间与避坑硬核摘要 (Apple Pro Card) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3.5">
-          <div className="text-[11px] font-mono-numbers text-zinc-500 uppercase tracking-wider">
-            Spatial Anchor 空间基准
+      {/* 下方：24小时时段光照推演条 + 贴心避坑提示 */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-7">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor="terra-hour-slider" className="text-[18px] font-semibold text-[#f5f5f7]">
+              拖动时间看光照变化：{formatClock(hour)} ({solar.label} · 仰角 {solar.elevation}°)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "清晨 07:00", val: 7.0 },
+                { label: "正午 12:30", val: 12.5 },
+                { label: "日落 17:30", val: 17.5 },
+                { label: "夜间 20:30", val: 20.5 },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setHour(preset.val)}
+                  className={`terra-btn rounded-full px-3 py-1 text-[18px] font-semibold tnum ${
+                    Math.abs(hour - preset.val) < 0.3
+                      ? "bg-[#ff6b3d] text-[#0a0a0c]"
+                      : "bg-[#1e1e24] text-[#f5f5f7]"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="mt-1 text-xs font-semibold text-white">{activeScene.name}</div>
-          <p className="mt-1 text-[11px] text-zinc-400 leading-relaxed line-clamp-2">
-            {activeScene.spatialSummary}
+          <input
+            id="terra-hour-slider"
+            type="range"
+            min="6.0"
+            max="22.0"
+            step="0.25"
+            value={hour}
+            onChange={(e) => setHour(parseFloat(e.target.value))}
+            aria-label="时段光照推演滑块"
+            className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#0a0a0c] accent-[#ff6b3d]"
+          />
+          <p className="mt-2 mb-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
+            {solar.advice}
           </p>
         </div>
 
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3.5">
-          <div className="text-[11px] font-mono-numbers text-zinc-500 uppercase tracking-wider">
-            Optimal Window 最佳光线与时段
-          </div>
-          <div className="mt-1 text-xs font-semibold text-emerald-400">{activeScene.bestTime}</div>
-          <p className="mt-1 text-[11px] text-zinc-400 leading-relaxed">
-            世界模型已预先计算人群流量波峰波谷与太阳方位角，建议按预演时段前往。
+        <div className="lg:col-span-5">
+          <p className="m-0 text-[18px] font-semibold text-[#f5f5f7]">
+            {activeScene.name} · 预约与最佳时段提醒
           </p>
-        </div>
-
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3.5">
-          <div className="text-[11px] font-mono-numbers text-zinc-500 uppercase tracking-wider">
-            Rule & Booking 通关预约避坑
-          </div>
-          <div className="mt-1 text-xs font-semibold text-amber-400">{activeScene.bookingRule}</div>
-          <p className="mt-1 text-[11px] text-zinc-400 leading-relaxed">
-            避免现场因未预约或支付不支持而受阻，提前在控制台中完成离线备忘。
+          <p className="mt-1 mb-0 max-w-[56ch] text-[18px] text-[#d4d4dc]">
+            最佳时段：{activeScene.bestTime}
+          </p>
+          <p className="mt-1 mb-0 max-w-[56ch] text-[18px] text-[#f5f5f7]">
+            贴心提醒：{activeScene.bookingRule}
           </p>
         </div>
       </div>

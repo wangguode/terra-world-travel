@@ -1,4 +1,4 @@
-import { CORRIDORS, type CorridorId } from "@/lib/corridors-data";
+import type { CorridorId } from "@/lib/corridors-data";
 
 export interface SurvivalPlanRequest {
   corridorId?: CorridorId;
@@ -32,7 +32,6 @@ export function buildFallbackPlan(
   travelerStyle: string,
   hotelArea: string
 ): SurvivalPlanResponse {
-  const c = CORRIDORS[corridorId] ?? CORRIDORS["cn-to-seoul"];
   if (corridorId === "cn-to-seoul") {
     return {
       ok: true,
