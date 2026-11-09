@@ -22,42 +22,13 @@
 ## 2. 系统架构图（全景空间神经世界模型架构）
 
 <p align="center">
-  <img src="./docs/architecture/terra-panoramic-architecture.png" alt="TERRA Panoramic Architecture" width="100%" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/architecture-dark.svg">
+    <img alt="TERRA Panoramic Architecture" src="./docs/assets/architecture-light.svg" width="100%">
+  </picture>
 </p>
 
-> 仓库内同时提供可交互式 HTML 架构图：[docs/architecture/terra-architecture.html](docs/architecture/terra-architecture.html)
-
-```mermaid
-flowchart TB
-    subgraph Client["前端交互层 (Next.js 16 App Router · Editorial Colour-Chapters)"]
-        Switch["双向跨国走廊切换器\n(CN → Seoul 首尔 / Global → Beijing 北京)"]
-        Timeline["模块 01：黄金 120 分钟落地生存时间轴\n(eSIM · WOWPASS/BEIJING PASS · 机场快轨闸机)"]
-        Viewport["模块 02：Web 3D 世界模型空间漫游舱\n(60FPS 3D Gaussian Splatting 点云 + 实景机位锚点)"]
-        AppMatrix["模块 03：跨国本土 App 平替映射矩阵\n(高德/滴滴/点评 ↔ Naver Map/Kakao T/CatchTable)"]
-        DriverDeck["模块 04：『给司机看』全屏双语急救大字卡\n(韩文/中文高对比度离线指令卡 + 一键复制)"]
-        AiForm["模块 05：AI 专属落地生存动线定制器"]
-    end
-
-    subgraph Server["服务端安全网关与数据层 (Server Route & Deterministic Fallback)"]
-        CorridorStore["双城结构化空间与生存知识库\n(src/lib/corridors-data.ts)"]
-        SafetyRoute["AI 安全网关 (/api/survival-plan)\n8.5s 超时控制 · 双端点自动切换 · 离线兜底"]
-    end
-
-    subgraph External["外部模型与商业化联盟闭环"]
-        Bailian["阿里云百炼 / 通义千问 API\n(qwen-plus OpenAI Compatible)"]
-        Affiliate["跨境旅游联盟变现\n(Airalo eSIM · WOWPASS · Klook AREX · Trip.com)"]
-    end
-
-    Switch --> Timeline
-    Switch --> Viewport
-    Switch --> AppMatrix
-    Switch --> DriverDeck
-    CorridorStore --> Switch
-    Timeline --> Affiliate
-    AiForm --> SafetyRoute
-    SafetyRoute --> Bailian
-    SafetyRoute -.->|"断网/超时零故障降级"| CorridorStore
-```
+> 架构设计遵循 AgentScope 2.0 工业级全景架构范式，涵盖左侧协议/双向走廊/模型生态、顶部 3D 渲染与全球边缘基础设施、中上部双向走廊能力胶囊与品牌核心、中央 60FPS 空间漫游与双城动线引擎、右侧离线卡与 SOP 工具链，以及底部运行时可观测体系。支持随 GitHub 主题自动在明亮/暗色模式间切换。
 
 ---
 
