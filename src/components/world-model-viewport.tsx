@@ -1,560 +1,572 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
 import type { WorldModelScene } from "@/lib/corridors-data";
+
+interface SpatialAnchor {
+  id: string;
+  name: string;
+  category: string;
+  xPct: number;
+  yPct: number;
+  pos3D: [number, number, number];
+  headline: string;
+  actionGuide: string;
+  localPhrase: string;
+  phonetic: string;
+}
 
 interface WorldModelViewportProps {
   scenes: WorldModelScene[];
   destinationCity: string;
+  cityId: string;
 }
 
-interface SplatCameraPose {
-  pos: [number, number, number];
-  lookAt: [number, number, number];
-  title: string;
-  advice: string;
-}
+const CITY_SPATIAL_ANCHORS: Record<string, SpatialAnchor[]> = {
+  "cn-to-seoul": [
+    {
+      id: "kr-esim-gate",
+      name: "落地到达层 · eSIM 信号激活口",
+      category: "通信与入境",
+      xPct: 28,
+      yPct: 42,
+      pos3D: [-3, 0.5, 2],
+      headline: "出廊桥前关闭飞行模式，原地激活韩国原生 5G",
+      actionGuide: "Airalo 或 KT 柜台领取的 eSIM 无需关机，开启数据漫游后 15 秒内自动寻网 LG U+ / SKT。",
+      localPhrase: "데이터 로밍이 켜져 있는지 확인해 주세요.",
+      phonetic: "Deiteo roming-i kyeojyeo inneunji hwaginhae juseyo.",
+    },
+    {
+      id: "kr-arex-gate",
+      name: "B1 交通中心 · AREX 机场快轨闸机",
+      category: "直达快线",
+      xPct: 62,
+      yPct: 56,
+      pos3D: [2, -0.2, 0],
+      headline: "认准橙色 Express 直达通道，43 分钟直达首尔站",
+      actionGuide: "普通列车与直达列车闸机相邻，切勿刷进蓝色普通列车。刷二维码或 WOWPASS 进出站。",
+      localPhrase: "서울역 직통열차 개찰구가 어디인가요?",
+      phonetic: "Seoul-yeok jiktong-yeolcha gaechalguga eodi-ingayo?",
+    },
+    {
+      id: "kr-taxi-stop",
+      name: "1F 外部道路 · 国际出租车落客柱",
+      category: "夜间备选",
+      xPct: 78,
+      yPct: 72,
+      pos3D: [4, -1, -3],
+      headline: "4D 空间落客柱 5C，支持 Kakao T 与现金结算",
+      actionGuide: "夜间航班落地快轨停运时，认准橙色国际出租车（司机支持中英基础交流）。",
+      localPhrase: "기사님, 홍대입구역 앞 호텔로 가주세요.",
+      phonetic: "Gisanim, Hongdae-ipgu-yeok ap hotello gajuseyo.",
+    },
+  ],
+  "cn-to-tokyo": [
+    {
+      id: "jp-suica-turnstile",
+      name: "羽田/成田京急与 Skyliner 改札口",
+      category: "交通过闸",
+      xPct: 35,
+      yPct: 48,
+      pos3D: [-2, 0, 1],
+      headline: "Apple 钱包直接刷 Suica / Pasmo 进站",
+      actionGuide: "iPhone 钱包提前添加交通卡，碰触蓝色感应区 0.2 秒即刻开闸，无需在售票机排队购票。",
+      localPhrase: "改札口はSuicaでそのまま通れますか？",
+      phonetic: "Kaisatsuguchi wa Suica de sonomama tooremasu ka?",
+    },
+    {
+      id: "jp-elevator-anchor",
+      name: "站台中央 · 大件行李直梯 (Elevator)",
+      category: "无障碍动线",
+      xPct: 68,
+      yPct: 62,
+      pos3D: [3, 0.4, -1],
+      headline: "东京复杂换乘走廊中的直梯专用动线",
+      actionGuide: "推大件行李箱避开换乘阶梯，沿着站台地面黄色盲道直行 30 米即达中央无障碍直梯。",
+      localPhrase: "すみません、ホーム行きのエレベーターはどこですか？",
+      phonetic: "Sumimasen, hoomu yuki no erebeetaa wa doko desu ka?",
+    },
+  ],
+  "global-to-beijing": [
+    {
+      id: "bj-daxing-express",
+      name: "大兴机场线草桥站快速值机中枢",
+      category: "轨道快线",
+      xPct: 45,
+      yPct: 52,
+      pos3D: [0, 0, 0],
+      headline: "19 分钟 160km/h 贴地飞驰直抵三环草桥",
+      actionGuide: "支持微信乘车码或支付宝直接扫码过闸，草桥站内无缝换乘 10 号线与 19 号线高运量地铁。",
+      localPhrase: "师傅，送我到大兴机场快线草桥换乘中心",
+      phonetic: "Caoqiao Transit Center · Daxing Airport Express",
+    },
+  ],
+  "cn-to-bangkok": [
+    {
+      id: "th-arl-station",
+      name: "素万那普 B1 层 · 机场快线 ARL 始发站",
+      category: "轨道直达",
+      xPct: 40,
+      yPct: 50,
+      pos3D: [-1, 0, 0],
+      headline: "45 泰铢直通市中心，避开素坤逸早晚大塞车",
+      actionGuide: "自助购票机投入泰铢纸币换取黄色塑料代币（Token），26 分钟直达披耶泰（Phaya Thai）换乘天铁 BTS。",
+      localPhrase: "ขอตั๋วรถไฟฟ้าไปพญาไท 1 ใบครับ",
+      phonetic: "Khaw tua rot-fai-faa pai Phaya Thai neung bai khrap.",
+    },
+  ],
+};
 
-const SPLAT_WAYPOINTS: SplatCameraPose[] = [
-  {
-    pos: [-3.0, 0.1, 3.75],
-    lookAt: [0, 0, 0],
-    title: "第一站 · 月台落客点与车头方向辨认",
-    advice: "下车后先在月台立柱旁停三秒，核对车厢朝向与出站扶梯指示牌，切勿盲目跟着人群反方向出闸。",
-  },
-  {
-    pos: [-5.0, 0.5, 1.0],
-    lookAt: [1.0, 0, -1.0],
-    title: "第二站 · 沿站台中段走廊向前",
-    advice: "避开列车门正对的拥挤队列，从外侧宽敞步道快步走向换乘连廊，节省约 10 分钟排队时间。",
-  },
-  {
-    pos: [-4.5, 0.4, -1.5],
-    lookAt: [0, 0, -5.0],
-    title: "第三站 · 抵达出站走廊与刷卡点",
-    advice: "提前在手机钱包调出交通卡或准备好 IC 卡，经过宽通道无障碍闸机直接推行李出站。",
-  },
-];
-
-function computeSolarTint(hour: number): {
-  r: number;
-  g: number;
-  b: number;
-  elevation: number;
-  kelvin: number;
-  cssFilter: string;
-  label: string;
-  advice: string;
-} {
+function computeSolarParams(hour: number) {
   if (hour < 8.5) {
     return {
-      r: 0.92,
-      g: 0.95,
-      b: 1.08,
-      elevation: Math.round(8 + (hour - 6) * 8),
-      kelvin: 4300,
-      cssFilter: "brightness(0.92) contrast(1.06) saturate(1.08)",
-      label: "清晨柔光",
-      advice: "空气通透、旅行团尚未入场，侧顺光下建筑立面细节清楚，是最从容的拍照与通关时段。",
+      kelvin: "4300K",
+      label: "清晨冷光",
+      skyColor: 0x1a2638,
+      gridColor: "#38bdf8",
+      elevation: "8°",
     };
   }
   if (hour < 16.0) {
     return {
-      r: 1.0,
-      g: 1.0,
-      b: 1.0,
-      elevation: Math.round(64 - Math.abs(hour - 12.5) * 6),
-      kelvin: 6000,
-      cssFilter: "brightness(1.04) contrast(1.08)",
-      label: "正午顶光",
-      advice: "日照充足、视野最远，但户外反差较大，建议优先安排室内展馆、地下换乘或买手店街区。",
+      kelvin: "6500K",
+      label: "正午澄澈",
+      skyColor: 0x141e2c,
+      gridColor: "#60a5fa",
+      elevation: "64°",
     };
   }
   if (hour < 19.0) {
     return {
-      r: 1.12,
-      g: 0.92,
-      b: 0.76,
-      elevation: Math.max(3, Math.round(22 - (hour - 16) * 6)),
-      kelvin: 3100,
-      cssFilter: "brightness(0.96) contrast(1.16) saturate(1.26) sepia(0.18)",
+      kelvin: "3100K",
       label: "日落金辉",
-      advice: "夕阳低角度漫射，宫殿飞檐、河岸佛塔与街区红砖墙呈现暖金色轮廓光，是全天最佳出片时刻。",
+      skyColor: 0x331c14,
+      gridColor: "#ff6b3d",
+      elevation: "18°",
     };
   }
   return {
-    r: 0.72,
-    g: 0.82,
-    b: 1.12,
-    elevation: -8,
-    kelvin: 7800,
-    cssFilter: "brightness(0.68) contrast(1.22) saturate(1.18)",
+    kelvin: "2700K",
     label: "夜间蓝调",
-    advice: "夜景灯光亮起，请留意机场快线末班车时间，提前保存好全屏双语司机卡以备夜间打车返程。",
+    skyColor: 0x070b14,
+    gridColor: "#38bdf8",
+    elevation: "-12°",
   };
-}
-
-function formatClock(val: number): string {
-  const h = Math.floor(val);
-  const m = Math.round((val - h) * 60);
-  const mm = m === 0 ? "00" : m < 10 ? `0${m}` : String(m);
-  return `${h}:${mm}`;
 }
 
 export function WorldModelViewport({
   scenes,
   destinationCity,
+  cityId,
 }: WorldModelViewportProps) {
-  const [viewSource, setViewSource] = useState<"splat3d" | "landmark">("splat3d");
-  const [selectedSceneIdx, setSelectedSceneIdx] = useState(0);
-  const activeScene = scenes[selectedSceneIdx] ?? scenes[0];
-
-  const [stepIdx, setStepIdx] = useState(0);
-  const [autoWalk, setAutoWalk] = useState(false);
+  const [activeMode, setActiveMode] = useState<"spatial" | "twin">("spatial");
+  const [selectedSceneIdx] = useState(0);
   const [hour, setHour] = useState<number>(17.5);
-  const [splatStatus, setSplatStatus] = useState<"loading" | "ready" | "fallback">("loading");
-  const [splatCount, setSplatCount] = useState<number>(500000);
-  const [yawDeg, setYawDeg] = useState<number>(0);
-  const [pitchDeg, setPitchDeg] = useState<number>(0);
+  const [activeAnchor, setActiveAnchor] = useState<SpatialAnchor | null>(null);
+  const [isCruising, setIsCruising] = useState<boolean>(false);
+  const [speaking, setSpeaking] = useState<boolean>(false);
 
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const poseTargetRef = useRef<{
-    pos: [number, number, number];
-    lookAt: [number, number, number];
-    yawOffset: number;
-    pitchOffset: number;
-  }>({
-    pos: [...SPLAT_WAYPOINTS[0].pos],
-    lookAt: [...SPLAT_WAYPOINTS[0].lookAt],
-    yawOffset: 0,
-    pitchOffset: 0,
-  });
-  const solarRef = useRef(computeSolarTint(17.5));
-  const isDraggingRef = useRef(false);
-  const dragStartRef = useRef({ x: 0, y: 0, yaw: 0, pitch: 0 });
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const threeStateRef = useRef<{
+    renderer: THREE.WebGLRenderer;
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    points: THREE.Points;
+    scanPlane: THREE.Mesh;
+    gridHelper: THREE.GridHelper;
+    frameId: number;
+    camTarget: THREE.Vector3;
+    camPos: THREE.Vector3;
+  } | null>(null);
 
-  const solar = useMemo(() => computeSolarTint(hour), [hour]);
+  const activeScene = scenes[selectedSceneIdx] ?? scenes[0];
+  const anchors = useMemo(() => {
+    return CITY_SPATIAL_ANCHORS[cityId] ?? CITY_SPATIAL_ANCHORS["cn-to-seoul"];
+  }, [cityId]);
 
+  const solar = useMemo(() => computeSolarParams(hour), [hour]);
+
+  // 初始化 Three.js 激光点云与空间网格
   useEffect(() => {
-    solarRef.current = solar;
-  }, [solar]);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  const jumpToStep = (idx: number) => {
-    const wp = SPLAT_WAYPOINTS[idx] ?? SPLAT_WAYPOINTS[0];
-    setStepIdx(idx);
-    poseTargetRef.current = {
-      pos: [...wp.pos],
-      lookAt: [...wp.lookAt],
-      yawOffset: 0,
-      pitchOffset: 0,
+    const width = canvas.clientWidth || 800;
+    const height = canvas.clientHeight || 480;
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: true,
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x050508, 0.04);
+
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+    camera.position.set(0, 1.2, 5.5);
+
+    const particleCount = 18000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    const baseColor = new THREE.Color("#ff6b3d");
+
+    for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 1.2 + Math.random() * 5.0;
+      const x = Math.cos(angle) * radius;
+      const z = (Math.random() - 0.5) * 14.0;
+      const y = (Math.random() - 0.2) * 3.5;
+
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+
+      const lum = 0.4 + Math.random() * 0.6;
+      colors[i * 3] = baseColor.r * lum;
+      colors[i * 3 + 1] = baseColor.g * lum;
+      colors[i * 3 + 2] = baseColor.b * lum;
+    }
+
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 0.045,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const points = new THREE.Points(geometry, material);
+    scene.add(points);
+
+    const gridHelper = new THREE.GridHelper(24, 24, 0x38bdf8, 0x1e293b);
+    gridHelper.position.y = -0.5;
+    scene.add(gridHelper);
+
+    const scanGeo = new THREE.RingGeometry(0.2, 0.28, 48);
+    const scanMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.5,
+    });
+    const scanPlane = new THREE.Mesh(scanGeo, scanMat);
+    scanPlane.rotation.x = -Math.PI / 2;
+    scanPlane.position.y = -0.48;
+    scene.add(scanPlane);
+
+    const camTarget = new THREE.Vector3(0, 0.6, 0);
+    const camPos = new THREE.Vector3(0, 1.2, 5.5);
+
+    threeStateRef.current = {
+      renderer,
+      scene,
+      camera,
+      points,
+      scanPlane,
+      gridHelper,
+      frameId: 0,
+      camTarget,
+      camPos,
     };
-    setYawDeg(0);
-    setPitchDeg(0);
-  };
 
-  useEffect(() => {
-    if (!autoWalk) return;
-    const timer = window.setInterval(() => {
-      setStepIdx((prev) => {
-        const next = (prev + 1) % SPLAT_WAYPOINTS.length;
-        const wp = SPLAT_WAYPOINTS[next];
-        if (wp) {
-          poseTargetRef.current = {
-            pos: [...wp.pos],
-            lookAt: [...wp.lookAt],
-            yawOffset: 0,
-            pitchOffset: 0,
-          };
-        }
-        return next;
-      });
-    }, 3400);
-    return () => window.clearInterval(timer);
-  }, [autoWalk]);
+    let ringScale = 1.0;
 
-  useEffect(() => {
-    let disposed = false;
-    let stopLoop = () => {};
+    const animate = () => {
+      const state = threeStateRef.current;
+      if (!state) return;
 
-    (async () => {
-      try {
-        const THREE = await import("three");
-        const { SparkRenderer, SplatMesh } = await import("@sparkjsdev/spark");
-        const host = hostRef.current;
-        if (!host || disposed) return;
+      ringScale += 0.025;
+      if (ringScale > 12) ringScale = 0.5;
+      state.scanPlane.scale.set(ringScale, ringScale, 1);
+      (state.scanPlane.material as THREE.MeshBasicMaterial).opacity = Math.max(
+        0,
+        0.6 * (1 - ringScale / 12)
+      );
 
-        const width = Math.max(320, host.clientWidth);
-        const height = Math.max(260, host.clientHeight);
+      state.camera.position.lerp(state.camPos, 0.05);
+      state.camera.lookAt(state.camTarget);
 
-        const renderer = new THREE.WebGLRenderer({
-          antialias: false,
-          powerPreference: "high-performance",
-        });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-        renderer.setSize(width, height);
-        host.innerHTML = "";
-        host.appendChild(renderer.domElement);
+      state.renderer.render(state.scene, state.camera);
+      state.frameId = requestAnimationFrame(animate);
+    };
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(58, width / height, 0.05, 800);
-        const spark = new SparkRenderer({ renderer });
-        scene.add(spark);
+    animate();
 
-        const mesh = new SplatMesh({ url: "/splats/transit-platform.splat" });
-        mesh.quaternion.set(1, 0, 0, 0);
-        scene.add(mesh);
+    const handleResize = () => {
+      if (!canvas || !threeStateRef.current) return;
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      threeStateRef.current.camera.aspect = w / h;
+      threeStateRef.current.camera.updateProjectionMatrix();
+      threeStateRef.current.renderer.setSize(w, h);
+    };
 
-        const curPos = new THREE.Vector3(...SPLAT_WAYPOINTS[0].pos);
-        const curLook = new THREE.Vector3(...SPLAT_WAYPOINTS[0].lookAt);
-        camera.position.copy(curPos);
-        camera.lookAt(curLook);
-
-        const onResize = () => {
-          if (!host || disposed) return;
-          const nw = Math.max(320, host.clientWidth);
-          const nh = Math.max(260, host.clientHeight);
-          camera.aspect = nw / nh;
-          camera.updateProjectionMatrix();
-          renderer.setSize(nw, nh);
-        };
-        window.addEventListener("resize", onResize);
-
-        await mesh.initialized;
-        if (disposed) {
-          window.removeEventListener("resize", onResize);
-          renderer.dispose();
-          return;
-        }
-
-        setSplatCount(mesh.numSplats || 500000);
-        setSplatStatus("ready");
-
-        let frame = 0;
-        renderer.setAnimationLoop(() => {
-          frame += 1;
-          const tgt = poseTargetRef.current;
-          const targetPosVec = new THREE.Vector3(
-            tgt.pos[0],
-            tgt.pos[1],
-            tgt.pos[2]
-          );
-
-          const baseDx = tgt.lookAt[0] - tgt.pos[0];
-          const baseDy = tgt.lookAt[1] - tgt.pos[1];
-          const baseDz = tgt.lookAt[2] - tgt.pos[2];
-          const yawRad = (tgt.yawOffset * Math.PI) / 180;
-          const pitchRad = (tgt.pitchOffset * Math.PI) / 180;
-          const cosY = Math.cos(yawRad);
-          const sinY = Math.sin(yawRad);
-          const rotX = baseDx * cosY - baseDz * sinY;
-          const rotZ = baseDx * sinY + baseDz * cosY;
-          const rotY = baseDy + Math.tan(pitchRad) * 2.2;
-
-          const targetLookVec = new THREE.Vector3(
-            tgt.pos[0] + rotX,
-            tgt.pos[1] + rotY,
-            tgt.pos[2] + rotZ
-          );
-
-          curPos.lerp(targetPosVec, 0.08);
-          curLook.lerp(targetLookVec, 0.12);
-          camera.position.copy(curPos);
-          camera.lookAt(curLook);
-
-          const s = solarRef.current;
-          mesh.recolor.setRGB(s.r, s.g, s.b);
-
-          if (frame % 10 === 0) {
-            setYawDeg(Math.round(tgt.yawOffset));
-            setPitchDeg(Math.round(tgt.pitchOffset));
-          }
-
-          renderer.render(scene, camera);
-        });
-
-        stopLoop = () => {
-          window.removeEventListener("resize", onResize);
-          renderer.setAnimationLoop(null);
-          renderer.dispose();
-        };
-      } catch {
-        if (!disposed) {
-          setSplatStatus("fallback");
-        }
-      }
-    })();
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      disposed = true;
-      stopLoop();
+      window.removeEventListener("resize", handleResize);
+      if (threeStateRef.current) {
+        cancelAnimationFrame(threeStateRef.current.frameId);
+        threeStateRef.current.renderer.dispose();
+      }
     };
   }, []);
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    isDraggingRef.current = true;
-    dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      yaw: poseTargetRef.current.yawOffset,
-      pitch: poseTargetRef.current.pitchOffset,
-    };
-  };
+  useEffect(() => {
+    if (!threeStateRef.current) return;
+    const { points, scene, scanPlane } = threeStateRef.current;
+    const col = new THREE.Color(solar.gridColor);
+    const pos = points.geometry.attributes.position;
+    const colors = points.geometry.attributes.color;
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-    poseTargetRef.current.yawOffset = Math.max(
-      -55,
-      Math.min(55, dragStartRef.current.yaw + dx * 0.22)
-    );
-    poseTargetRef.current.pitchOffset = Math.max(
-      -25,
-      Math.min(25, dragStartRef.current.pitch - dy * 0.16)
-    );
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
+    for (let i = 0; i < pos.count; i++) {
+      const lum = 0.4 + Math.random() * 0.6;
+      colors.setXYZ(i, col.r * lum, col.g * lum, col.b * lum);
     }
-    isDraggingRef.current = false;
+    colors.needsUpdate = true;
+    (scanPlane.material as THREE.MeshBasicMaterial).color.set(col);
+    scene.fog = new THREE.FogExp2(solar.skyColor, 0.04);
+  }, [solar]);
+
+  const isDragging = useRef(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
   };
 
-  const currentWaypoint = SPLAT_WAYPOINTS[stepIdx] ?? SPLAT_WAYPOINTS[0];
-  const cityWaypoints = activeScene.trajectoryWaypoints ?? [];
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !threeStateRef.current) return;
+    const dx = e.clientX - lastMouse.current.x;
+    const dy = e.clientY - lastMouse.current.y;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+
+    const { camPos } = threeStateRef.current;
+    camPos.x += dx * 0.01;
+    camPos.y = Math.max(0.2, Math.min(3.0, camPos.y - dy * 0.01));
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+  };
+
+  const handleSelectAnchor = (anchor: SpatialAnchor) => {
+    setActiveAnchor(anchor);
+    if (!threeStateRef.current) return;
+    const { camPos, camTarget } = threeStateRef.current;
+    camPos.set(anchor.pos3D[0] * 0.6, anchor.pos3D[1] + 1.0, anchor.pos3D[2] + 2.4);
+    camTarget.set(anchor.pos3D[0], anchor.pos3D[1], anchor.pos3D[2]);
+  };
+
+  const handleToggleCruise = () => {
+    if (isCruising) {
+      setIsCruising(false);
+      if (threeStateRef.current) {
+        threeStateRef.current.camPos.set(0, 1.2, 5.5);
+        threeStateRef.current.camTarget.set(0, 0.6, 0);
+      }
+      return;
+    }
+    setIsCruising(true);
+    let step = 0;
+    const cruiseInterval = setInterval(() => {
+      if (!isCruising && step > 0) {
+        clearInterval(cruiseInterval);
+        return;
+      }
+      const targetAnchor = anchors[step % anchors.length];
+      if (targetAnchor) {
+        handleSelectAnchor(targetAnchor);
+      }
+      step++;
+      if (step >= anchors.length * 2) {
+        clearInterval(cruiseInterval);
+        setIsCruising(false);
+      }
+    }, 4200);
+  };
+
+  const speakPhrase = (phrase: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(phrase);
+    u.rate = 0.9;
+    setSpeaking(true);
+    u.onend = () => setSpeaking(false);
+    u.onerror = () => setSpeaking(false);
+    window.speechSynthesis.speak(u);
+  };
 
   return (
-    <div className="rounded-2xl bg-[#141418] p-5 sm:p-7">
-      {/* 顶栏：模式切换与实时状态 */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-5">
+    <div
+      ref={containerRef}
+      className="relative overflow-hidden rounded-3xl bg-[#0a0a0f]"
+    >
+      {/* 顶部极简科技 HUD 栏 */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#14141e] px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setViewSource("splat3d")}
-            className={`terra-btn rounded-full px-5 py-2 text-[18px] font-semibold ${
-              viewSource === "splat3d"
-                ? "bg-[#ff6b3d] text-[#0a0a0c]"
-                : "bg-[#1e1e24] text-[#f5f5f7]"
-            }`}
-          >
-            3D 高斯实景扫描舱 (50万体素)
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewSource("landmark")}
-            className={`terra-btn rounded-full px-5 py-2 text-[18px] font-semibold ${
-              viewSource === "landmark"
-                ? "bg-[#ff6b3d] text-[#0a0a0c]"
-                : "bg-[#1e1e24] text-[#f5f5f7]"
-            }`}
-          >
-            {destinationCity} 地标动线预演
-          </button>
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b3d]" />
+          <span className="text-[18px] font-bold text-white">
+            {destinationCity} · 空间世界模型视窗
+          </span>
+          <span className="rounded-full bg-white/10 px-3 py-0.5 text-[14px] text-white/70 tnum">
+            {activeScene.coordinates}
+          </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 text-[18px] text-[#f5f5f7] tnum">
-          <span>
-            World Labs Spark ({splatCount.toLocaleString()} 高斯点)
-          </span>
-          <span>
-            偏航 {yawDeg}° / 俯仰 {pitchDeg}°
-          </span>
+        {/* 模式切换 */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveMode("spatial")}
+            className={`terra-btn rounded-full px-4 py-1.5 text-[14px] font-semibold ${
+              activeMode === "spatial"
+                ? "bg-[#ff6b3d] text-[#050508]"
+                : "bg-white/10 text-white/80"
+            }`}
+          >
+            4D 体素点云模式
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveMode("twin")}
+            className={`terra-btn rounded-full px-4 py-1.5 text-[14px] font-semibold ${
+              activeMode === "twin"
+                ? "bg-[#ff6b3d] text-[#050508]"
+                : "bg-white/10 text-white/80"
+            }`}
+          >
+            实景空间孪生模式
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleCruise}
+            className={`terra-btn rounded-full px-4 py-1.5 text-[14px] font-semibold ${
+              isCruising
+                ? "bg-white text-black"
+                : "bg-white/10 text-white"
+            }`}
+          >
+            {isCruising ? "正在动线巡航..." : "第一视角动线推演"}
+          </button>
         </div>
       </div>
 
-      {/* 3D 视窗主体 */}
+      {/* 核心三维交互画布舞台 */}
       <div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        className="relative h-[440px] sm:h-[540px] w-full cursor-grab overflow-hidden rounded-xl bg-[#0a0a0c] select-none touch-none active:cursor-grabbing"
+        className="relative h-[480px] sm:h-[560px] w-full cursor-grab active:cursor-grabbing select-none"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
       >
-        <div
-          ref={hostRef}
-          className={`absolute inset-0 h-full w-full ${
-            viewSource === "splat3d" && splatStatus === "ready"
-              ? "opacity-100"
-              : "opacity-0 pointer-events-none"
+        <canvas
+          ref={canvasRef}
+          className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${
+            activeMode === "spatial" ? "opacity-100" : "opacity-30"
           }`}
         />
 
-        {viewSource === "splat3d" && splatStatus !== "ready" && (
-          <img
-            src="/splats/transit-platform-poster.jpg"
-            alt="交通枢纽站台三维高斯泼溅实景扫描"
-            width={1280}
-            height={720}
-            style={{ filter: solar.cssFilter }}
-            className="h-full w-full object-cover"
-          />
-        )}
-
-        {viewSource === "landmark" && (
-          <img
-            src={activeScene.image}
-            alt={activeScene.name}
-            width={1280}
-            height={720}
+        {activeMode === "twin" && (
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-500"
             style={{
-              filter: solar.cssFilter,
-              transform: `scale(1.06) translate3d(${(-yawDeg * 0.35).toFixed(1)}px, ${(-pitchDeg * 0.25).toFixed(1)}px, 0)`,
+              backgroundImage: `url(${activeScene.image})`,
             }}
-            className="h-full w-full object-cover"
           />
         )}
 
-        {/* 左上角状态角标 */}
-        <div className="pointer-events-none absolute top-4 left-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[#0a0a0c] px-4 py-1.5 text-[18px] font-medium text-[#f5f5f7] tnum">
-            {viewSource === "splat3d"
-              ? splatStatus === "ready"
-                ? "实时 3DGS 渲染 · 按住画面拖动可 360° 环顾"
-                : "正在加载 500,000 个三维高斯基元..."
-              : `${activeScene.name} · ${activeScene.coordinates}`}
-          </span>
-          <span className="rounded-full bg-[#0a0a0c] px-4 py-1.5 text-[18px] text-[#f5f5f7] tnum">
-            {formatClock(hour)} {solar.label} ({solar.kelvin}K)
-          </span>
-        </div>
+        {/* 空间物理悬浮锚点 */}
+        {anchors.map((anc) => {
+          const isSelected = activeAnchor?.id === anc.id;
+          return (
+            <button
+              key={anc.id}
+              type="button"
+              onClick={() => handleSelectAnchor(anc)}
+              style={{ left: `${anc.xPct}%`, top: `${anc.yPct}%` }}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[14px] font-medium transition-transform duration-200 ${
+                isSelected
+                  ? "bg-[#ff6b3d] text-[#050508] scale-105"
+                  : "bg-[#14141e] text-white/90"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  isSelected ? "bg-[#050508]" : "bg-[#ff6b3d]"
+                }`}
+              />
+              <span>{anc.name}</span>
+            </button>
+          );
+        })}
 
-        {/* 底部动线控制面板 */}
-        <div
-          onPointerDown={(e) => e.stopPropagation()}
-          className="absolute inset-x-4 bottom-4 rounded-xl bg-[#0a0a0c]/95 p-4 text-[#f5f5f7]"
-        >
-          {viewSource === "splat3d" ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="m-0 text-[18px] font-semibold">
-                  {currentWaypoint.title}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {SPLAT_WAYPOINTS.map((wp, idx) => (
-                    <button
-                      key={wp.title}
-                      type="button"
-                      onClick={() => {
-                        setAutoWalk(false);
-                        jumpToStep(idx);
-                      }}
-                      className={`terra-btn rounded-full px-3.5 py-1 text-[18px] font-semibold tnum ${
-                        stepIdx === idx
-                          ? "bg-[#ff6b3d] text-[#0a0a0c]"
-                          : "bg-[#1e1e24] text-[#f5f5f7]"
-                      }`}
-                    >
-                      节点 {idx + 1}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setAutoWalk((v) => !v)}
-                    className={`terra-btn rounded-full px-4 py-1 text-[18px] font-semibold ${
-                      autoWalk
-                        ? "bg-white text-[#0a0a0c]"
-                        : "bg-[#1e1e24] text-[#f5f5f7]"
-                    }`}
-                  >
-                    {autoWalk ? "暂停漫游" : "自动走一遍"}
-                  </button>
-                </div>
-              </div>
-              <p className="m-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
-                {currentWaypoint.advice}
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="m-0 text-[18px] font-semibold">
-                  {activeScene.name} · {cityWaypoints[stepIdx]?.title ?? activeScene.elevation}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {scenes.map((sc, idx) => (
-                    <button
-                      key={sc.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedSceneIdx(idx);
-                        setStepIdx(0);
-                      }}
-                      className={`terra-btn rounded-full px-3.5 py-1 text-[18px] font-semibold ${
-                        selectedSceneIdx === idx
-                          ? "bg-[#ff6b3d] text-[#0a0a0c]"
-                          : "bg-[#1e1e24] text-[#f5f5f7]"
-                      }`}
-                    >
-                      {sc.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <p className="m-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
-                {cityWaypoints[stepIdx]?.hint ?? activeScene.spatialSummary}
-              </p>
+        {/* 左下角：空间世界模型第一视角物理 HUD */}
+        <div className="absolute bottom-6 left-6 z-10 max-w-sm rounded-2xl bg-[#14141e] p-5">
+          <div className="flex items-center justify-between text-[14px] text-white/60">
+            <span>空间物理体素状态</span>
+            <span className="text-[#ff6b3d] tnum">{solar.elevation} 仰角</span>
+          </div>
+          <div className="mt-1 text-[18px] font-bold text-white">
+            {activeAnchor ? activeAnchor.headline : "鼠标拖拽 360° 空间环顾 · 沿动线穿行"}
+          </div>
+          <p className="mt-1.5 mb-0 text-[14px] text-white/70">
+            {activeAnchor
+              ? activeAnchor.actionGuide
+              : "点击空间悬浮锚点或时间轴，提前在数字孪生空间走通每一道出站闸机与换乘动线。"}
+          </p>
+
+          {activeAnchor && (
+            <div className="mt-3 flex items-center justify-between pt-2">
+              <span className="text-[14px] text-white/80 tnum">
+                {activeAnchor.phonetic}
+              </span>
+              <button
+                type="button"
+                onClick={() => speakPhrase(activeAnchor.localPhrase)}
+                className="terra-btn rounded-full bg-white/10 px-3 py-1 text-[14px] text-white"
+              >
+                {speaking ? "朗读中..." : "播放母语发音"}
+              </button>
             </div>
           )}
         </div>
-      </div>
 
-      {/* 下方：24小时时段光照推演条 + 贴心避坑提示 */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-7">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label htmlFor="terra-hour-slider" className="text-[18px] font-semibold text-[#f5f5f7]">
-              拖动时间看光照变化：{formatClock(hour)} ({solar.label} · 仰角 {solar.elevation}°)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: "清晨 07:00", val: 7.0 },
-                { label: "正午 12:30", val: 12.5 },
-                { label: "日落 17:30", val: 17.5 },
-                { label: "夜间 20:30", val: 20.5 },
-              ].map((preset) => (
-                <button
-                  key={preset.label}
-                  type="button"
-                  onClick={() => setHour(preset.val)}
-                  className={`terra-btn rounded-full px-3 py-1 text-[18px] font-semibold tnum ${
-                    Math.abs(hour - preset.val) < 0.3
-                      ? "bg-[#ff6b3d] text-[#0a0a0c]"
-                      : "bg-[#1e1e24] text-[#f5f5f7]"
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
+        {/* 右下角：24h 太阳光影孪生因果滑块 */}
+        <div className="absolute bottom-6 right-6 z-10 w-72 rounded-2xl bg-[#14141e] p-5">
+          <div className="flex items-center justify-between text-[14px]">
+            <span className="text-white/60">太阳时空因果模拟</span>
+            <span className="font-bold text-[#ff6b3d] tnum">
+              {solar.label} · {solar.kelvin}
+            </span>
           </div>
+
           <input
-            id="terra-hour-slider"
             type="range"
-            min="6.0"
-            max="22.0"
-            step="0.25"
+            min={6}
+            max={22}
+            step={0.5}
             value={hour}
             onChange={(e) => setHour(parseFloat(e.target.value))}
-            aria-label="时段光照推演滑块"
-            className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#0a0a0c] accent-[#ff6b3d]"
+            className="mt-3 w-full accent-[#ff6b3d] cursor-pointer"
           />
-          <p className="mt-2 mb-0 max-w-[60ch] text-[18px] text-[#d4d4dc]">
-            {solar.advice}
-          </p>
-        </div>
 
-        <div className="lg:col-span-5">
-          <p className="m-0 text-[18px] font-semibold text-[#f5f5f7]">
-            {activeScene.name} · 预约与最佳时段提醒
-          </p>
-          <p className="mt-1 mb-0 max-w-[56ch] text-[18px] text-[#d4d4dc]">
-            最佳时段：{activeScene.bestTime}
-          </p>
-          <p className="mt-1 mb-0 max-w-[56ch] text-[18px] text-[#f5f5f7]">
-            贴心提醒：{activeScene.bookingRule}
-          </p>
+          <div className="mt-2 flex justify-between text-[12px] text-white/50 tnum">
+            <span>06:00 晨曦</span>
+            <span>12:00 正午</span>
+            <span>17:30 日落</span>
+            <span>22:00 夜调</span>
+          </div>
         </div>
       </div>
     </div>
