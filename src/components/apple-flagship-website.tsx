@@ -5,13 +5,10 @@ import Image from "next/image";
 import QRCode from "qrcode";
 import {
   BeijingSpatialWorldModel,
-  type LightingMode,
+  type TimeOfDay,
 } from "@/components/beijing-pulse-world-model";
 import {
-  ATTRACTIONS,
-  SPATIAL_MOMENTS,
-  type Attraction,
-  type SpatialMoment,
+  VISUAL_CHAPTERS,
 } from "@/lib/beijing-pulse-data";
 
 export function AppleFlagshipWebsite() {
@@ -21,10 +18,8 @@ export function AppleFlagshipWebsite() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
-  const [activeSpatialAttractionId, setActiveSpatialAttractionId] =
-    useState<string>("forbidden-city");
-  const [activeLightModeId, setActiveLightModeId] =
-    useState<LightingMode["id"]>("sunset");
+  const [activeSpotId, setActiveSpotId] = useState<string>("forbidden-city");
+  const [activeTime, setActiveTime] = useState<TimeOfDay>("sunset");
 
   useEffect(() => {
     const nodes = document.querySelectorAll(".terra-reveal");
@@ -67,24 +62,6 @@ export function AppleFlagshipWebsite() {
       .catch(() => {});
   }, []);
 
-  const handleLaunchSpatialMoment = (moment: SpatialMoment) => {
-    setActiveSpatialAttractionId(moment.attractionId);
-    setActiveLightModeId(moment.lightingId);
-    const element = document.getElementById("spatial-viewer-section");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const handleLaunchAttraction = (attraction: Attraction) => {
-    setActiveSpatialAttractionId(attraction.id);
-    setActiveLightModeId(attraction.defaultLight);
-    const element = document.getElementById("spatial-viewer-section");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
   const handleCopyUrl = async () => {
     try {
       await navigator.clipboard.writeText(currentUrl);
@@ -96,44 +73,50 @@ export function AppleFlagshipWebsite() {
     }
   };
 
+  const handleTeleportToSpot = (spotId: string, time: TimeOfDay) => {
+    setActiveSpotId(spotId);
+    setActiveTime(time);
+    const el = document.getElementById("spatial-stage");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] bg-[#070707] text-[#f5f5f7]">
       {/* 顶部极简 Topbar */}
-      <header className="sticky top-0 z-40 bg-[#070707] py-4">
+      <header className="sticky top-0 z-40 bg-[#070707] py-5">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 sm:px-10">
           <a
             href="#top"
-            className="flex items-center gap-2 text-[18px] font-bold tracking-tight text-white no-underline"
+            className="flex items-center gap-2.5 text-[18px] font-bold tracking-tight text-white no-underline"
           >
-            <span className="h-3 w-3 rounded-full bg-[#c23b3b]" />
-            BEIJING PULSE
+            <span className="h-2.5 w-2.5 rounded-full bg-[#c23b3b]" />
+            <span>BEIJING PULSE</span>
+            <span className="text-[14px] font-normal text-white/40 tracking-wider hidden sm:inline">
+              北京 · 岁月静好
+            </span>
           </a>
 
           <nav
             aria-label="主导航"
-            className="flex flex-wrap items-center gap-6 sm:gap-8 text-[18px]"
+            className="flex flex-wrap items-center gap-6 sm:gap-10 text-[16px]"
           >
             <a
-              href="#spatial-viewer-section"
-              className="text-white/80 hover:text-[#ff6b6b] no-underline"
+              href="#spatial-stage"
+              className="text-white/70 hover:text-white no-underline transition"
             >
-              360° 实景漫游
+              四时光影
             </a>
             <a
-              href="#spatial-moments"
-              className="text-white/80 hover:text-[#ff6b6b] no-underline"
+              href="#visual-chapters"
+              className="text-white/70 hover:text-white no-underline transition"
             >
-              时空光影灵感
+              画报长卷
             </a>
             <a
-              href="#featured-gallery"
-              className="text-white/80 hover:text-[#ff6b6b] no-underline"
-            >
-              地标视界
-            </a>
-            <a
-              href="#mobile-handoff"
-              className="terra-btn rounded-full bg-white px-5 py-1.5 text-[18px] font-semibold text-[#070707] no-underline"
+              href="#mobile-companion"
+              className="terra-btn rounded-full bg-white px-5 py-1.5 text-[14px] font-semibold text-[#070707] no-underline hover:bg-white/90"
             >
               装进手机
             </a>
@@ -142,15 +125,15 @@ export function AppleFlagshipWebsite() {
       </header>
 
       <main id="top">
-        {/* Cinematic Hero Banner */}
+        {/* 纯净诗意 Hero */}
         <section
           id="hero"
-          className="relative min-h-[72vh] flex items-end overflow-hidden pb-16 sm:pb-24"
+          className="relative min-h-[75vh] flex items-end overflow-hidden pb-16 sm:pb-24"
         >
           <div className="absolute inset-0 z-0">
             <Image
               src="/assets/forbidden-city.jpg"
-              alt="紫禁城全景晨曦"
+              alt="故宫紫禁城全景晨曦"
               width={1600}
               height={900}
               priority
@@ -162,220 +145,201 @@ export function AppleFlagshipWebsite() {
           <div className="relative z-10 mx-auto max-w-7xl px-6 sm:px-10 w-full terra-enter">
             <div className="max-w-3xl">
               <h1 className="text-[36px] sm:text-[56px] lg:text-[80px] font-bold tracking-tight text-white leading-[1.05]">
-                Discover Beijing beyond guidebooks.
+                Beijing in Timeless Light.
               </h1>
-              <p className="mt-4 text-[22px] font-medium text-white/90">
-                北京，触手可及。基于真实空间建模与四时光影渲染，随心环顾，即刻身临其境。
+              <p className="mt-5 text-[22px] font-medium text-white/90 leading-relaxed">
+                六百年古都，在晨曦、晴空、金辉与蓝调之间无声流淌。静下心，感受每一寸建筑与时光的静默守候。
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
                 <a
-                  href="#spatial-viewer-section"
-                  className="terra-btn rounded-full bg-[#c23b3b] px-6 py-2.5 text-[18px] font-semibold text-white no-underline hover:bg-[#d44343]"
+                  href="#spatial-stage"
+                  className="terra-btn rounded-full bg-[#c23b3b] px-7 py-3 text-[16px] font-semibold text-white no-underline hover:bg-[#d44343] transition"
                 >
-                  开启 360° 实景漫游 ↓
+                  静观四时光影 ↓
                 </a>
                 <a
-                  href="#spatial-moments"
-                  className="terra-btn rounded-full bg-white/10 px-6 py-2.5 text-[18px] font-medium text-white no-underline hover:bg-white/15"
+                  href="#visual-chapters"
+                  className="terra-btn rounded-full bg-white/10 px-7 py-3 text-[16px] font-medium text-white no-underline hover:bg-white/15 transition"
                 >
-                  浏览时空光影灵感
+                  翻阅岁月长卷
                 </a>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 核心指标条 (Curated Stats) */}
-        <section className="bg-[#070707] py-12">
+        {/* 核心剧场：真实无畸变四时光影视窗 (The Main Stage) */}
+        <section id="spatial-stage" className="bg-[#070707] py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 terra-reveal">
-              <div>
-                <div className="text-[36px] font-bold text-white tnum">360°</div>
-                <div className="text-[14px] text-white/60">真实照片级全景空间环顾</div>
-              </div>
-
-              <div>
-                <div className="text-[36px] font-bold text-white tnum">4 时</div>
-                <div className="text-[14px] text-white/60">晨曦·正午·金辉·夜幕光影</div>
-              </div>
-
-              <div>
-                <div className="text-[36px] font-bold text-white tnum">10 处</div>
-                <div className="text-[14px] text-white/60">明清古建与当代先锋地标</div>
-              </div>
-
-              <div>
-                <div className="text-[36px] font-bold text-white tnum">0 冗余</div>
-                <div className="text-[14px] text-white/60">告别繁复攻略，纯净沉浸</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 核心剧场：360° 实景时空漫游 (The Main Stage) */}
-        <section id="spatial-viewer-section" className="bg-[#070707] py-20 sm:py-28">
-          <div className="mx-auto max-w-7xl px-6 sm:px-10">
-            <div className="max-w-3xl terra-reveal">
+            <div className="max-w-2xl terra-reveal">
               <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                360° 实景时空漫游视窗
+                四时光影 · 沉浸视界
               </h2>
-              <p className="mt-3 text-[18px] text-white/70">
-                按住鼠标拖拽即可自由环顾四周。切换下方四时光影时钟，直观感受晨曦、正午、黄昏金辉与深邃蓝调。
+              <p className="mt-3 text-[18px] text-white/70 leading-relaxed">
+                保持真实光学透视，拒绝球面畸变。切换上方地标与右下角时光刻度，静观晨曦初露、日悬中天、金瓦落日与蓝调夜幕。
               </p>
             </div>
 
             <div className="mt-10 terra-reveal">
               <BeijingSpatialWorldModel
-                selectedId={activeSpatialAttractionId}
-                onSelectAttraction={setActiveSpatialAttractionId}
-                lightModeId={activeLightModeId}
-                onSelectLightMode={setActiveLightModeId}
+                selectedSpotId={activeSpotId}
+                onSelectSpot={setActiveSpotId}
+                selectedTime={activeTime}
+                onSelectTime={setActiveTime}
               />
             </div>
           </div>
         </section>
 
-        {/* 四时光影灵感：与 3D 联动的时空切片 (Curated Spatial Moments) */}
-        <section id="spatial-moments" className="bg-[#0c0c0e] py-20 sm:py-28">
+        {/* 岁月长卷：画报散文流（彻底抛弃小卡片堆砌，回归画报大美） */}
+        <section id="visual-chapters" className="bg-[#0c0c0e] py-24 sm:py-36">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
-            <div className="max-w-3xl terra-reveal">
+            <div className="max-w-2xl terra-reveal">
               <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                四时光影灵感
+                岁月沉思 · 散文长卷
               </h2>
-              <p className="mt-3 text-[18px] text-white/70">
-                空间与时光的相遇。点击任一切片，即刻将 3D 实景视窗对齐至该处绝佳光影时段。
+              <p className="mt-3 text-[18px] text-white/70 leading-relaxed">
+                每一座古建皆有灵魂，每一寸红墙皆藏光阴。放下走马观花的攻略，在画报级宽幅光影中慢慢漫游。
               </p>
             </div>
 
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-              {SPATIAL_MOMENTS.map((moment) => (
-                <article
-                  key={moment.id}
-                  className="rounded-3xl bg-[#141418] p-5 terra-reveal flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="overflow-hidden rounded-2xl relative">
-                      <Image
-                        src={moment.image}
-                        alt={moment.title}
-                        width={600}
-                        height={380}
-                        className="h-60 w-full object-cover hover:scale-105 transition duration-500"
-                      />
-                      <span className="absolute top-3 right-3 rounded-full bg-black/75 px-3 py-1 text-[14px] font-semibold text-white">
-                        {moment.timeLabel}
-                      </span>
-                    </div>
-
-                    <div className="mt-5">
-                      <div className="text-[14px] font-semibold text-[#ff6b6b]">
-                        {moment.landmarkZh}
-                      </div>
-                      <h3 className="mt-1 text-[22px] font-bold text-white">
-                        {moment.title}
-                      </h3>
-                      <p className="mt-2 text-[14px] text-white/70 leading-relaxed">
-                        {moment.desc}
-                      </p>
-                    </div>
+            {/* 章节一：暮色紫禁 */}
+            <article className="mt-20 sm:mt-28 terra-reveal">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                <div className="lg:col-span-7">
+                  <div className="overflow-hidden rounded-[28px] relative aspect-[16/10]">
+                    <Image
+                      src={VISUAL_CHAPTERS[0].image}
+                      alt={VISUAL_CHAPTERS[0].title}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 60vw"
+                      className="object-cover object-center"
+                    />
                   </div>
+                </div>
 
-                  <div className="mt-6">
+                <div className="lg:col-span-5 lg:pl-6 space-y-4">
+                  <h3 className="text-[32px] sm:text-[38px] font-bold text-white tracking-tight">
+                    {VISUAL_CHAPTERS[0].chapterNumber} · {VISUAL_CHAPTERS[0].title}
+                  </h3>
+                  <p className="text-[16px] text-white/80 leading-relaxed">
+                    {VISUAL_CHAPTERS[0].essay}
+                  </p>
+                  <div className="text-[14px] text-white/40">
+                    {VISUAL_CHAPTERS[0].details}
+                  </div>
+                  <div className="pt-2">
                     <button
                       type="button"
-                      onClick={() => handleLaunchSpatialMoment(moment)}
-                      className="terra-btn w-full rounded-2xl bg-[#c23b3b] py-3 text-[14px] font-bold text-white transition hover:bg-[#d44343]"
+                      onClick={() => handleTeleportToSpot("forbidden-city", "sunset")}
+                      className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
                     >
-                      载入此时空视角 (3D 漫游) →
+                      在视窗中载入此黄昏景致 ↑
                     </button>
                   </div>
-                </article>
-              ))}
-            </div>
+                </div>
+              </div>
+            </article>
+
+            {/* 章节二：晨雾雄关（反向构图，丰富节奏） */}
+            <article className="mt-24 sm:mt-36 terra-reveal">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                <div className="lg:col-span-5 lg:pr-6 space-y-4 order-2 lg:order-1">
+                  <h3 className="text-[32px] sm:text-[38px] font-bold text-white tracking-tight">
+                    {VISUAL_CHAPTERS[1].chapterNumber} · {VISUAL_CHAPTERS[1].title}
+                  </h3>
+                  <p className="text-[16px] text-white/80 leading-relaxed">
+                    {VISUAL_CHAPTERS[1].essay}
+                  </p>
+                  <div className="text-[14px] text-white/40">
+                    {VISUAL_CHAPTERS[1].details}
+                  </div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleTeleportToSpot("great-wall", "dawn")}
+                      className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
+                    >
+                      在视窗中载入此晨曦景致 ↑
+                    </button>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-7 order-1 lg:order-2">
+                  <div className="overflow-hidden rounded-[28px] relative aspect-[16/10]">
+                    <Image
+                      src={VISUAL_CHAPTERS[1].image}
+                      alt={VISUAL_CHAPTERS[1].title}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 60vw"
+                      className="object-cover object-center"
+                    />
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            {/* 章节三：晴空坛庙 */}
+            <article className="mt-24 sm:mt-36 terra-reveal">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                <div className="lg:col-span-7">
+                  <div className="overflow-hidden rounded-[28px] relative aspect-[16/10]">
+                    <Image
+                      src={VISUAL_CHAPTERS[2].image}
+                      alt={VISUAL_CHAPTERS[2].title}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 60vw"
+                      className="object-cover object-center"
+                    />
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 lg:pl-6 space-y-4">
+                  <h3 className="text-[32px] sm:text-[38px] font-bold text-white tracking-tight">
+                    {VISUAL_CHAPTERS[2].chapterNumber} · {VISUAL_CHAPTERS[2].title}
+                  </h3>
+                  <p className="text-[16px] text-white/80 leading-relaxed">
+                    {VISUAL_CHAPTERS[2].essay}
+                  </p>
+                  <div className="text-[14px] text-white/40">
+                    {VISUAL_CHAPTERS[2].details}
+                  </div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleTeleportToSpot("temple-of-heaven", "noon")}
+                      className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
+                    >
+                      在视窗中载入此晴空景致 ↑
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </article>
           </div>
         </section>
 
-        {/* 地标视界：高清画廊，点击即刻载入 3D (Spatial Showcase) */}
-        <section id="featured-gallery" className="bg-[#070707] py-20 sm:py-28">
+        {/* 掌心北京 · 离线手持 (Mobile Companion) */}
+        <section id="mobile-companion" className="bg-[#070707] py-24 sm:py-32">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
-            <div className="max-w-3xl terra-reveal">
-              <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                地标视界
-              </h2>
-              <p className="mt-3 text-[18px] text-white/70">
-                每一处地标皆为一座凝固的时光史诗。点击即可直接在上方 3D 视窗中无缝漫游。
-              </p>
-            </div>
-
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {ATTRACTIONS.map((spot) => (
-                <article
-                  key={spot.id}
-                  className="rounded-3xl bg-[#141418] p-5 terra-reveal flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="overflow-hidden rounded-2xl relative">
-                      <Image
-                        src={spot.image}
-                        alt={spot.name.zh}
-                        width={600}
-                        height={360}
-                        className="h-56 w-full object-cover hover:scale-105 transition duration-500"
-                      />
-                      <span className="absolute top-3 left-3 rounded-full bg-black/75 px-3 py-1 text-[14px] font-semibold text-white/90">
-                        {spot.districtZh}
-                      </span>
-                    </div>
-
-                    <div className="mt-4">
-                      <h3 className="text-[22px] font-bold text-white">
-                        {spot.name.zh}
-                      </h3>
-                      <div className="mt-0.5 text-[14px] text-white/50">
-                        {spot.name.en} · {spot.elevation}
-                      </div>
-                      <p className="mt-2 text-[14px] text-white/70 leading-relaxed">
-                        {spot.essence}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5">
-                    <button
-                      type="button"
-                      onClick={() => handleLaunchAttraction(spot)}
-                      className="terra-btn w-full rounded-2xl bg-white/10 py-2.5 text-[14px] font-semibold text-white hover:bg-white/15 transition"
-                    >
-                      进入 360° 空间漫游 →
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 离线与移动端跨端同步 (Mobile Companion) */}
-        <section id="mobile-handoff" className="bg-[#0c0c0e] py-20 sm:py-28">
-          <div className="mx-auto max-w-7xl px-6 sm:px-10">
-            <div className="rounded-[32px] bg-[#141418] p-8 sm:p-14 terra-reveal">
+            <div className="rounded-[32px] bg-[#121214] p-8 sm:p-14 terra-reveal">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
                 <div className="lg:col-span-7">
                   <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                    装进手机，随时沉浸
+                    静下心，把北京带在掌中
                   </h2>
                   <p className="mt-4 text-[18px] text-white/70 leading-relaxed max-w-xl">
-                    支持 iOS Safari 与 Android Chrome 全屏沉浸式漫游。随时随地通过手机陀螺仪与触控拖拽，感受古都时空光影。
+                    支持 iOS Safari 与 Android Chrome 浏览器全屏沉浸。随时随地通过手机屏幕与微风指触，感受古都的安宁与流光。
                   </p>
 
                   <div className="mt-8 flex flex-wrap gap-4">
                     <button
                       type="button"
                       onClick={handleCopyUrl}
-                      className="terra-btn rounded-full bg-white px-6 py-3 text-[14px] font-bold text-black"
+                      className="terra-btn rounded-full bg-white px-7 py-3 text-[14px] font-bold text-black hover:bg-white/90 transition"
                     >
-                      {copiedLink ? "已复制访问链接" : "复制网址发到手机"}
+                      {copiedLink ? "已复制访问网址" : "复制网址到手机"}
                     </button>
                   </div>
                 </div>
@@ -386,21 +350,21 @@ export function AppleFlagshipWebsite() {
                       <Image
                         src={qrCodeDataUrl}
                         alt="手机扫码体验"
-                        width={220}
-                        height={220}
+                        width={200}
+                        height={200}
                         unoptimized
-                        className="h-52 w-52 rounded-2xl object-contain mx-auto"
+                        className="h-48 w-48 rounded-xl object-contain mx-auto"
                       />
                     ) : (
-                      <div className="flex h-52 w-52 items-center justify-center rounded-2xl bg-gray-100 text-black">
-                        正在生成...
+                      <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-gray-100 text-black">
+                        生成中...
                       </div>
                     )}
-                    <div className="mt-3 text-[18px] font-bold text-black">
-                      手机扫码即刻同步
+                    <div className="mt-3 text-[16px] font-bold text-black">
+                      手机扫码 · 即刻沉浸
                     </div>
                     <div className="text-[14px] text-black/60">
-                      支持 iOS 与 Android 离线运行
+                      支持 iOS 与 Android 离线手持
                     </div>
                   </div>
                 </div>
@@ -412,7 +376,7 @@ export function AppleFlagshipWebsite() {
 
       {/* 极简底部 Footer */}
       <footer className="bg-[#070707] py-12">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-6 sm:px-10 text-[14px] text-white/60">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-6 sm:px-10 text-[14px] text-white/50">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#c23b3b]" />
             <span>BEIJING PULSE · 发现指南之外的北京</span>
@@ -423,11 +387,14 @@ export function AppleFlagshipWebsite() {
               href="https://github.com/wangguode/terra-world-travel"
               target="_blank"
               rel="noreferrer"
-              className="text-white/60 hover:text-white no-underline"
+              className="text-white/50 hover:text-white no-underline transition"
             >
-              GitHub 仓库
+              GitHub
             </a>
-            <a href="#top" className="text-white/60 hover:text-white no-underline">
+            <a
+              href="#top"
+              className="text-white/50 hover:text-white no-underline transition"
+            >
               回到顶部 ↑
             </a>
           </div>
