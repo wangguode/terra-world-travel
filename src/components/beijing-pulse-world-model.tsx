@@ -129,6 +129,7 @@ export function BeijingSpatialWorldModel({
   const [internalHour, setInternalHour] = useState<number>(17.5);
   const [isTimeLapseActive, setIsTimeLapseActive] = useState<boolean>(false);
   const [isLiveSynced, setIsLiveSynced] = useState<boolean>(false);
+  const [isPhenomenonActive, setIsPhenomenonActive] = useState<boolean>(true);
 
   const currentSpotId = propSpotId ?? internalSpotId;
   const currentHour = propHour ?? internalHour;
@@ -139,13 +140,22 @@ export function BeijingSpatialWorldModel({
 
   const handleSpotChange = useCallback(
     (id: string) => {
+      const targetSpot = SCENIC_SPOTS.find((s) => s.id === id);
       if (onSelectSpot) {
         onSelectSpot(id);
       } else {
         setInternalSpotId(id);
       }
+      // 若处于绝景推演模式，自动联动将日晷切至该景点的最佳观测时空窗口
+      if (isPhenomenonActive && targetSpot) {
+        if (onChangeHour) {
+          onChangeHour(targetSpot.phenomenon.optimalHour);
+        } else {
+          setInternalHour(targetSpot.phenomenon.optimalHour);
+        }
+      }
     },
-    [onSelectSpot]
+    [onSelectSpot, isPhenomenonActive, onChangeHour]
   );
 
   const handleHourChange = useCallback(
@@ -159,6 +169,18 @@ export function BeijingSpatialWorldModel({
     },
     [onChangeHour]
   );
+
+  // 触发天文绝景与最佳观测时空窗口推演
+  const togglePhenomenon = () => {
+    if (!isPhenomenonActive) {
+      setIsPhenomenonActive(true);
+      setIsTimeLapseActive(false);
+      setIsLiveSynced(false);
+      handleHourChange(currentSpot.phenomenon.optimalHour);
+    } else {
+      setIsPhenomenonActive(false);
+    }
+  };
 
   // 北京真实时间计算（UTC+8）
   const getBeijingHour = (): number => {
@@ -512,6 +534,62 @@ export function BeijingSpatialWorldModel({
           </div>
         </div>
 
+        {/* 天文物理绝景推演控制 HUD */}
+        {isPhenomenonActive && (
+          <div className="absolute top-64 sm:top-72 left-6 sm:left-10 z-20 max-w-sm sm:max-w-md rounded-[20px] bg-[#141416] p-5 text-white pointer-events-auto">
+            <div className="flex items-center justify-between gap-4 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-[#c23b3b]" />
+                <span className="text-[14px] font-semibold tracking-wider text-white/60">
+                  物理时空推演 · 黄金观测窗口
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhenomenonActive(false)}
+                className="terra-btn text-[14px] text-white/50 hover:text-white transition"
+              >
+                收起
+              </button>
+            </div>
+
+            <div className="mt-3">
+              <h3 className="text-[20px] font-bold text-white tracking-tight">
+                {currentSpot.phenomenon.title}
+              </h3>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[14px] text-white/70 tnum bg-white/5 rounded-[12px] p-3">
+                <div>
+                  <span className="text-white/40">窗口时段：</span>
+                  <span className="text-white font-medium">{currentSpot.phenomenon.timeWindow}</span>
+                </div>
+                <div>
+                  <span className="text-white/40">推荐时令：</span>
+                  <span className="text-white font-medium">{currentSpot.phenomenon.seasonContext}</span>
+                </div>
+                <div>
+                  <span className="text-white/40">太阳仰角：</span>
+                  <span className="text-white font-medium">{currentSpot.phenomenon.solarAltitude}</span>
+                </div>
+                <div>
+                  <span className="text-white/40">物理色温：</span>
+                  <span className="text-white font-medium">{currentSpot.phenomenon.colorTemp}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-2 text-[14px] leading-relaxed">
+                <p className="text-white/70">
+                  <span className="text-white/40 font-medium">光学原理：</span>
+                  {currentSpot.phenomenon.physicsPrinciple}
+                </p>
+                <p className="text-white/80">
+                  <span className="text-[#c23b3b] font-medium">决策指引：</span>
+                  {currentSpot.phenomenon.observationGuide}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 一体化精密悬浮底部 HUD */}
         <div className="absolute bottom-6 sm:bottom-8 left-6 sm:left-10 right-6 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-[24px] bg-[#0c0c0e] px-6 py-3.5">
           {/* 左侧：六大地标极简微切换 */}
@@ -559,6 +637,17 @@ export function BeijingSpatialWorldModel({
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={togglePhenomenon}
+                className={`terra-btn rounded-full px-3.5 py-1 text-[14px] font-medium transition ${
+                  isPhenomenonActive
+                    ? "bg-[#c23b3b] text-white font-semibold"
+                    : "bg-white/10 text-white/70 hover:text-white"
+                }`}
+              >
+                绝景推演
+              </button>
               <button
                 type="button"
                 onClick={toggleLiveSync}

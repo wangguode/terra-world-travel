@@ -213,7 +213,7 @@ export function AppleFlagshipWebsite() {
                       }
                       className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
                     >
-                      在视窗中载入此黄昏景致 ↑
+                      在视窗中推演此绝景（悬日碎金） ↑
                     </button>
                   </div>
                 </div>
@@ -244,7 +244,7 @@ export function AppleFlagshipWebsite() {
                       }
                       className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
                     >
-                      在视窗中载入此晨曦景致 ↑
+                      在视窗中推演此绝景（雄关破晓） ↑
                     </button>
                   </div>
                 </div>
@@ -315,7 +315,7 @@ export function AppleFlagshipWebsite() {
                       }
                       className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
                     >
-                      在视窗中载入此晴空景致 ↑
+                      在视窗中推演此绝景（中天日影） ↑
                     </button>
                   </div>
                 </div>

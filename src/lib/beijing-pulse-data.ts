@@ -1,3 +1,15 @@
+export interface AstronomicalWindow {
+  title: string;
+  optimalHour: number;
+  timeWindow: string;
+  seasonContext: string;
+  solarAltitude: string;
+  solarAzimuth: string;
+  colorTemp: string;
+  physicsPrinciple: string;
+  observationGuide: string;
+}
+
 export interface ScenicSpot {
   id: string;
   nameZh: string;
@@ -15,6 +27,7 @@ export interface ScenicSpot {
     night: string;
   };
   poeticEssay: string;
+  phenomenon: AstronomicalWindow;
 }
 
 export const SCENIC_SPOTS: ScenicSpot[] = [
@@ -36,6 +49,19 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     },
     poeticEssay:
       "六百年的红墙，在黄昏时分静默如谜。斜阳穿过太和门丹陛，琉璃金瓦将最后一抹余晖送入筒子河。时间在这里不再匆忙流逝，而是沉淀为静默的永恒。",
+    phenomenon: {
+      title: "西北角楼 · 悬日碎金",
+      optimalHour: 17.5,
+      timeWindow: "17:15 - 17:45",
+      seasonContext: "深秋初冬最佳",
+      solarAltitude: "4.8° (低掠射)",
+      solarAzimuth: "248° (西南向)",
+      colorTemp: "2800K (暖金赤红)",
+      physicsPrinciple:
+        "太阳高度角降至5°以下，阳光以低角度横穿筒子河水面形成全反射。角楼十字脊飞檐在强逆光下呈现锋利剪影，金色琉璃瓦产生强烈的菲涅尔高光。",
+      observationGuide:
+        "故宫闭馆前30分钟，游人退去，护城河水面波澜渐止。此时伫立景山前街东北侧，是捕捉六百年建筑肃穆与天地晚霞的唯一黄金物理窗口。",
+    },
   },
   {
     id: "great-wall",
@@ -55,6 +81,19 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     },
     poeticEssay:
       "当晨光微熹，燕山山脉在林海与薄雾中苏醒。古老烽火台静默横卧于千峰之巅，天地苍茫，唯有山风与时光在此长久低语。",
+    phenomenon: {
+      title: "正关台 · 雄关破晓",
+      optimalHour: 6.5,
+      timeWindow: "06:15 - 06:45",
+      seasonContext: "全年晨曦清朗日",
+      solarAltitude: "2.1° (破晓掠角)",
+      solarAzimuth: "82° (东偏北)",
+      colorTemp: "3200K (冷粉金光)",
+      physicsPrinciple:
+        "朝阳第一缕长波光穿越山谷逆温薄雾层，发生米氏散射（Mie Scattering）。光束切过敌楼石垛，形成明暗反差超过1:16的立体浮雕光影。",
+      observationGuide:
+        "缆车运行前登顶二十号敌楼，无任何游客喧扰。山风掠过千峰翠谷，是体验古代边陲孤寂与万里山河壮魄的独家时刻。",
+    },
   },
   {
     id: "temple-of-heaven",
@@ -74,6 +113,19 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     },
     poeticEssay:
       "天圆地方，汉白玉阶直上云霄。当正午无影的纯净光线自穹顶垂落，几何的绝对对称化作心灵深处的极致宁静。",
+    phenomenon: {
+      title: "天心石 · 天地中天日影",
+      optimalHour: 12.0,
+      timeWindow: "11:50 - 12:20",
+      seasonContext: "春分/秋分正午",
+      solarAltitude: "49.5° (中天高位)",
+      solarAzimuth: "180° (正南无偏角)",
+      colorTemp: "5800K (纯净中性日光)",
+      physicsPrinciple:
+        "太阳直射中天，建筑阴影投射达到极小值。三层汉白玉圆坛基座与三重蓝瓦同心圆在正午高角度光照下呈现近乎绝对的轴对称反光比。",
+      observationGuide:
+        "驻足丹陛桥正北向南平视，正午的高反差光影剥离了一切多余色彩，只剩天空深蓝、琉璃宝顶与白玉台基，东方几何神圣秩序呼之欲出。",
+    },
   },
   {
     id: "summer-palace",
@@ -84,7 +136,7 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     image: "/assets/summer-palace.jpg",
     depthMap: "/depth/summer-palace.png",
     aspectRatio: "1280 / 1934",
-    defaultHour: 17.5,
+    defaultHour: 16.5,
     timeNotes: {
       dawn: "清晨六点半，万寿山晨岚初散，昆明湖面波平如镜，画舫泛起第一道涟漪。",
       noon: "正午十二点，佛香阁傲立山峦，长廊千米画卷映衬碧水蓝天，皇家山水无尽明媚。",
@@ -93,6 +145,19 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     },
     poeticEssay:
       "微风掠过昆明湖，带来晚清皇家园林的最后一抹斜阳。佛香阁前，游船归岸，岁月安然沉入如水暮色之中。",
+    phenomenon: {
+      title: "十七孔桥 · 金光穿洞",
+      optimalHour: 16.5,
+      timeWindow: "16:15 - 16:50",
+      seasonContext: "冬至日前后二十天",
+      solarAltitude: "6.2° (低斜阳)",
+      solarAzimuth: "224° (南偏西精准入射)",
+      colorTemp: "2600K (深红金光)",
+      physicsPrinciple:
+        "古代匠人精密天文布局：冬至日前后太阳落山方位角恰好与桥洞轴线平行，阳光贯通17个石拱桥洞，水面二次折射将拱券内壁全部照亮成赤金隧道。",
+      observationGuide:
+        "避开南湖岛拥挤长焦机位，于十七孔桥东侧堤岸轻驻。金光灌满桥孔仅持续约25分钟，是人造工程与宇宙天体运行完美契合的奇迹。",
+    },
   },
   {
     id: "nanluoguxiang",
@@ -103,7 +168,7 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     image: "/assets/nanluoguxiang.jpg",
     depthMap: "/depth/nanluoguxiang.png",
     aspectRatio: "1280 / 960",
-    defaultHour: 20.0,
+    defaultHour: 18.5,
     timeNotes: {
       dawn: "清晨六点半，鸽哨掠过灰瓦四合院上空，胡同口升起早点炊烟，老北京最朴素的日常。",
       noon: "正午十二点，老槐树荫洒下斑驳光斑，深巷静谧，四合院如意门门簪古朴温润。",
@@ -112,6 +177,19 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     },
     poeticEssay:
       "暮色笼罩什刹海柳岸，青砖灰瓦间一盏盏红灯笼悄然亮起。没有喧嚣，只有北京城最温润、最真实的呼吸。",
+    phenomenon: {
+      title: "银锭桥头 · 蓝调观山",
+      optimalHour: 18.5,
+      timeWindow: "18:20 - 18:50",
+      seasonContext: "夏秋天高云淡时",
+      solarAltitude: "-4.2° (航海暮光蓝调)",
+      solarAzimuth: "272° (正西)",
+      colorTemp: "8800K (纯净青蓝冷调)",
+      physicsPrinciple:
+        "太阳沉入西山地平线下，天空臭氧层吸收红黄波段，瑞利散射主导天空呈现深邃天蓝（Blue Hour），而地面红灯笼（2200K）与水面形成高质感冷暖色彩对冲。",
+      observationGuide:
+        "站在银锭桥栏旁西望，远山如黛横卧水尽头。此时喧嚣尚未到达顶峰，微风吹拂水柳，最能体会清代《日下旧闻考》中‘银锭观山’的意境。",
+    },
   },
   {
     id: "798",
@@ -122,7 +200,7 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     image: "/assets/798.jpg",
     depthMap: "/depth/798.png",
     aspectRatio: "1280 / 960",
-    defaultHour: 12.0,
+    defaultHour: 11.5,
     timeNotes: {
       dawn: "清晨六点半，包豪斯锯齿形厂房在晨光中投下几何斜影，工业遗存静候前沿灵感。",
       noon: "正午十二点，天窗漫射天光照亮画廊白墙，雕塑与当代画布在静默中对话。",
@@ -131,6 +209,19 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     },
     poeticEssay:
       "红砖厂房与锯齿天窗，记录着工业与艺术的跨时空交汇。静驻于此，体会古老帝都与现代先锋的精神共鸣。",
+    phenomenon: {
+      title: "锯齿天窗 · 极简漫射场",
+      optimalHour: 11.5,
+      timeWindow: "10:30 - 13:30",
+      seasonContext: "四季晴空无云日",
+      solarAltitude: "45.0° (高角度)",
+      solarAzimuth: "165° (南向直射避让)",
+      colorTemp: "6200K (恒定冷白漫射)",
+      physicsPrinciple:
+        "东德包豪斯几何设计：锯齿形弧顶北向开窗，彻底阻隔刺眼的直射眩光，仅采集天空漫射散射光，车间内部光照度在白昼高度均匀恒定。",
+      observationGuide:
+        "步入七星中街老厂房画廊，抬头观赏连续混凝土抛物线屋架。柔和无影的光线抚平一切浮躁，是体会理性工业结构与当代艺术共振的黄金时段。",
+    },
   },
 ];
 
