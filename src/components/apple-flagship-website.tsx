@@ -7,10 +7,10 @@ import {
   BeijingSpatialWorldModel,
 } from "@/components/beijing-pulse-world-model";
 import {
-  WORLD_PRESETS,
-  LINGBOT_VERSIONS,
-  type WorldPreset,
-} from "@/lib/lingbot-data";
+  STUDIO_PRESETS,
+  DEPLOYMENT_SNIPPETS,
+  type WorldStudioPreset,
+} from "@/lib/reactor-studio-data";
 
 export function AppleFlagshipWebsite() {
   const [currentUrl, setCurrentUrl] = useState<string>(
@@ -19,7 +19,7 @@ export function AppleFlagshipWebsite() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
-  const [activePresetId, setActivePresetId] = useState<string>("imperial-palace");
+  const [activePresetId, setActivePresetId] = useState<string>("neo-dynasty");
   const [activeHour, setActiveHour] = useState<number>(17.5);
   const [snowMode, setSnowMode] = useState<boolean>(false);
 
@@ -84,68 +84,76 @@ export function AppleFlagshipWebsite() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#070707] text-[#f5f5f7]">
-      {/* 顶部极简透明悬浮 Topbar */}
+    <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[#09090b] text-[#f5f5f7]">
+      {/* 顶部 Studio 顶栏 */}
       <header className="absolute top-0 left-0 right-0 z-40 bg-transparent py-4 sm:py-5 pointer-events-none">
-        <div className="flex w-full items-center justify-between gap-4 px-6 sm:px-10">
+        <div className="mx-auto max-w-7xl flex w-full items-center justify-between gap-4 px-5 sm:px-10">
           <a
             href="#spatial-stage"
-            className="pointer-events-auto flex items-center gap-2 text-[16px] sm:text-[18px] font-bold tracking-tight text-white no-underline"
+            className="pointer-events-auto flex items-center gap-2.5 text-[16px] sm:text-[18px] font-bold tracking-tight text-white no-underline"
           >
-            <span className="h-2 w-2 rounded-full bg-[#c23b3b]" />
-            <span>LINGBOT-WORLD // REACTOR PLAYGROUND</span>
-            <span className="text-[16px] font-normal text-white/40 tracking-wider hidden sm:inline">
-              灵波交互式世界模型
+            <span className="h-2.5 w-2.5 rounded-full bg-[#00f2fe]" />
+            <span>REACTOR // LINGBOT WORLD 2</span>
+            <span className="text-[16px] font-normal text-white/40 tracking-wider hidden lg:inline">
+              Interactive 14B Causal Studio
             </span>
           </a>
 
           <nav
             aria-label="主导航"
-            className="pointer-events-auto flex items-center gap-4 sm:gap-8 text-[16px]"
+            className="pointer-events-auto flex items-center gap-3 sm:gap-6 text-[16px]"
           >
             <a
               href="#spatial-stage"
-              className="text-white/70 hover:text-white no-underline transition hidden md:inline"
+              className="text-white/70 hover:text-white no-underline transition hidden lg:inline"
             >
-              动作交互视界
+              实时视界
             </a>
             <a
-              href="#technology-matrix"
-              className="text-white/70 hover:text-white no-underline transition hidden md:inline"
+              href="#prompt-composer"
+              className="text-white/70 hover:text-white no-underline transition hidden lg:inline"
             >
-              核心技术架构
+              预设画廊
+            </a>
+            <a
+              href="#deployment-guide"
+              className="text-white/70 hover:text-white no-underline transition hidden lg:inline"
+            >
+              开源部署
             </a>
             <a
               href="#commercial-scenarios"
-              className="text-white/70 hover:text-white no-underline transition hidden md:inline"
+              className="text-white/70 hover:text-white no-underline transition hidden lg:inline"
             >
-              商业场景与受众
+              商业方案
             </a>
             <button
               type="button"
               onClick={() => setSnowMode(!snowMode)}
-              className={`terra-btn rounded-full px-3.5 sm:px-4 py-1.5 text-[16px] font-medium transition ${
+              className={`terra-btn rounded-full px-3.5 py-1.5 text-[16px] font-medium transition hidden sm:inline-block ${
                 snowMode
-                  ? "bg-[#c23b3b] text-white"
+                  ? "bg-[#00f2fe] text-black"
                   : "bg-white/10 text-white/80 hover:bg-white/20"
               }`}
             >
-              {snowMode ? "已覆初雪" : "严苛环境模拟"}
+              {snowMode ? "已覆严寒" : "气候模拟"}
             </button>
             <a
-              href="#commercial-scenarios"
-              className="terra-btn rounded-full bg-white px-4 sm:px-5 py-1.5 text-[16px] font-semibold text-[#070707] no-underline hover:bg-white/90"
+              href="https://github.com/Robbyant/lingbot-world-v2"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="terra-btn rounded-full bg-white px-4 sm:px-5 py-1.5 text-[16px] font-semibold text-black no-underline hover:bg-white/90"
             >
-              开发者接入
+              GitHub 仓库
             </a>
           </nav>
         </div>
       </header>
 
       <main id="top">
-        {/* 核心第一屏：LingBot-World 实时动作生成交互游乐场 */}
-        <section id="spatial-stage" className="relative w-full h-[100dvh] overflow-hidden bg-[#070707]">
-          <div className="absolute top-20 sm:top-24 left-6 right-6 sm:right-auto sm:left-10 z-40 max-w-2xl pointer-events-auto bg-[#070707]/60 sm:bg-transparent rounded-[16px] p-3 sm:p-0">
+        {/* 核心第一屏：Reactor 风格全屏实时交互工作台 */}
+        <section id="spatial-stage" className="relative w-full h-[100dvh] overflow-hidden bg-[#09090b]">
+          <div className="absolute top-20 sm:top-24 left-5 right-5 sm:right-auto sm:left-10 z-40 max-w-2xl pointer-events-auto bg-[#09090b]/60 sm:bg-transparent rounded-[16px] p-3 sm:p-0">
             <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight leading-tight">
               LingBot-World 2.0 // 动作驱动交互式世界模型
             </h1>
@@ -163,146 +171,119 @@ export function AppleFlagshipWebsite() {
           />
         </section>
 
-        {/* 核心第二屏：核心技术矩阵与版本演进 */}
-        <section id="technology-matrix" className="bg-[#0c0c0e] py-20 sm:py-28">
-          <div className="mx-auto max-w-7xl px-6 sm:px-10">
+        {/* 核心第二屏：分层动态 Prompt 组合器与预设画廊 */}
+        <section id="prompt-composer" className="bg-[#0c0c0e] py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-5 sm:px-10">
             <div className="max-w-2xl terra-reveal">
               <h2 className="text-[32px] sm:text-[36px] font-bold text-white tracking-tight">
-                LingBot-World 核心架构与演进
+                分层动态提示词与世界预设
               </h2>
               <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
-                彻底告别传统 AI 视频的静态片段生成模式，开启端到端因果注意力与实时可玩视界时代。
+                对标 Reactor 官方架构，采用基础环境层、镜头契约层与动作事件层动态组合，点击一键载入上方交互视界。
               </p>
             </div>
 
-            {/* 版本对比：1.0 vs 2.0 Infinity */}
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="rounded-[24px] bg-[#141416] p-8 terra-reveal flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-white/5 px-3 py-1 text-[16px] text-white/60">
-                      {LINGBOT_VERSIONS["1.0"].badge}
-                    </span>
-                    <span className="text-[16px] text-white/40 tnum">Baseline Prototype</span>
-                  </div>
-                  <h3 className="mt-4 text-[24px] font-bold text-white tracking-tight">
-                    {LINGBOT_VERSIONS["1.0"].title}
-                  </h3>
-                  <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
-                    {LINGBOT_VERSIONS["1.0"].descriptionZh}
-                  </p>
-                  
-                  <div className="mt-6 grid grid-cols-2 gap-4 bg-white/5 rounded-[16px] p-4 text-[16px] tnum">
-                    <div>
-                      <div className="text-white/40">模型规模</div>
-                      <div className="text-white font-medium">{LINGBOT_VERSIONS["1.0"].parameterCount}</div>
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {STUDIO_PRESETS.map((preset: WorldStudioPreset) => (
+                <article
+                  key={preset.id}
+                  className="terra-reveal rounded-[24px] bg-[#141416] p-6 flex flex-col justify-between transition-transform duration-300 hover:scale-[1.01]"
+                >
+                  <div>
+                    <div className="relative aspect-[16/10] overflow-hidden rounded-[18px]">
+                      <Image
+                        src={preset.image}
+                        alt={preset.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-500 hover:scale-105"
+                      />
                     </div>
-                    <div>
-                      <div className="text-white/40">渲染性能</div>
-                      <div className="text-white font-medium">{LINGBOT_VERSIONS["1.0"].fps}</div>
-                    </div>
-                    <div>
-                      <div className="text-white/40">生成持续性</div>
-                      <div className="text-white font-medium">{LINGBOT_VERSIONS["1.0"].durationCapability}</div>
-                    </div>
-                    <div>
-                      <div className="text-white/40">内核算法</div>
-                      <div className="text-white font-medium">{LINGBOT_VERSIONS["1.0"].architecture}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              <div className="rounded-[24px] bg-[#18181c] p-8 terra-reveal flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-[#c23b3b]/20 px-3 py-1 text-[16px] text-[#ff7a7a] font-medium">
-                      {LINGBOT_VERSIONS["2.0"].badge}
-                    </span>
-                    <span className="text-[16px] text-white/40 tnum">Flagship Production</span>
-                  </div>
-                  <h3 className="mt-4 text-[24px] font-bold text-white tracking-tight">
-                    {LINGBOT_VERSIONS["2.0"].title}
-                  </h3>
-                  <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
-                    {LINGBOT_VERSIONS["2.0"].descriptionZh}
-                  </p>
-                  
-                  <div className="mt-6 grid grid-cols-2 gap-4 bg-white/5 rounded-[16px] p-4 text-[16px] tnum">
-                    <div>
-                      <div className="text-white/40">模型规模</div>
-                      <div className="text-white font-medium">{LINGBOT_VERSIONS["2.0"].parameterCount}</div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                      <span className="rounded-full bg-white/5 px-3 py-1 text-[16px] text-[#00f2fe] font-medium">
+                        {preset.category}
+                      </span>
+                      <span className="text-[16px] text-white/40 uppercase">
+                        {preset.cameraContract}
+                      </span>
                     </div>
-                    <div>
-                      <div className="text-white/40">渲染性能</div>
-                      <div className="text-[#34c759] font-medium">{LINGBOT_VERSIONS["2.0"].fps} · 720p HD</div>
-                    </div>
-                    <div>
-                      <div className="text-white/40">生成持续性</div>
-                      <div className="text-white font-medium">{LINGBOT_VERSIONS["2.0"].durationCapability}</div>
-                    </div>
-                    <div>
-                      <div className="text-white/40">双智能体机制</div>
-                      <div className="text-white font-medium">Pilot + Director Agents</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* 世界预设卡片库 */}
-            <div className="mt-16">
-              <h3 className="text-[24px] font-bold text-white tracking-tight">
-                交互世界初始化预设 (World Presets)
-              </h3>
-              <p className="mt-2 text-[16px] text-white/60">
-                支持以实景摄影或提示词一键初始化三维世界，点击即可在上方交互视界中加载探索。
-              </p>
+                    <h3 className="mt-3 text-[20px] font-bold text-white tracking-tight">
+                      {preset.name}
+                    </h3>
 
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                {WORLD_PRESETS.map((preset: WorldPreset) => (
-                  <article
-                    key={preset.id}
-                    className="rounded-[20px] bg-[#141416] p-5 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="relative aspect-[16/10] overflow-hidden rounded-[16px]">
-                        <Image
-                          src={preset.image}
-                          alt={preset.nameZh}
-                          fill
-                          sizes="(max-width: 768px) 100vw, 33vw"
-                          className="object-cover"
-                        />
+                    <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
+                      {preset.basePrompt}
+                    </p>
+
+                    <div className="mt-4 bg-white/5 rounded-[16px] p-3.5 space-y-1.5 text-[16px] tnum">
+                      <div className="flex justify-between">
+                        <span className="text-white/40">光影时空：</span>
+                        <span className="text-white font-medium">{preset.physicsProfile.lighting}</span>
                       </div>
-                      <div className="mt-3 text-[16px] text-white/50">{preset.tag}</div>
-                      <h4 className="mt-1 text-[20px] font-bold text-white tracking-tight">
-                        {preset.nameZh}
-                      </h4>
-                      <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
-                        {preset.descriptionZh}
-                      </p>
+                      <div className="flex justify-between">
+                        <span className="text-white/40">物理动力学：</span>
+                        <span className="text-white font-medium">{preset.physicsProfile.gravity}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/40">流式推流：</span>
+                        <span className="text-[#00f2fe] font-medium">{preset.physicsProfile.fps}</span>
+                      </div>
                     </div>
+                  </div>
 
-                    <div className="mt-4 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => handleTeleportToPreset(preset.id)}
-                        className="terra-btn w-full rounded-full bg-white/10 py-2.5 text-[16px] font-medium text-white hover:bg-white/20 transition"
-                      >
-                        在游乐场中载入生成 ↑
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                  <div className="mt-5 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => handleTeleportToPreset(preset.id)}
+                      className="terra-btn w-full rounded-full bg-white/10 py-2.5 text-[16px] font-medium text-white hover:bg-white/20 transition"
+                    >
+                      在 Studio 中载入生成 ↑
+                    </button>
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* 核心第三屏：商业模式、受众画像与 Reactor 平台服务 */}
-        <section id="commercial-scenarios" className="bg-[#070707] py-20 sm:py-28">
-          <div className="mx-auto max-w-7xl px-6 sm:px-10">
+        {/* 核心第三屏：开源技术架构与本地部署终端 */}
+        <section id="deployment-guide" className="bg-[#09090b] py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-5 sm:px-10">
+            <div className="max-w-2xl terra-reveal">
+              <h2 className="text-[32px] sm:text-[36px] font-bold text-white tracking-tight">
+                开源部署与推理管线
+              </h2>
+              <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+                完全对标 GitHub 开源仓库 Robbyant/lingbot-world-v2，支持 SGLang 分布式张量并行与 WebSockets 交互动作推流。
+              </p>
+            </div>
+
+            <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {DEPLOYMENT_SNIPPETS.map((snippet) => (
+                <div
+                  key={snippet.title}
+                  className="rounded-[24px] bg-[#121214] p-6 terra-reveal flex flex-col justify-between overflow-hidden"
+                >
+                  <div className="overflow-hidden">
+                    <div className="flex items-center justify-between text-[16px] text-white/40 pb-3">
+                      <span className="font-semibold text-white">{snippet.title}</span>
+                      <span className="uppercase text-[16px]">{snippet.language}</span>
+                    </div>
+                    <pre className="mt-4 text-[16px] text-white/80 font-mono overflow-x-auto leading-relaxed p-3.5 bg-black/40 rounded-[12px] max-w-full">
+                      <code>{snippet.code}</code>
+                    </pre>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 核心第四屏：商业应用场景与客户画像全景 */}
+        <section id="commercial-scenarios" className="bg-[#0c0c0e] py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-5 sm:px-10">
             <div className="max-w-2xl terra-reveal">
               <h2 className="text-[32px] sm:text-[36px] font-bold text-white tracking-tight">
                 商业应用与受众客户全景
@@ -379,10 +360,10 @@ export function AppleFlagshipWebsite() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
                 <div className="lg:col-span-7">
                   <h3 className="text-[24px] sm:text-[32px] font-bold text-white tracking-tight">
-                    在移动设备上启动交互游乐场
+                    在移动设备上启动交互工作台
                   </h3>
                   <p className="mt-4 text-[16px] sm:text-[18px] text-white/70 leading-relaxed max-w-xl">
-                    支持在任意手机浏览器中通过触摸方向键体验 LingBot-World 2.0 实时因果流式生成，随时随地探索交互时空。
+                    支持在任意移动浏览器中通过触控方向键体验 LingBot-World 2.0 实时因果流式生成，随时随地探索交互时空。
                   </p>
 
                   <div className="mt-8 flex flex-wrap gap-4">
@@ -426,10 +407,10 @@ export function AppleFlagshipWebsite() {
         </section>
       </main>
 
-      <footer className="bg-[#070707] py-12 text-center text-[16px] text-white/40">
-        <div className="mx-auto max-w-7xl px-6 sm:px-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 LINGBOT-WORLD // Reactor.inc Playground & Robbyant Open Source.</p>
-          <p>Real-Time Action-Conditioned 14B Causal World Model.</p>
+      <footer className="bg-[#09090b] py-12 text-center text-[16px] text-white/40">
+        <div className="mx-auto max-w-7xl px-5 sm:px-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© 2026 REACTOR.INC & ROBBYANT // LINGBOT-WORLD 2.0 STUDIO.</p>
+          <p>Real-Time Action-Conditioned 14B Causal World Model Engine.</p>
         </div>
       </footer>
     </div>

@@ -3,15 +3,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
-  WORLD_PRESETS,
-  LINGBOT_VERSIONS,
-  type WorldPreset,
-  type LingBotVersionInfo,
-} from "@/lib/lingbot-data";
+  STUDIO_PRESETS,
+  type WorldStudioPreset,
+} from "@/lib/reactor-studio-data";
 
 export type RenderMode = "radiance" | "depth" | "normals";
 
-interface LingBotViewerProps {
+interface WorldModelViewerProps {
   activePresetId?: string;
   onSelectPreset?: (id: string) => void;
   hour?: number;
@@ -33,7 +31,7 @@ const FRAGMENT_SHADER = `
   uniform sampler2D uDepthMap;
   uniform sampler2D uPrevDepthMap;
   uniform float uTransitionProgress;
-  uniform vec2 uCameraPos; // WASD 交互累积位移
+  uniform vec2 uCameraPos;
   uniform vec2 uMouse;
   uniform float uZoomScale;
   uniform vec3 uSunDirection;
@@ -47,22 +45,17 @@ const FRAGMENT_SHADER = `
   varying vec2 vUv;
 
   void main() {
-    // 1. 读取基础深度图
     float rawDepthCurr = texture2D(uDepthMap, vUv).r;
     float rawDepthPrev = texture2D(uPrevDepthMap, vUv).r;
     float rawDepth = mix(rawDepthPrev, rawDepthCurr, uTransitionProgress);
     
-    // 2. 动态流体微风微动
     float windOffset = sin(vUv.y * 12.0 + uTime * 0.8) * cos(vUv.x * 10.0 + uTime * 0.6) * 0.0015 * (1.0 - rawDepth * 0.5);
     vec2 dynamicUv = vUv + vec2(windOffset, 0.0);
 
-    // 3. 基于 WASD 位移与鼠标视线计算实时透视位移
     vec2 totalOffset = (uCameraPos * 0.08 + uMouse * 0.04) * rawDepth;
-    // 缩放中心居中缩放
     vec2 centeredUv = (dynamicUv - 0.5) / uZoomScale + 0.5;
     vec2 displacedUv = clamp(centeredUv - totalOffset, 0.001, 0.999);
     
-    // 4. 双场景平滑交叉淡入
     vec4 colCurr = texture2D(uColorMap, displacedUv);
     vec4 colPrev = texture2D(uPrevColorMap, displacedUv);
     vec4 baseColor = mix(colPrev, colCurr, uTransitionProgress);
@@ -71,7 +64,6 @@ const FRAGMENT_SHADER = `
     float dPrev = texture2D(uPrevDepthMap, displacedUv).r;
     float depth = mix(dPrev, dCurr, uTransitionProgress);
 
-    // 5. 表面法线场（Sobel 边缘差分）
     vec2 texel = vec2(1.0 / 512.0, 1.0 / 320.0);
     float dLCurr = texture2D(uDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
     float dRCurr = texture2D(uDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
@@ -91,21 +83,18 @@ const FRAGMENT_SHADER = `
     float shimmer = sin(displacedUv.x * 60.0 + uTime * 1.5) * cos(displacedUv.y * 60.0 + uTime * 1.2) * 0.08 * (1.0 - depth);
     vec3 normal = normalize(vec3((dL - dR) * 2.0 + shimmer, (dD - dU) * 2.0, 1.0));
 
-    // 模式 1：神经深度场
     if (uRenderMode == 1) {
       vec3 depthCol = mix(vec3(0.04, 0.08, 0.28), vec3(0.98, 0.82, 0.32), depth);
       gl_FragColor = vec4(depthCol, 1.0);
       return;
     }
 
-    // 模式 2：表面几何法线场
     if (uRenderMode == 2) {
       vec3 normalCol = normal * 0.5 + 0.5;
       gl_FragColor = vec4(normalCol, 1.0);
       return;
     }
 
-    // 默认模式 0：真实光照辐射场
     float diffuse = max(dot(normal, normalize(uSunDirection)), 0.0);
     vec3 lighting = uAmbientColor + (uSunColor * diffuse * uSunIntensity);
 
@@ -132,24 +121,20 @@ export function BeijingSpatialWorldModel({
   hour: propHour,
   onChangeHour,
   snowMode = false,
-}: LingBotViewerProps) {
-  const [internalPresetId, setInternalPresetId] = useState<string>("imperial-palace");
+}: WorldModelViewerProps) {
+  const [internalPresetId, setInternalPresetId] = useState<string>("neo-dynasty");
   const [internalHour, setInternalHour] = useState<number>(17.5);
   const [isTimeLapseActive, setIsTimeLapseActive] = useState<boolean>(false);
-  const [selectedVersion, setSelectedVersion] = useState<"1.0" | "2.0">("2.0");
   const [renderMode, setRenderMode] = useState<RenderMode>("radiance");
   const [activeKeys, setActiveKeys] = useState<{ [key: string]: boolean }>({});
+  const [selectedVersion, setSelectedVersion] = useState<"1.0" | "2.0">("2.0");
 
   const currentPresetId = propPresetId ?? internalPresetId;
   const currentHour = propHour ?? internalHour;
 
-  const currentPreset: WorldPreset = useMemo(() => {
-    return WORLD_PRESETS.find((p) => p.id === currentPresetId) ?? WORLD_PRESETS[0];
+  const currentPreset: WorldStudioPreset = useMemo(() => {
+    return STUDIO_PRESETS.find((p) => p.id === currentPresetId) ?? STUDIO_PRESETS[0];
   }, [currentPresetId]);
-
-  const versionInfo: LingBotVersionInfo = useMemo(() => {
-    return LINGBOT_VERSIONS[selectedVersion];
-  }, [selectedVersion]);
 
   const handlePresetChange = useCallback(
     (id: string) => {
@@ -239,11 +224,10 @@ export function BeijingSpatialWorldModel({
     uniformsRef.current.uRenderMode.value = modeIdx;
   }, [renderMode]);
 
-  // WASD 键盘交互监听
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) {
+      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " ", "c"].includes(key)) {
         keyStateRef.current[key] = true;
         setActiveKeys((prev) => ({ ...prev, [key]: true }));
       }
@@ -336,7 +320,6 @@ export function BeijingSpatialWorldModel({
 
       uniformsRef.current.uTime.value = timestamp * 0.001;
 
-      // 根据当前 WASD 键盘状态更新实时位姿（Pilot Agent 动力学积分）
       const speed = deltaSec * 1.8;
       if (keyStateRef.current["w"] || keyStateRef.current["arrowup"]) {
         cameraPosRef.current.y = Math.min(1.0, cameraPosRef.current.y + speed);
@@ -353,7 +336,6 @@ export function BeijingSpatialWorldModel({
         cameraPosRef.current.x = Math.min(1.2, cameraPosRef.current.x + speed);
       }
 
-      // 动力自然阻尼缓动回中
       cameraPosRef.current.x *= 0.94;
       cameraPosRef.current.y *= 0.94;
       zoomScaleRef.current += (1.0 - zoomScaleRef.current) * 0.06;
@@ -489,7 +471,7 @@ export function BeijingSpatialWorldModel({
   }, [currentHour]);
 
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-[#070707]">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-[#09090b]">
       <div
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -497,53 +479,53 @@ export function BeijingSpatialWorldModel({
       >
         <canvas ref={canvasRef} className="h-full w-full object-cover" />
 
-        {/* 右上侧：Reactor 风格实时推流与双智能体调度指标 */}
+        {/* 右上侧：Reactor 官方推流与智能体遥测看板 */}
         <div className="absolute top-24 sm:top-28 right-6 sm:right-10 z-30 hidden md:block pointer-events-none">
-          <div className="rounded-[16px] bg-[#121214] p-3.5 text-right text-[16px] text-white/60 tnum space-y-1">
+          <div className="rounded-[16px] bg-[#121214] p-4 text-right text-[16px] text-white/70 tnum space-y-1">
             <div className="flex items-center justify-end gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#34c759]" />
-              <span className="text-white font-medium">{versionInfo.title}</span>
+              <span className="h-2 w-2 rounded-full bg-[#00f2fe]" />
+              <span className="text-white font-semibold">LingBot-World 2.0 (14B Causal DiT)</span>
             </div>
             <div>
               <span className="text-white/40">Pilot Agent: </span>
-              <span className="text-white font-medium">Tracking WASD Actions</span>
+              <span className="text-white font-medium">Tracking WASD Latent</span>
             </div>
             <div>
               <span className="text-white/40">Director Agent: </span>
-              <span className="text-white font-medium">Streaming Causal Chunks</span>
+              <span className="text-white font-medium">Synthesizing Causal Chunk</span>
             </div>
             <div>
               <span className="text-white/40">Stream Engine: </span>
-              <span className="text-[#34c759] font-medium">{versionInfo.fps} · 16ms Latency</span>
+              <span className="text-[#00f2fe] font-medium">720p @ 60 FPS · 16ms Latency</span>
             </div>
           </div>
         </div>
 
-        {/* 屏幕左下角：实时 WASD 键盘交互与动作反馈面板 */}
-        <div className="absolute bottom-24 sm:bottom-28 left-6 sm:left-10 z-30 flex items-center gap-3">
-          <div className="rounded-[20px] bg-[#121214] p-3 text-white">
-            <div className="text-[16px] text-white/50 mb-2 font-medium">
-              WASD 动作条件控制
+        {/* 屏幕左下角：Reactor 风格按键反馈与虚拟触控 */}
+        <div className="absolute bottom-20 sm:bottom-28 left-4 sm:left-10 z-30 flex items-center gap-3">
+          <div className="rounded-[18px] sm:rounded-[20px] bg-[#121214] p-2.5 sm:p-3.5 text-white">
+            <div className="text-[16px] text-white/50 mb-1.5 sm:mb-2 font-medium hidden sm:block">
+              WASD 实时动作驱动 (Action Conditioning)
             </div>
-            <div className="flex flex-col items-center gap-1.5">
+            <div className="flex flex-col items-center gap-1 sm:gap-1.5">
               <button
                 type="button"
                 onClick={() => triggerVirtualKey("w")}
-                className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
+                className={`terra-btn h-8 w-10 sm:h-9 sm:w-12 rounded-[8px] text-[16px] font-bold transition ${
                   activeKeys["w"] || activeKeys["arrowup"]
-                    ? "bg-[#c23b3b] text-white"
+                    ? "bg-[#00f2fe] text-black"
                     : "bg-white/10 text-white/70 hover:bg-white/20"
                 }`}
               >
                 W
               </button>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <button
                   type="button"
                   onClick={() => triggerVirtualKey("a")}
-                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  className={`terra-btn h-8 w-10 sm:h-9 sm:w-12 rounded-[8px] text-[16px] font-bold transition ${
                     activeKeys["a"] || activeKeys["arrowleft"]
-                      ? "bg-[#c23b3b] text-white"
+                      ? "bg-[#00f2fe] text-black"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
                   }`}
                 >
@@ -552,9 +534,9 @@ export function BeijingSpatialWorldModel({
                 <button
                   type="button"
                   onClick={() => triggerVirtualKey("s")}
-                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  className={`terra-btn h-8 w-10 sm:h-9 sm:w-12 rounded-[8px] text-[16px] font-bold transition ${
                     activeKeys["s"] || activeKeys["arrowdown"]
-                      ? "bg-[#c23b3b] text-white"
+                      ? "bg-[#00f2fe] text-black"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
                   }`}
                 >
@@ -563,9 +545,9 @@ export function BeijingSpatialWorldModel({
                 <button
                   type="button"
                   onClick={() => triggerVirtualKey("d")}
-                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  className={`terra-btn h-8 w-10 sm:h-9 sm:w-12 rounded-[8px] text-[16px] font-bold transition ${
                     activeKeys["d"] || activeKeys["arrowright"]
-                      ? "bg-[#c23b3b] text-white"
+                      ? "bg-[#00f2fe] text-black"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
                   }`}
                 >
@@ -576,59 +558,57 @@ export function BeijingSpatialWorldModel({
           </div>
         </div>
 
-        {/* 一体化精密控制底栏 */}
-        <div className="absolute bottom-6 sm:bottom-8 left-6 sm:left-10 right-6 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-[24px] bg-[#0c0c0e] px-6 py-3.5">
-          {/* 左侧：世界预设切换 */}
-          <div className="flex flex-wrap items-center gap-3">
-            {WORLD_PRESETS.map((preset) => {
+        {/* 底部一体化 Studio 控制条 */}
+        <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-10 right-4 sm:right-10 z-20 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4 rounded-[20px] sm:rounded-[24px] bg-[#0c0c0e] px-4 sm:px-6 py-2.5 sm:py-3.5 overflow-hidden">
+          {/* 左侧：世界场景快速切换 (移动端横向滑动，桌面端自由排列) */}
+          <div className="flex items-center gap-3 overflow-x-auto max-w-full pb-1 sm:pb-0 scrollbar-none whitespace-nowrap">
+            {STUDIO_PRESETS.map((preset) => {
               const isSel = preset.id === currentPresetId;
               return (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => handlePresetChange(preset.id)}
-                  className={`terra-btn flex items-center gap-1.5 text-[16px] transition ${
+                  className={`terra-btn flex items-center gap-1.5 text-[16px] transition shrink-0 ${
                     isSel ? "text-white font-semibold" : "text-white/40 hover:text-white/80"
                   }`}
                 >
-                  <span>{preset.nameZh}</span>
+                  <span>{preset.name}</span>
                   {isSel && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#c23b3b]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#00f2fe]" />
                   )}
                 </button>
               );
             })}
           </div>
 
-          {/* 右侧：版本切换 (1.0 vs 2.0) + 渲染模式 + 时钟演化 */}
-          <div className="flex flex-wrap items-center gap-4 text-[16px]">
-            {/* LingBot 核心版本切换 */}
+          {/* 右侧：版本切换 + 渲染模式 + 太阳时钟演化 */}
+          <div className="flex items-center gap-3 sm:gap-4 text-[16px] shrink-0">
             <div className="flex items-center gap-1 bg-white/5 rounded-full p-1">
               <button
                 type="button"
                 onClick={() => setSelectedVersion("1.0")}
-                className={`terra-btn rounded-full px-3 py-1 text-[16px] transition ${
+                className={`terra-btn rounded-full px-2.5 sm:px-3 py-1 text-[16px] transition ${
                   selectedVersion === "1.0"
                     ? "bg-white text-black font-semibold"
                     : "text-white/60 hover:text-white"
                 }`}
               >
-                LingBot 1.0
+                1.0
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedVersion("2.0")}
-                className={`terra-btn rounded-full px-3 py-1 text-[16px] transition ${
+                className={`terra-btn rounded-full px-2.5 sm:px-3 py-1 text-[16px] transition ${
                   selectedVersion === "2.0"
-                    ? "bg-[#c23b3b] text-white font-semibold"
+                    ? "bg-[#00f2fe] text-black font-semibold"
                     : "text-white/60 hover:text-white"
                 }`}
               >
-                LingBot 2.0
+                2.0
               </button>
             </div>
 
-            {/* 渲染模式切换 */}
             <div className="hidden lg:flex items-center gap-1 bg-white/5 rounded-full p-1">
               <button
                 type="button"
@@ -665,7 +645,6 @@ export function BeijingSpatialWorldModel({
               </button>
             </div>
 
-            {/* 真实日照时标演化 */}
             <div className="flex items-center gap-3">
               <input
                 type="range"
@@ -674,7 +653,7 @@ export function BeijingSpatialWorldModel({
                 step="0.1"
                 value={currentHour}
                 onChange={(e) => handleHourChange(parseFloat(e.target.value))}
-                className="w-24 sm:w-28 accent-[#c23b3b] cursor-pointer"
+                className="w-24 sm:w-28 accent-[#00f2fe] cursor-pointer"
                 aria-label="拖动时空环境"
               />
               <span className="font-bold text-white tnum">{timeString}</span>
