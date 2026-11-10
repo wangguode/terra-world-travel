@@ -4,19 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three";
 import { SCENIC_SPOTS, type ScenicSpot } from "@/lib/beijing-pulse-data";
 
-export interface TimeAnchor {
-  id: "dawn" | "noon" | "sunset" | "night";
-  label: string;
-  hour: number;
-  timeString: string;
-}
-
-export const TIME_ANCHORS: TimeAnchor[] = [
-  { id: "dawn", label: "晨曦", hour: 6.5, timeString: "06:30" },
-  { id: "noon", label: "晴空", hour: 12.0, timeString: "12:00" },
-  { id: "sunset", label: "金辉", hour: 17.5, timeString: "17:30" },
-  { id: "night", label: "蓝调", hour: 20.5, timeString: "20:30" },
-];
+export type RenderMode = "radiance" | "depth" | "normals";
+export type CameraPreset = "frontal" | "top" | "flank";
 
 interface BeijingSpatialViewerProps {
   selectedSpotId?: string;
@@ -49,23 +38,24 @@ const FRAGMENT_SHADER = `
   uniform float uAtmosphereHaze;
   uniform float uSnowAmount;
   uniform float uTime;
+  uniform int uRenderMode; // 0: Radiance, 1: Neural Depth, 2: Surface Normals
   varying vec2 vUv;
 
   void main() {
-    // 1. 读取基础深度值（0.0 远景，1.0 近景）
+    // 1. 读取基础深度值
     float rawDepthCurr = texture2D(uDepthMap, vUv).r;
     float rawDepthPrev = texture2D(uPrevDepthMap, vUv).r;
     float rawDepth = mix(rawDepthPrev, rawDepthCurr, uTransitionProgress);
     
-    // 2. 4D 动态微风扰动（远景云气与近景微澜轻拂）
+    // 2. 4D 动态微风扰动
     float windOffset = sin(vUv.y * 12.0 + uTime * 0.8) * cos(vUv.x * 10.0 + uTime * 0.6) * 0.0015 * (1.0 - rawDepth * 0.5);
     vec2 dynamicUv = vUv + vec2(windOffset, 0.0);
 
-    // 3. 深度感知视差偏移（近景位移大，远景近乎不动，绝无球面鱼眼拉扯）
+    // 3. 深度视差偏移
     vec2 parallaxOffset = uMouse * (rawDepth * uParallaxScale);
     vec2 displacedUv = clamp(dynamicUv - parallaxOffset, 0.001, 0.999);
     
-    // 4. 双场景平滑交叉淡入淡出（Crossfade）
+    // 4. 双场景平滑过渡
     vec4 colCurr = texture2D(uColorMap, displacedUv);
     vec4 colPrev = texture2D(uPrevColorMap, displacedUv);
     vec4 baseColor = mix(colPrev, colCurr, uTransitionProgress);
@@ -74,7 +64,7 @@ const FRAGMENT_SHADER = `
     float dPrev = texture2D(uPrevDepthMap, displacedUv).r;
     float depth = mix(dPrev, dCurr, uTransitionProgress);
 
-    // 5. 从深度图推导微表面法线场（Sobel 边缘微分）并叠加时间微光波动
+    // 5. 表面法线场（Sobel 边缘微分）
     vec2 texel = vec2(1.0 / 512.0, 1.0 / 320.0);
     float dLCurr = texture2D(uDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
     float dRCurr = texture2D(uDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
@@ -91,22 +81,33 @@ const FRAGMENT_SHADER = `
     float dD = mix(dDPrev, dDCurr, uTransitionProgress);
     float dU = mix(dUPrev, dUCurr, uTransitionProgress);
     
-    // 琉璃瓦在光照下的微颤波光
     float shimmer = sin(displacedUv.x * 60.0 + uTime * 1.5) * cos(displacedUv.y * 60.0 + uTime * 1.2) * 0.08 * (1.0 - depth);
     vec3 normal = normalize(vec3((dL - dR) * 2.0 + shimmer, (dD - dU) * 2.0, 1.0));
 
-    // 6. 真实太阳向量物理重打光（Lambertian Diffuse + 飞檐高光）
+    // 开源世界模型模式 1：神经深度场 (Neural Depth Map)
+    if (uRenderMode == 1) {
+      vec3 depthCol = mix(vec3(0.04, 0.08, 0.28), vec3(0.98, 0.82, 0.32), depth);
+      gl_FragColor = vec4(depthCol, 1.0);
+      return;
+    }
+
+    // 开源世界模型模式 2：表面几何法线场 (Surface Normals)
+    if (uRenderMode == 2) {
+      vec3 normalCol = normal * 0.5 + 0.5;
+      gl_FragColor = vec4(normalCol, 1.0);
+      return;
+    }
+
+    // 默认模式 0：真实光照辐射场 (Radiance Field)
     float diffuse = max(dot(normal, normalize(uSunDirection)), 0.0);
     vec3 lighting = uAmbientColor + (uSunColor * diffuse * uSunIntensity);
 
-    // 7. 深度感知远景大气暮色/晨雾（呼吸感薄雾流动）
     float hazePulse = sin(uTime * 0.4) * 0.04;
     float hazeFactor = (1.0 - depth) * max(0.0, uAtmosphereHaze + hazePulse);
     vec3 litColor = baseColor.rgb * lighting;
     vec3 hazeColor = mix(uAmbientColor * 1.2, uSunColor, 0.4);
     vec3 finalColor = mix(litColor, hazeColor, hazeFactor);
 
-    // 8. 紫禁初雪意境（基于法线朝上分量在琉璃瓦顶积雪）
     if (uSnowAmount > 0.01) {
       float upwardness = max(normal.y, 0.0);
       float snowMask = smoothstep(0.15, 0.75, upwardness) * uSnowAmount;
@@ -129,7 +130,8 @@ export function BeijingSpatialWorldModel({
   const [internalHour, setInternalHour] = useState<number>(17.5);
   const [isTimeLapseActive, setIsTimeLapseActive] = useState<boolean>(false);
   const [isLiveSynced, setIsLiveSynced] = useState<boolean>(false);
-  const [isPhenomenonActive, setIsPhenomenonActive] = useState<boolean>(true);
+  const [renderMode, setRenderMode] = useState<RenderMode>("radiance");
+  const [activePreset, setActivePreset] = useState<CameraPreset>("frontal");
 
   const currentSpotId = propSpotId ?? internalSpotId;
   const currentHour = propHour ?? internalHour;
@@ -140,22 +142,13 @@ export function BeijingSpatialWorldModel({
 
   const handleSpotChange = useCallback(
     (id: string) => {
-      const targetSpot = SCENIC_SPOTS.find((s) => s.id === id);
       if (onSelectSpot) {
         onSelectSpot(id);
       } else {
         setInternalSpotId(id);
       }
-      // 若处于绝景推演模式，自动联动将日晷切至该景点的最佳观测时空窗口
-      if (isPhenomenonActive && targetSpot) {
-        if (onChangeHour) {
-          onChangeHour(targetSpot.phenomenon.optimalHour);
-        } else {
-          setInternalHour(targetSpot.phenomenon.optimalHour);
-        }
-      }
     },
-    [onSelectSpot, isPhenomenonActive, onChangeHour]
+    [onSelectSpot]
   );
 
   const handleHourChange = useCallback(
@@ -170,19 +163,6 @@ export function BeijingSpatialWorldModel({
     [onChangeHour]
   );
 
-  // 触发天文绝景与最佳观测时空窗口推演
-  const togglePhenomenon = () => {
-    if (!isPhenomenonActive) {
-      setIsPhenomenonActive(true);
-      setIsTimeLapseActive(false);
-      setIsLiveSynced(false);
-      handleHourChange(currentSpot.phenomenon.optimalHour);
-    } else {
-      setIsPhenomenonActive(false);
-    }
-  };
-
-  // 北京真实时间计算（UTC+8）
   const getBeijingHour = (): number => {
     const now = new Date();
     const utc = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -222,6 +202,7 @@ export function BeijingSpatialWorldModel({
     uAtmosphereHaze: { value: number };
     uSnowAmount: { value: number };
     uTime: { value: number };
+    uRenderMode: { value: number };
   }>({
     uColorMap: { value: null },
     uPrevColorMap: { value: null },
@@ -237,6 +218,7 @@ export function BeijingSpatialWorldModel({
     uAtmosphereHaze: { value: 0.2 },
     uSnowAmount: { value: 0.0 },
     uTime: { value: 0.0 },
+    uRenderMode: { value: 0 },
   });
 
   const mouseTargetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -259,7 +241,25 @@ export function BeijingSpatialWorldModel({
     onHourChangeRef.current = handleHourChange;
   }, [handleHourChange]);
 
-  // 初始化 Three.js WebGL 神经深度重打光画布
+  // 更新渲染模式 (0: Radiance, 1: Depth, 2: Normals)
+  useEffect(() => {
+    const modeIdx = renderMode === "depth" ? 1 : renderMode === "normals" ? 2 : 0;
+    uniformsRef.current.uRenderMode.value = modeIdx;
+  }, [renderMode]);
+
+  // 运镜机位预设切换
+  const setCameraPreset = (preset: CameraPreset) => {
+    setActivePreset(preset);
+    if (preset === "frontal") {
+      mouseTargetRef.current = { x: 0, y: 0 };
+    } else if (preset === "top") {
+      mouseTargetRef.current = { x: 0, y: 0.28 };
+    } else if (preset === "flank") {
+      mouseTargetRef.current = { x: -0.32, y: -0.1 };
+    }
+  };
+
+  // 初始化 Three.js WebGL
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -320,10 +320,8 @@ export function BeijingSpatialWorldModel({
       const deltaSec = Math.min((timestamp - lastTimestamp) / 1000, 0.1);
       lastTimestamp = timestamp;
 
-      // 更新着色器流体微风时间
       uniformsRef.current.uTime.value = timestamp * 0.001;
 
-      // 4D 动态时光流动（Time-lapse 循环推移）
       if (isTimeLapseRef.current) {
         let nextHour = currentHourRef.current + deltaSec * 0.8;
         if (nextHour > 22.0) {
@@ -333,7 +331,6 @@ export function BeijingSpatialWorldModel({
         onHourChangeRef.current(nextHour);
       }
 
-      // 场景淡入淡出插值（Crossfade）
       if (transitionProgressRef.current < 1.0) {
         transitionProgressRef.current = Math.min(
           1.0,
@@ -343,7 +340,6 @@ export function BeijingSpatialWorldModel({
           transitionProgressRef.current;
       }
 
-      // 平滑缓动插值
       currentMouseRef.current.x +=
         (mouseTargetRef.current.x - currentMouseRef.current.x) * 0.08;
       currentMouseRef.current.y +=
@@ -372,7 +368,7 @@ export function BeijingSpatialWorldModel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 切换景点贴图（平滑淡入淡出过渡）
+  // 切换景点贴图
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(currentSpot.image, (colorTex) => {
@@ -397,40 +393,33 @@ export function BeijingSpatialWorldModel({
     });
   }, [currentSpot]);
 
-  // 根据日晷时间（05:00 - 22:00）动态计算三维太阳物理位置与光色
+  // 根据当前时间计算太阳光照
   useEffect(() => {
-    // 太阳运动弧线（东升西落）
-    // 6.0 = 东方 (+X), 12.0 = 中天 (+Y), 18.0 = 西方 (-X)
-    const solarProgress = (currentHour - 6.0) / 12.0; // 0.0 (06:00) 到 1.0 (18:00)
-    const solarAngle = solarProgress * Math.PI; // 0 到 PI
+    const solarProgress = (currentHour - 6.0) / 12.0;
+    const solarAngle = solarProgress * Math.PI;
 
-    const sunX = Math.cos(solarAngle) * 2.0; // 东面到西面
-    const sunY = Math.sin(solarAngle) * 2.5; // 升起高度
-    const sunZ = Math.max(0.3, Math.sin(solarAngle) * 1.5); // 前后侧光
+    const sunX = Math.cos(solarAngle) * 2.0;
+    const sunY = Math.sin(solarAngle) * 2.5;
+    const sunZ = Math.max(0.3, Math.sin(solarAngle) * 1.5);
 
     uniformsRef.current.uSunDirection.value.set(sunX, sunY, sunZ);
 
-    // 氛围光与太阳色温过渡
     if (currentHour < 8.0) {
-      // 06:00 - 08:00 晨曦（金粉晨光，冷调空气）
       uniformsRef.current.uSunColor.value.setRGB(1.0, 0.85, 0.65);
       uniformsRef.current.uAmbientColor.value.setRGB(0.28, 0.32, 0.42);
       uniformsRef.current.uSunIntensity.value = 1.15;
       uniformsRef.current.uAtmosphereHaze.value = 0.28;
     } else if (currentHour >= 8.0 && currentHour < 15.5) {
-      // 08:00 - 15:30 正午晴空（澄澈纯白高光，天高云淡）
       uniformsRef.current.uSunColor.value.setRGB(1.0, 0.98, 0.92);
       uniformsRef.current.uAmbientColor.value.setRGB(0.48, 0.52, 0.58);
       uniformsRef.current.uSunIntensity.value = 1.25;
       uniformsRef.current.uAtmosphereHaze.value = 0.08;
     } else if (currentHour >= 15.5 && currentHour < 19.0) {
-      // 15:30 - 19:00 金辉日落（斜阳西照，红墙碎金，暮色苍茫）
       uniformsRef.current.uSunColor.value.setRGB(1.0, 0.55, 0.22);
       uniformsRef.current.uAmbientColor.value.setRGB(0.35, 0.22, 0.25);
       uniformsRef.current.uSunIntensity.value = 1.35;
       uniformsRef.current.uAtmosphereHaze.value = 0.32;
     } else {
-      // 19:00 - 24:00 蓝调子夜（深蓝夜幕，静谧月色，微弱轮廓光）
       uniformsRef.current.uSunColor.value.setRGB(0.25, 0.45, 0.85);
       uniformsRef.current.uAmbientColor.value.setRGB(0.12, 0.16, 0.28);
       uniformsRef.current.uSunIntensity.value = 0.55;
@@ -440,7 +429,6 @@ export function BeijingSpatialWorldModel({
     uniformsRef.current.uSnowAmount.value = snowMode ? 0.85 : 0.0;
   }, [currentHour, snowMode]);
 
-  // 鼠标交互控制视差
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const nx = (e.clientX - rect.left) / rect.width - 0.5;
@@ -449,16 +437,10 @@ export function BeijingSpatialWorldModel({
   };
 
   const handleMouseLeave = () => {
-    mouseTargetRef.current = { x: 0, y: 0 };
+    if (activePreset === "frontal") {
+      mouseTargetRef.current = { x: 0, y: 0 };
+    }
   };
-
-  // 当前所处的四时意境标签
-  const currentAtmosphere = useMemo(() => {
-    if (currentHour < 8.0) return "清晨 · 晨曦微露";
-    if (currentHour < 15.5) return "正午 · 晴空澄澈";
-    if (currentHour < 19.0) return "傍晚 · 日落金辉";
-    return "子夜 · 蓝调静谧";
-  }, [currentHour]);
 
   const timeString = useMemo(() => {
     const h = Math.floor(currentHour);
@@ -468,55 +450,8 @@ export function BeijingSpatialWorldModel({
     return `${sH}:${sM}`;
   }, [currentHour]);
 
-  // 真实物理太阳几何与色温计算
-  const solarMetrics = useMemo(() => {
-    const phi = (39.9 * Math.PI) / 180;
-    const delta = (-17.0 * Math.PI) / 180;
-    const omega = ((currentHour - 12.0) * 15.0 * Math.PI) / 180;
-
-    const sinAlt =
-      Math.sin(phi) * Math.sin(delta) +
-      Math.cos(phi) * Math.cos(delta) * Math.cos(omega);
-    const altitudeDeg =
-      Math.asin(Math.max(-1, Math.min(1, sinAlt))) * (180 / Math.PI);
-
-    let azimuthDeg = 180;
-    const cosAlt = Math.cos((altitudeDeg * Math.PI) / 180);
-    if (Math.abs(cosAlt) > 0.01) {
-      const cosAz =
-        (Math.sin((altitudeDeg * Math.PI) / 180) * Math.sin(phi) - Math.sin(delta)) /
-        (cosAlt * Math.cos(phi));
-      const azRad = Math.acos(Math.max(-1, Math.min(1, cosAz)));
-      azimuthDeg =
-        currentHour <= 12
-          ? 180 - (azRad * 180) / Math.PI
-          : 180 + (azRad * 180) / Math.PI;
-    }
-
-    let kelvin = 5400;
-    if (altitudeDeg < 0) {
-      kelvin = 9200;
-    } else if (altitudeDeg < 8) {
-      kelvin = 2900;
-    } else if (altitudeDeg < 25) {
-      kelvin = 4600;
-    } else {
-      kelvin = 5800;
-    }
-
-    const altText = altitudeDeg > 0 ? `${altitudeDeg.toFixed(1)}°` : "地平线下";
-    const azDir = azimuthDeg < 135 ? "东偏南" : azimuthDeg < 225 ? "正南" : "西偏南";
-
-    return {
-      altitude: altText,
-      azimuth: `${Math.round(azimuthDeg)}° (${azDir})`,
-      kelvin: `${kelvin}K`,
-    };
-  }, [currentHour]);
-
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden bg-[#070707]">
-      {/* 核心无畸变神经空间光影画布（全屏撑满） */}
       <div
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -524,76 +459,28 @@ export function BeijingSpatialWorldModel({
       >
         <canvas ref={canvasRef} className="h-full w-full object-cover" />
 
-        {/* 左上侧：当前视界状态印记 */}
-        <div className="absolute top-48 sm:top-52 left-6 sm:left-10 z-10 pointer-events-none">
-          <h2 className="text-[24px] sm:text-[32px] font-bold text-white tracking-tight">
-            {currentSpot.nameZh}
-          </h2>
-          <div className="mt-1 text-[14px] text-white/50 tnum">
-            {currentSpot.locationZh} · {currentAtmosphere}
+        {/* 右上侧：开源引擎专业遥测看板 (Engine Telemetry) */}
+        <div className="absolute top-24 sm:top-28 right-6 sm:right-10 z-30 hidden md:block pointer-events-none">
+          <div className="rounded-[16px] bg-[#121214] p-3 text-right text-[14px] text-white/60 tnum space-y-1">
+            <div>
+              <span className="text-white/40">Engine: </span>
+              <span className="text-white font-medium">WebGL 2.0 Radiance</span>
+            </div>
+            <div>
+              <span className="text-white/40">Render Mode: </span>
+              <span className="text-white font-medium uppercase">{renderMode}</span>
+            </div>
+            <div>
+              <span className="text-white/40">Framerate: </span>
+              <span className="text-[#34c759] font-medium">60 FPS</span>
+            </div>
           </div>
         </div>
 
-        {/* 天文物理绝景推演控制 HUD */}
-        {isPhenomenonActive && (
-          <div className="absolute top-64 sm:top-72 left-6 sm:left-10 z-20 max-w-sm sm:max-w-md rounded-[20px] bg-[#141416] p-5 text-white pointer-events-auto">
-            <div className="flex items-center justify-between gap-4 pb-2">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#c23b3b]" />
-                <span className="text-[14px] font-semibold tracking-wider text-white/60">
-                  物理时空推演 · 黄金观测窗口
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPhenomenonActive(false)}
-                className="terra-btn text-[14px] text-white/50 hover:text-white transition"
-              >
-                收起
-              </button>
-            </div>
-
-            <div className="mt-3">
-              <h3 className="text-[20px] font-bold text-white tracking-tight">
-                {currentSpot.phenomenon.title}
-              </h3>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-[14px] text-white/70 tnum bg-white/5 rounded-[12px] p-3">
-                <div>
-                  <span className="text-white/40">窗口时段：</span>
-                  <span className="text-white font-medium">{currentSpot.phenomenon.timeWindow}</span>
-                </div>
-                <div>
-                  <span className="text-white/40">推荐时令：</span>
-                  <span className="text-white font-medium">{currentSpot.phenomenon.seasonContext}</span>
-                </div>
-                <div>
-                  <span className="text-white/40">太阳仰角：</span>
-                  <span className="text-white font-medium">{currentSpot.phenomenon.solarAltitude}</span>
-                </div>
-                <div>
-                  <span className="text-white/40">物理色温：</span>
-                  <span className="text-white font-medium">{currentSpot.phenomenon.colorTemp}</span>
-                </div>
-              </div>
-
-              <div className="mt-3 space-y-2 text-[14px] leading-relaxed">
-                <p className="text-white/70">
-                  <span className="text-white/40 font-medium">光学原理：</span>
-                  {currentSpot.phenomenon.physicsPrinciple}
-                </p>
-                <p className="text-white/80">
-                  <span className="text-[#c23b3b] font-medium">决策指引：</span>
-                  {currentSpot.phenomenon.observationGuide}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 一体化精密悬浮底部 HUD */}
+        {/* 一体化精密开源世界模型控制底栏 (World Model Deck) */}
         <div className="absolute bottom-6 sm:bottom-8 left-6 sm:left-10 right-6 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-[24px] bg-[#0c0c0e] px-6 py-3.5">
-          {/* 左侧：六大地标极简微切换 */}
-          <div className="flex flex-wrap items-center gap-5">
+          {/* 左侧：地标快速切换 */}
+          <div className="flex flex-wrap items-center gap-4">
             {SCENIC_SPOTS.map((spot) => {
               const isSel = spot.id === currentSpotId;
               return (
@@ -601,7 +488,7 @@ export function BeijingSpatialWorldModel({
                   key={spot.id}
                   type="button"
                   onClick={() => handleSpotChange(spot.id)}
-                  className={`terra-btn flex items-center gap-2 text-[14px] transition ${
+                  className={`terra-btn flex items-center gap-1.5 text-[14px] transition ${
                     isSel ? "text-white font-semibold" : "text-white/40 hover:text-white/80"
                   }`}
                 >
@@ -614,14 +501,83 @@ export function BeijingSpatialWorldModel({
             })}
           </div>
 
-          {/* 右侧：日晷时标流转与天文学遥测数据 */}
+          {/* 中间与右侧：渲染模式切换 + 运镜机位 + 物理时标 */}
           <div className="flex flex-wrap items-center gap-5 text-[14px]">
-            <div className="text-white/40 tnum hidden lg:flex items-center gap-3">
-              <span>仰角 {solarMetrics.altitude}</span>
-              <span>方位 {solarMetrics.azimuth}</span>
-              <span>色温 {solarMetrics.kelvin}</span>
+            {/* 模式切换 (开源世界模型标准能力) */}
+            <div className="flex items-center gap-1 bg-white/5 rounded-full p-1">
+              <button
+                type="button"
+                onClick={() => setRenderMode("radiance")}
+                className={`terra-btn rounded-full px-3 py-1 text-[14px] transition ${
+                  renderMode === "radiance"
+                    ? "bg-[#c23b3b] text-white font-medium"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                辐射场
+              </button>
+              <button
+                type="button"
+                onClick={() => setRenderMode("depth")}
+                className={`terra-btn rounded-full px-3 py-1 text-[14px] transition ${
+                  renderMode === "depth"
+                    ? "bg-[#c23b3b] text-white font-medium"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                深度图
+              </button>
+              <button
+                type="button"
+                onClick={() => setRenderMode("normals")}
+                className={`terra-btn rounded-full px-3 py-1 text-[14px] transition ${
+                  renderMode === "normals"
+                    ? "bg-[#c23b3b] text-white font-medium"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                法线场
+              </button>
             </div>
 
+            {/* 运镜视角切换 */}
+            <div className="hidden xl:flex items-center gap-1 bg-white/5 rounded-full p-1">
+              <button
+                type="button"
+                onClick={() => setCameraPreset("frontal")}
+                className={`terra-btn rounded-full px-2.5 py-1 text-[14px] transition ${
+                  activePreset === "frontal"
+                    ? "bg-white/20 text-white font-medium"
+                    : "text-white/50 hover:text-white"
+                }`}
+              >
+                主视
+              </button>
+              <button
+                type="button"
+                onClick={() => setCameraPreset("top")}
+                className={`terra-btn rounded-full px-2.5 py-1 text-[14px] transition ${
+                  activePreset === "top"
+                    ? "bg-white/20 text-white font-medium"
+                    : "text-white/50 hover:text-white"
+                }`}
+              >
+                俯瞰
+              </button>
+              <button
+                type="button"
+                onClick={() => setCameraPreset("flank")}
+                className={`terra-btn rounded-full px-2.5 py-1 text-[14px] transition ${
+                  activePreset === "flank"
+                    ? "bg-white/20 text-white font-medium"
+                    : "text-white/50 hover:text-white"
+                }`}
+              >
+                侧掠
+              </button>
+            </div>
+
+            {/* 日照物理时标 */}
             <div className="flex items-center gap-3">
               <input
                 type="range"
@@ -630,8 +586,8 @@ export function BeijingSpatialWorldModel({
                 step="0.1"
                 value={currentHour}
                 onChange={(e) => handleHourChange(parseFloat(e.target.value))}
-                className="w-28 sm:w-36 accent-[#c23b3b] cursor-pointer"
-                aria-label="拖动日晷时间"
+                className="w-24 sm:w-32 accent-[#c23b3b] cursor-pointer"
+                aria-label="拖动时空日照"
               />
               <span className="font-bold text-white tnum">{timeString}</span>
             </div>
@@ -639,19 +595,8 @@ export function BeijingSpatialWorldModel({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={togglePhenomenon}
-                className={`terra-btn rounded-full px-3.5 py-1 text-[14px] font-medium transition ${
-                  isPhenomenonActive
-                    ? "bg-[#c23b3b] text-white font-semibold"
-                    : "bg-white/10 text-white/70 hover:text-white"
-                }`}
-              >
-                绝景推演
-              </button>
-              <button
-                type="button"
                 onClick={toggleLiveSync}
-                className={`terra-btn rounded-full px-3.5 py-1 text-[14px] font-medium transition ${
+                className={`terra-btn rounded-full px-3 py-1 text-[14px] font-medium transition ${
                   isLiveSynced
                     ? "bg-[#c23b3b] text-white"
                     : "bg-white/10 text-white/70 hover:text-white"
@@ -662,7 +607,7 @@ export function BeijingSpatialWorldModel({
               <button
                 type="button"
                 onClick={toggleTimeLapse}
-                className={`terra-btn rounded-full px-3.5 py-1 text-[14px] font-medium transition ${
+                className={`terra-btn rounded-full px-3 py-1 text-[14px] font-medium transition ${
                   isTimeLapseActive
                     ? "bg-white text-black font-semibold"
                     : "bg-white/10 text-white/70 hover:text-white"
