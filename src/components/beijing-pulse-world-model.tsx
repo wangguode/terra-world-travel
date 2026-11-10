@@ -2,14 +2,14 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { SCENIC_SPOTS, type ScenicSpot } from "@/lib/beijing-pulse-data";
+import { WORLD_MODEL_DOMAINS, type WorldModelDomain } from "@/lib/world-model-catalog";
 
 export type RenderMode = "radiance" | "depth" | "normals";
 export type CameraPreset = "frontal" | "top" | "flank";
 
-interface BeijingSpatialViewerProps {
-  selectedSpotId?: string;
-  onSelectSpot?: (id: string) => void;
+interface WorldModelViewerProps {
+  activeDomainId?: string;
+  onSelectDomain?: (id: string) => void;
   hour?: number;
   onChangeHour?: (hour: number) => void;
   snowMode?: boolean;
@@ -42,20 +42,16 @@ const FRAGMENT_SHADER = `
   varying vec2 vUv;
 
   void main() {
-    // 1. 读取基础深度值
     float rawDepthCurr = texture2D(uDepthMap, vUv).r;
     float rawDepthPrev = texture2D(uPrevDepthMap, vUv).r;
     float rawDepth = mix(rawDepthPrev, rawDepthCurr, uTransitionProgress);
     
-    // 2. 4D 动态微风扰动
     float windOffset = sin(vUv.y * 12.0 + uTime * 0.8) * cos(vUv.x * 10.0 + uTime * 0.6) * 0.0015 * (1.0 - rawDepth * 0.5);
     vec2 dynamicUv = vUv + vec2(windOffset, 0.0);
 
-    // 3. 深度视差偏移
     vec2 parallaxOffset = uMouse * (rawDepth * uParallaxScale);
     vec2 displacedUv = clamp(dynamicUv - parallaxOffset, 0.001, 0.999);
     
-    // 4. 双场景平滑过渡
     vec4 colCurr = texture2D(uColorMap, displacedUv);
     vec4 colPrev = texture2D(uPrevColorMap, displacedUv);
     vec4 baseColor = mix(colPrev, colCurr, uTransitionProgress);
@@ -64,7 +60,6 @@ const FRAGMENT_SHADER = `
     float dPrev = texture2D(uPrevDepthMap, displacedUv).r;
     float depth = mix(dPrev, dCurr, uTransitionProgress);
 
-    // 5. 表面法线场（Sobel 边缘微分）
     vec2 texel = vec2(1.0 / 512.0, 1.0 / 320.0);
     float dLCurr = texture2D(uDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
     float dRCurr = texture2D(uDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
@@ -84,21 +79,18 @@ const FRAGMENT_SHADER = `
     float shimmer = sin(displacedUv.x * 60.0 + uTime * 1.5) * cos(displacedUv.y * 60.0 + uTime * 1.2) * 0.08 * (1.0 - depth);
     vec3 normal = normalize(vec3((dL - dR) * 2.0 + shimmer, (dD - dU) * 2.0, 1.0));
 
-    // 开源世界模型模式 1：神经深度场 (Neural Depth Map)
     if (uRenderMode == 1) {
       vec3 depthCol = mix(vec3(0.04, 0.08, 0.28), vec3(0.98, 0.82, 0.32), depth);
       gl_FragColor = vec4(depthCol, 1.0);
       return;
     }
 
-    // 开源世界模型模式 2：表面几何法线场 (Surface Normals)
     if (uRenderMode == 2) {
       vec3 normalCol = normal * 0.5 + 0.5;
       gl_FragColor = vec4(normalCol, 1.0);
       return;
     }
 
-    // 默认模式 0：真实光照辐射场 (Radiance Field)
     float diffuse = max(dot(normal, normalize(uSunDirection)), 0.0);
     vec3 lighting = uAmbientColor + (uSunColor * diffuse * uSunIntensity);
 
@@ -120,40 +112,38 @@ const FRAGMENT_SHADER = `
 `;
 
 export function BeijingSpatialWorldModel({
-  selectedSpotId: propSpotId,
-  onSelectSpot,
+  activeDomainId: propDomainId,
+  onSelectDomain,
   hour: propHour,
   onChangeHour,
   snowMode = false,
-}: BeijingSpatialViewerProps) {
-  const [internalSpotId, setInternalSpotId] = useState<string>("forbidden-city");
+}: WorldModelViewerProps) {
+  const [internalDomainId, setInternalDomainId] = useState<string>("autonomous-driving");
   const [internalHour, setInternalHour] = useState<number>(17.5);
   const [isTimeLapseActive, setIsTimeLapseActive] = useState<boolean>(false);
-  const [isLiveSynced, setIsLiveSynced] = useState<boolean>(false);
   const [renderMode, setRenderMode] = useState<RenderMode>("radiance");
   const [activePreset, setActivePreset] = useState<CameraPreset>("frontal");
 
-  const currentSpotId = propSpotId ?? internalSpotId;
+  const currentDomainId = propDomainId ?? internalDomainId;
   const currentHour = propHour ?? internalHour;
 
-  const currentSpot: ScenicSpot = useMemo(() => {
-    return SCENIC_SPOTS.find((s) => s.id === currentSpotId) ?? SCENIC_SPOTS[0];
-  }, [currentSpotId]);
+  const currentDomain: WorldModelDomain = useMemo(() => {
+    return WORLD_MODEL_DOMAINS.find((d) => d.id === currentDomainId) ?? WORLD_MODEL_DOMAINS[0];
+  }, [currentDomainId]);
 
-  const handleSpotChange = useCallback(
+  const handleDomainChange = useCallback(
     (id: string) => {
-      if (onSelectSpot) {
-        onSelectSpot(id);
+      if (onSelectDomain) {
+        onSelectDomain(id);
       } else {
-        setInternalSpotId(id);
+        setInternalDomainId(id);
       }
     },
-    [onSelectSpot]
+    [onSelectDomain]
   );
 
   const handleHourChange = useCallback(
     (newHour: number) => {
-      setIsLiveSynced(false);
       if (onChangeHour) {
         onChangeHour(newHour);
       } else {
@@ -163,26 +153,7 @@ export function BeijingSpatialWorldModel({
     [onChangeHour]
   );
 
-  const getBeijingHour = (): number => {
-    const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const beijingDate = new Date(utc + 3600000 * 8);
-    return beijingDate.getHours() + beijingDate.getMinutes() / 60;
-  };
-
-  const toggleLiveSync = () => {
-    if (isLiveSynced) {
-      setIsLiveSynced(false);
-      return;
-    }
-    setIsTimeLapseActive(false);
-    setIsLiveSynced(true);
-    const bjHour = getBeijingHour();
-    handleHourChange(bjHour);
-  };
-
   const toggleTimeLapse = () => {
-    setIsLiveSynced(false);
     setIsTimeLapseActive((prev) => !prev);
   };
 
@@ -241,13 +212,11 @@ export function BeijingSpatialWorldModel({
     onHourChangeRef.current = handleHourChange;
   }, [handleHourChange]);
 
-  // 更新渲染模式 (0: Radiance, 1: Depth, 2: Normals)
   useEffect(() => {
     const modeIdx = renderMode === "depth" ? 1 : renderMode === "normals" ? 2 : 0;
     uniformsRef.current.uRenderMode.value = modeIdx;
   }, [renderMode]);
 
-  // 运镜机位预设切换
   const setCameraPreset = (preset: CameraPreset) => {
     setActivePreset(preset);
     if (preset === "frontal") {
@@ -259,7 +228,6 @@ export function BeijingSpatialWorldModel({
     }
   };
 
-  // 初始化 Three.js WebGL
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -275,12 +243,12 @@ export function BeijingSpatialWorldModel({
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
     const textureLoader = new THREE.TextureLoader();
-    const colorTex = textureLoader.load(currentSpot.image);
+    const colorTex = textureLoader.load(currentDomain.previewImage);
     colorTex.colorSpace = THREE.SRGBColorSpace;
     colorTex.minFilter = THREE.LinearFilter;
     colorTex.magFilter = THREE.LinearFilter;
 
-    const depthTex = textureLoader.load(currentSpot.depthMap);
+    const depthTex = textureLoader.load(currentDomain.depthMap);
     depthTex.minFilter = THREE.LinearFilter;
     depthTex.magFilter = THREE.LinearFilter;
 
@@ -368,14 +336,13 @@ export function BeijingSpatialWorldModel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 切换景点贴图
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load(currentSpot.image, (colorTex) => {
+    textureLoader.load(currentDomain.previewImage, (colorTex) => {
       colorTex.colorSpace = THREE.SRGBColorSpace;
       colorTex.minFilter = THREE.LinearFilter;
 
-      textureLoader.load(currentSpot.depthMap, (depthTex) => {
+      textureLoader.load(currentDomain.depthMap, (depthTex) => {
         depthTex.minFilter = THREE.LinearFilter;
 
         if (uniformsRef.current.uColorMap.value) {
@@ -391,9 +358,8 @@ export function BeijingSpatialWorldModel({
         uniformsRef.current.uDepthMap.value = depthTex;
       });
     });
-  }, [currentSpot]);
+  }, [currentDomain]);
 
-  // 根据当前时间计算太阳光照
   useEffect(() => {
     const solarProgress = (currentHour - 6.0) / 12.0;
     const solarAngle = solarProgress * Math.PI;
@@ -459,40 +425,44 @@ export function BeijingSpatialWorldModel({
       >
         <canvas ref={canvasRef} className="h-full w-full object-cover" />
 
-        {/* 右上侧：开源引擎专业遥测看板 (Engine Telemetry) */}
+        {/* 右上侧：世界模型引擎专业遥测看板 (Engine Telemetry) */}
         <div className="absolute top-24 sm:top-28 right-6 sm:right-10 z-30 hidden md:block pointer-events-none">
           <div className="rounded-[16px] bg-[#121214] p-3 text-right text-[14px] text-white/60 tnum space-y-1">
             <div>
               <span className="text-white/40">Engine: </span>
-              <span className="text-white font-medium">WebGL 2.0 Radiance</span>
+              <span className="text-white font-medium">World Model 2.0 WebGL</span>
+            </div>
+            <div>
+              <span className="text-white/40">Sim Domain: </span>
+              <span className="text-white font-medium">{currentDomain.nameEn}</span>
             </div>
             <div>
               <span className="text-white/40">Render Mode: </span>
               <span className="text-white font-medium uppercase">{renderMode}</span>
             </div>
             <div>
-              <span className="text-white/40">Framerate: </span>
-              <span className="text-[#34c759] font-medium">60 FPS</span>
+              <span className="text-white/40">Performance: </span>
+              <span className="text-[#34c759] font-medium">60 FPS · 16ms</span>
             </div>
           </div>
         </div>
 
         {/* 一体化精密开源世界模型控制底栏 (World Model Deck) */}
         <div className="absolute bottom-6 sm:bottom-8 left-6 sm:left-10 right-6 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-[24px] bg-[#0c0c0e] px-6 py-3.5">
-          {/* 左侧：地标快速切换 */}
+          {/* 左侧：四大世界模型领域仿真切换 */}
           <div className="flex flex-wrap items-center gap-4">
-            {SCENIC_SPOTS.map((spot) => {
-              const isSel = spot.id === currentSpotId;
+            {WORLD_MODEL_DOMAINS.map((domain) => {
+              const isSel = domain.id === currentDomainId;
               return (
                 <button
-                  key={spot.id}
+                  key={domain.id}
                   type="button"
-                  onClick={() => handleSpotChange(spot.id)}
+                  onClick={() => handleDomainChange(domain.id)}
                   className={`terra-btn flex items-center gap-1.5 text-[14px] transition ${
                     isSel ? "text-white font-semibold" : "text-white/40 hover:text-white/80"
                   }`}
                 >
-                  <span>{spot.nameZh}</span>
+                  <span>{domain.nameZh}</span>
                   {isSel && (
                     <span className="h-1.5 w-1.5 rounded-full bg-[#c23b3b]" />
                   )}
@@ -501,9 +471,8 @@ export function BeijingSpatialWorldModel({
             })}
           </div>
 
-          {/* 中间与右侧：渲染模式切换 + 运镜机位 + 物理时标 */}
+          {/* 右侧：渲染模式切换 + 运镜机位 + 物理时标 */}
           <div className="flex flex-wrap items-center gap-5 text-[14px]">
-            {/* 模式切换 (开源世界模型标准能力) */}
             <div className="flex items-center gap-1 bg-white/5 rounded-full p-1">
               <button
                 type="button"
@@ -540,7 +509,6 @@ export function BeijingSpatialWorldModel({
               </button>
             </div>
 
-            {/* 运镜视角切换 */}
             <div className="hidden xl:flex items-center gap-1 bg-white/5 rounded-full p-1">
               <button
                 type="button"
@@ -577,7 +545,6 @@ export function BeijingSpatialWorldModel({
               </button>
             </div>
 
-            {/* 日照物理时标 */}
             <div className="flex items-center gap-3">
               <input
                 type="range"
@@ -587,23 +554,12 @@ export function BeijingSpatialWorldModel({
                 value={currentHour}
                 onChange={(e) => handleHourChange(parseFloat(e.target.value))}
                 className="w-24 sm:w-32 accent-[#c23b3b] cursor-pointer"
-                aria-label="拖动时空日照"
+                aria-label="拖动时空环境"
               />
               <span className="font-bold text-white tnum">{timeString}</span>
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleLiveSync}
-                className={`terra-btn rounded-full px-3 py-1 text-[14px] font-medium transition ${
-                  isLiveSynced
-                    ? "bg-[#c23b3b] text-white"
-                    : "bg-white/10 text-white/70 hover:text-white"
-                }`}
-              >
-                实况
-              </button>
               <button
                 type="button"
                 onClick={toggleTimeLapse}
