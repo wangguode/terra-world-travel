@@ -5,7 +5,6 @@ import Image from "next/image";
 import QRCode from "qrcode";
 import {
   BeijingSpatialWorldModel,
-  type TimeOfDay,
 } from "@/components/beijing-pulse-world-model";
 import {
   VISUAL_CHAPTERS,
@@ -19,7 +18,8 @@ export function AppleFlagshipWebsite() {
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
   const [activeSpotId, setActiveSpotId] = useState<string>("forbidden-city");
-  const [activeTime, setActiveTime] = useState<TimeOfDay>("sunset");
+  const [activeHour, setActiveHour] = useState<number>(17.5);
+  const [snowMode, setSnowMode] = useState<boolean>(false);
 
   useEffect(() => {
     const nodes = document.querySelectorAll(".terra-reveal");
@@ -73,9 +73,9 @@ export function AppleFlagshipWebsite() {
     }
   };
 
-  const handleTeleportToSpot = (spotId: string, time: TimeOfDay) => {
+  const handleTeleportToSpot = (spotId: string, hour: number) => {
     setActiveSpotId(spotId);
-    setActiveTime(time);
+    setActiveHour(hour);
     const el = document.getElementById("spatial-stage");
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
@@ -106,7 +106,7 @@ export function AppleFlagshipWebsite() {
               href="#spatial-stage"
               className="text-white/70 hover:text-white no-underline transition"
             >
-              四时光影
+              时空光影
             </a>
             <a
               href="#visual-chapters"
@@ -114,6 +114,17 @@ export function AppleFlagshipWebsite() {
             >
               画报长卷
             </a>
+            <button
+              type="button"
+              onClick={() => setSnowMode(!snowMode)}
+              className={`terra-btn rounded-full px-4 py-1.5 text-[14px] font-medium transition ${
+                snowMode
+                  ? "bg-[#c23b3b] text-white"
+                  : "bg-white/10 text-white/80 hover:bg-white/20"
+              }`}
+            >
+              {snowMode ? "已覆初雪" : "紫禁初雪"}
+            </button>
             <a
               href="#mobile-companion"
               className="terra-btn rounded-full bg-white px-5 py-1.5 text-[14px] font-semibold text-[#070707] no-underline hover:bg-white/90"
@@ -174,10 +185,10 @@ export function AppleFlagshipWebsite() {
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
             <div className="max-w-2xl terra-reveal">
               <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                四时光影 · 沉浸视界
+                四时光影 · 神经空间视界
               </h2>
               <p className="mt-3 text-[18px] text-white/70 leading-relaxed">
-                保持真实光学透视，拒绝球面畸变。切换上方地标与右下角时光刻度，静观晨曦初露、日悬中天、金瓦落日与蓝调夜幕。
+                基于单目神经深度与物理太阳轨迹。鼠标移动感受景深视差，拖动右下角日晷，静看阳光寸寸抚过六百年红墙。
               </p>
             </div>
 
@@ -185,8 +196,9 @@ export function AppleFlagshipWebsite() {
               <BeijingSpatialWorldModel
                 selectedSpotId={activeSpotId}
                 onSelectSpot={setActiveSpotId}
-                selectedTime={activeTime}
-                onSelectTime={setActiveTime}
+                hour={activeHour}
+                onChangeHour={setActiveHour}
+                snowMode={snowMode}
               />
             </div>
           </div>
@@ -232,7 +244,12 @@ export function AppleFlagshipWebsite() {
                   <div className="pt-2">
                     <button
                       type="button"
-                      onClick={() => handleTeleportToSpot("forbidden-city", "sunset")}
+                      onClick={() =>
+                        handleTeleportToSpot(
+                          VISUAL_CHAPTERS[0].targetSpotId,
+                          VISUAL_CHAPTERS[0].targetHour
+                        )
+                      }
                       className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
                     >
                       在视窗中载入此黄昏景致 ↑
@@ -258,7 +275,12 @@ export function AppleFlagshipWebsite() {
                   <div className="pt-2">
                     <button
                       type="button"
-                      onClick={() => handleTeleportToSpot("great-wall", "dawn")}
+                      onClick={() =>
+                        handleTeleportToSpot(
+                          VISUAL_CHAPTERS[1].targetSpotId,
+                          VISUAL_CHAPTERS[1].targetHour
+                        )
+                      }
                       className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
                     >
                       在视窗中载入此晨曦景致 ↑
@@ -308,7 +330,12 @@ export function AppleFlagshipWebsite() {
                   <div className="pt-2">
                     <button
                       type="button"
-                      onClick={() => handleTeleportToSpot("temple-of-heaven", "noon")}
+                      onClick={() =>
+                        handleTeleportToSpot(
+                          VISUAL_CHAPTERS[2].targetSpotId,
+                          VISUAL_CHAPTERS[2].targetHour
+                        )
+                      }
                       className="terra-btn rounded-full bg-white/10 px-5 py-2 text-[14px] font-medium text-white hover:bg-white/15 transition"
                     >
                       在视窗中载入此晴空景致 ↑

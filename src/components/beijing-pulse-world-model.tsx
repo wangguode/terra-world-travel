@@ -1,85 +1,111 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
-import Image from "next/image";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
 import { SCENIC_SPOTS, type ScenicSpot } from "@/lib/beijing-pulse-data";
 
-export type TimeOfDay = "dawn" | "noon" | "sunset" | "night";
-
-interface LightingSetting {
-  id: TimeOfDay;
+export interface TimeAnchor {
+  id: "dawn" | "noon" | "sunset" | "night";
   label: string;
-  clockTime: string;
-  atmosphereName: string;
-  filterStyle: string;
-  scrimTone: string;
+  hour: number;
+  timeString: string;
 }
 
-const LIGHTING_SETTINGS: LightingSetting[] = [
-  {
-    id: "dawn",
-    label: "晨曦",
-    clockTime: "06:30",
-    atmosphereName: "清晨·薄光初露",
-    filterStyle: "sepia(0.18) saturate(1.12) brightness(1.02) contrast(1.02)",
-    scrimTone: "rgba(255, 200, 150, 0.08)",
-  },
-  {
-    id: "noon",
-    label: "晴空",
-    clockTime: "12:00",
-    atmosphereName: "正午·高天澄澈",
-    filterStyle: "contrast(1.05) brightness(1.04) saturate(1.05)",
-    scrimTone: "rgba(0, 0, 0, 0.05)",
-  },
-  {
-    id: "sunset",
-    label: "金辉",
-    clockTime: "17:30",
-    atmosphereName: "日落·满城碎金",
-    filterStyle:
-      "sepia(0.36) saturate(1.28) hue-rotate(-15deg) brightness(0.96) contrast(1.06)",
-    scrimTone: "rgba(255, 120, 40, 0.12)",
-  },
-  {
-    id: "night",
-    label: "蓝调",
-    clockTime: "21:00",
-    atmosphereName: "夜幕·静谧子夜",
-    filterStyle:
-      "brightness(0.72) contrast(1.12) saturate(0.85) hue-rotate(185deg)",
-    scrimTone: "rgba(10, 25, 60, 0.25)",
-  },
+export const TIME_ANCHORS: TimeAnchor[] = [
+  { id: "dawn", label: "晨曦", hour: 6.5, timeString: "06:30" },
+  { id: "noon", label: "晴空", hour: 12.0, timeString: "12:00" },
+  { id: "sunset", label: "金辉", hour: 17.5, timeString: "17:30" },
+  { id: "night", label: "蓝调", hour: 20.5, timeString: "20:30" },
 ];
 
 interface BeijingSpatialViewerProps {
   selectedSpotId?: string;
   onSelectSpot?: (id: string) => void;
-  selectedTime?: TimeOfDay;
-  onSelectTime?: (time: TimeOfDay) => void;
+  hour?: number;
+  onChangeHour?: (hour: number) => void;
+  snowMode?: boolean;
 }
+
+const VERTEX_SHADER = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = vec4(position, 1.0);
+  }
+`;
+
+const FRAGMENT_SHADER = `
+  uniform sampler2D uColorMap;
+  uniform sampler2D uDepthMap;
+  uniform vec2 uMouse;
+  uniform float uParallaxScale;
+  uniform vec3 uSunDirection;
+  uniform vec3 uSunColor;
+  uniform vec3 uAmbientColor;
+  uniform float uSunIntensity;
+  uniform float uAtmosphereHaze;
+  uniform float uSnowAmount;
+  varying vec2 vUv;
+
+  void main() {
+    // 1. 读取深度值（0.0 远景，1.0 近景）
+    float rawDepth = texture2D(uDepthMap, vUv).r;
+    
+    // 2. 深度感知视差偏移（近景位移大，远景近乎不动，绝无球面鱼眼拉扯）
+    vec2 parallaxOffset = uMouse * (rawDepth * uParallaxScale);
+    vec2 displacedUv = clamp(vUv - parallaxOffset, 0.001, 0.999);
+    
+    // 3. 采样原始高清摄影原图与真实深度
+    vec4 baseColor = texture2D(uColorMap, displacedUv);
+    float depth = texture2D(uDepthMap, displacedUv).r;
+
+    // 4. 从深度图推导微表面法线场（Sobel 边缘微分）
+    vec2 texel = vec2(1.0 / 512.0, 1.0 / 320.0);
+    float dL = texture2D(uDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
+    float dR = texture2D(uDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
+    float dD = texture2D(uDepthMap, displacedUv - vec2(0.0, texel.y)).r;
+    float dU = texture2D(uDepthMap, displacedUv + vec2(0.0, texel.y)).r;
+    
+    vec3 normal = normalize(vec3((dL - dR) * 2.0, (dD - dU) * 2.0, 1.0));
+
+    // 5. 真实太阳向量物理重打光（Lambertian Diffuse + 飞檐高光）
+    float diffuse = max(dot(normal, normalize(uSunDirection)), 0.0);
+    vec3 lighting = uAmbientColor + (uSunColor * diffuse * uSunIntensity);
+
+    // 6. 深度感知远景大气暮色/晨雾（只在远景轻笼薄雾，近景城砖纤毫毕现）
+    float hazeFactor = (1.0 - depth) * uAtmosphereHaze;
+    vec3 litColor = baseColor.rgb * lighting;
+    vec3 hazeColor = mix(uAmbientColor * 1.2, uSunColor, 0.4);
+    vec3 finalColor = mix(litColor, hazeColor, hazeFactor);
+
+    // 7. 紫禁初雪意境（基于法线朝上分量在琉璃瓦顶积雪）
+    if (uSnowAmount > 0.01) {
+      float upwardness = max(normal.y, 0.0);
+      float snowMask = smoothstep(0.15, 0.75, upwardness) * uSnowAmount;
+      vec3 snowColor = vec3(0.94, 0.96, 1.0) * (uAmbientColor * 1.5 + uSunColor * diffuse * 0.8);
+      finalColor = mix(finalColor, snowColor, snowMask * 0.85);
+    }
+
+    gl_FragColor = vec4(finalColor, baseColor.a);
+  }
+`;
 
 export function BeijingSpatialWorldModel({
   selectedSpotId: propSpotId,
   onSelectSpot,
-  selectedTime: propTime,
-  onSelectTime,
+  hour: propHour,
+  onChangeHour,
+  snowMode = false,
 }: BeijingSpatialViewerProps) {
   const [internalSpotId, setInternalSpotId] = useState<string>("forbidden-city");
-  const [internalTime, setInternalTime] = useState<TimeOfDay>("sunset");
+  const [internalHour, setInternalHour] = useState<number>(17.5);
 
   const currentSpotId = propSpotId ?? internalSpotId;
-  const currentTime = propTime ?? internalTime;
+  const currentHour = propHour ?? internalHour;
 
   const currentSpot: ScenicSpot = useMemo(() => {
     return SCENIC_SPOTS.find((s) => s.id === currentSpotId) ?? SCENIC_SPOTS[0];
   }, [currentSpotId]);
-
-  const currentLighting: LightingSetting = useMemo(() => {
-    return (
-      LIGHTING_SETTINGS.find((l) => l.id === currentTime) ?? LIGHTING_SETTINGS[2]
-    );
-  }, [currentTime]);
 
   const handleSpotChange = (id: string) => {
     if (onSelectSpot) {
@@ -89,38 +115,218 @@ export function BeijingSpatialWorldModel({
     }
   };
 
-  const handleTimeChange = (time: TimeOfDay) => {
-    if (onSelectTime) {
-      onSelectTime(time);
+  const handleHourChange = (newHour: number) => {
+    if (onChangeHour) {
+      onChangeHour(newHour);
     } else {
-      setInternalTime(time);
+      setInternalHour(newHour);
     }
   };
 
-  // 2.5D 平滑视差响应（保真光学透视，杜绝球面拉伸变形）
-  const stageRef = useRef<HTMLDivElement | null>(null);
-  const [parallaxOffset, setParallaxOffset] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const uniformsRef = useRef<{
+    uColorMap: { value: THREE.Texture | null };
+    uDepthMap: { value: THREE.Texture | null };
+    uMouse: { value: THREE.Vector2 };
+    uParallaxScale: { value: number };
+    uSunDirection: { value: THREE.Vector3 };
+    uSunColor: { value: THREE.Color };
+    uAmbientColor: { value: THREE.Color };
+    uSunIntensity: { value: number };
+    uAtmosphereHaze: { value: number };
+    uSnowAmount: { value: number };
+  }>({
+    uColorMap: { value: null },
+    uDepthMap: { value: null },
+    uMouse: { value: new THREE.Vector2(0, 0) },
+    uParallaxScale: { value: 0.035 },
+    uSunDirection: { value: new THREE.Vector3(1, 0.5, 0.5) },
+    uSunColor: { value: new THREE.Color(1, 0.8, 0.6) },
+    uAmbientColor: { value: new THREE.Color(0.2, 0.2, 0.25) },
+    uSunIntensity: { value: 1.0 },
+    uAtmosphereHaze: { value: 0.2 },
+    uSnowAmount: { value: 0.0 },
   });
 
+  const mouseTargetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const currentMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // 初始化 Three.js WebGL 神经深度重打光画布
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    const textureLoader = new THREE.TextureLoader();
+    const colorTex = textureLoader.load(currentSpot.image);
+    colorTex.colorSpace = THREE.SRGBColorSpace;
+    colorTex.minFilter = THREE.LinearFilter;
+    colorTex.magFilter = THREE.LinearFilter;
+
+    const depthTex = textureLoader.load(currentSpot.depthMap);
+    depthTex.minFilter = THREE.LinearFilter;
+    depthTex.magFilter = THREE.LinearFilter;
+
+    uniformsRef.current.uColorMap.value = colorTex;
+    uniformsRef.current.uDepthMap.value = depthTex;
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader: VERTEX_SHADER,
+      fragmentShader: FRAGMENT_SHADER,
+      uniforms: uniformsRef.current,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const quad = new THREE.Mesh(geometry, material);
+    scene.add(quad);
+
+    const handleResize = () => {
+      if (!canvas) return;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      if (width === 0 || height === 0) return;
+      renderer.setSize(width, height, false);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    let animationId = 0;
+    const animate = () => {
+      // 平滑缓动插值
+      currentMouseRef.current.x +=
+        (mouseTargetRef.current.x - currentMouseRef.current.x) * 0.08;
+      currentMouseRef.current.y +=
+        (mouseTargetRef.current.y - currentMouseRef.current.y) * 0.08;
+
+      uniformsRef.current.uMouse.value.set(
+        currentMouseRef.current.x,
+        currentMouseRef.current.y
+      );
+
+      renderer.render(scene, camera);
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      cancelAnimationFrame(animationId);
+      colorTex.dispose();
+      depthTex.dispose();
+      material.dispose();
+      geometry.dispose();
+      renderer.dispose();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 切换景点贴图
+  useEffect(() => {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(currentSpot.image, (colorTex) => {
+      colorTex.colorSpace = THREE.SRGBColorSpace;
+      colorTex.minFilter = THREE.LinearFilter;
+      uniformsRef.current.uColorMap.value = colorTex;
+    });
+
+    textureLoader.load(currentSpot.depthMap, (depthTex) => {
+      depthTex.minFilter = THREE.LinearFilter;
+      uniformsRef.current.uDepthMap.value = depthTex;
+    });
+  }, [currentSpot]);
+
+  // 根据日晷时间（05:00 - 22:00）动态计算三维太阳物理位置与光色
+  useEffect(() => {
+    // 太阳运动弧线（东升西落）
+    // 6.0 = 东方 (+X), 12.0 = 中天 (+Y), 18.0 = 西方 (-X)
+    const solarProgress = (currentHour - 6.0) / 12.0; // 0.0 (06:00) 到 1.0 (18:00)
+    const solarAngle = solarProgress * Math.PI; // 0 到 PI
+
+    const sunX = Math.cos(solarAngle) * 2.0; // 东面到西面
+    const sunY = Math.sin(solarAngle) * 2.5; // 升起高度
+    const sunZ = Math.max(0.3, Math.sin(solarAngle) * 1.5); // 前后侧光
+
+    uniformsRef.current.uSunDirection.value.set(sunX, sunY, sunZ);
+
+    // 氛围光与太阳色温过渡
+    if (currentHour < 8.0) {
+      // 06:00 - 08:00 晨曦（金粉晨光，冷调空气）
+      uniformsRef.current.uSunColor.value.setRGB(1.0, 0.85, 0.65);
+      uniformsRef.current.uAmbientColor.value.setRGB(0.28, 0.32, 0.42);
+      uniformsRef.current.uSunIntensity.value = 1.15;
+      uniformsRef.current.uAtmosphereHaze.value = 0.28;
+    } else if (currentHour >= 8.0 && currentHour < 15.5) {
+      // 08:00 - 15:30 正午晴空（澄澈纯白高光，天高云淡）
+      uniformsRef.current.uSunColor.value.setRGB(1.0, 0.98, 0.92);
+      uniformsRef.current.uAmbientColor.value.setRGB(0.48, 0.52, 0.58);
+      uniformsRef.current.uSunIntensity.value = 1.25;
+      uniformsRef.current.uAtmosphereHaze.value = 0.08;
+    } else if (currentHour >= 15.5 && currentHour < 19.0) {
+      // 15:30 - 19:00 金辉日落（斜阳西照，红墙碎金，暮色苍茫）
+      uniformsRef.current.uSunColor.value.setRGB(1.0, 0.55, 0.22);
+      uniformsRef.current.uAmbientColor.value.setRGB(0.35, 0.22, 0.25);
+      uniformsRef.current.uSunIntensity.value = 1.35;
+      uniformsRef.current.uAtmosphereHaze.value = 0.32;
+    } else {
+      // 19:00 - 24:00 蓝调子夜（深蓝夜幕，静谧月色，微弱轮廓光）
+      uniformsRef.current.uSunColor.value.setRGB(0.25, 0.45, 0.85);
+      uniformsRef.current.uAmbientColor.value.setRGB(0.12, 0.16, 0.28);
+      uniformsRef.current.uSunIntensity.value = 0.55;
+      uniformsRef.current.uAtmosphereHaze.value = 0.45;
+    }
+
+    uniformsRef.current.uSnowAmount.value = snowMode ? 0.85 : 0.0;
+  }, [currentHour, snowMode]);
+
+  // 鼠标交互控制视差
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const nx = (e.clientX - rect.left) / rect.width - 0.5;
     const ny = (e.clientY - rect.top) / rect.height - 0.5;
-    setParallaxOffset({
-      x: nx * 14,
-      y: ny * 14,
-    });
+    mouseTargetRef.current = { x: nx, y: -ny };
   };
 
   const handleMouseLeave = () => {
-    setParallaxOffset({ x: 0, y: 0 });
+    mouseTargetRef.current = { x: 0, y: 0 };
   };
+
+  // 当前所处的四时意境标签
+  const currentAtmosphere = useMemo(() => {
+    if (currentHour < 8.0) return "清晨 · 晨曦微露";
+    if (currentHour < 15.5) return "正午 · 晴空澄澈";
+    if (currentHour < 19.0) return "傍晚 · 日落金辉";
+    return "子夜 · 蓝调静谧";
+  }, [currentHour]);
+
+  const timeString = useMemo(() => {
+    const h = Math.floor(currentHour);
+    const m = Math.floor((currentHour - h) * 60);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }, [currentHour]);
+
+  const currentPoeticNote = useMemo(() => {
+    if (currentHour < 8.0) return currentSpot.timeNotes.dawn;
+    if (currentHour < 15.5) return currentSpot.timeNotes.noon;
+    if (currentHour < 19.0) return currentSpot.timeNotes.sunset;
+    return currentSpot.timeNotes.night;
+  }, [currentHour, currentSpot]);
 
   return (
     <div className="relative overflow-hidden rounded-[32px] bg-[#0c0c0e]">
-      {/* 顶部极简地标名录切换：安静、纯净 */}
+      {/* 顶部极简地标名录切换 */}
       <div className="flex flex-wrap items-center justify-between gap-6 px-8 py-5">
         <div className="flex flex-wrap items-center gap-6 sm:gap-8">
           {SCENIC_SPOTS.map((spot) => {
@@ -148,73 +354,63 @@ export function BeijingSpatialWorldModel({
         </div>
       </div>
 
-      {/* 核心真实无畸变时空视窗 */}
+      {/* 核心无畸变神经空间光影画布 */}
       <div
-        ref={stageRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className="relative h-[480px] sm:h-[640px] w-full overflow-hidden select-none cursor-crosshair"
       >
-        {/* 背景真实高清画质（保真光学透视，杜绝球面拉伸变形） */}
-        <div
-          className="absolute inset-0 transition-transform duration-700 ease-out"
-          style={{
-            transform: `translate3d(${parallaxOffset.x}px, ${parallaxOffset.y}px, 0) scale(1.04)`,
-          }}
-        >
-          <Image
-            src={currentSpot.image}
-            alt={currentSpot.nameZh}
-            fill
-            sizes="100vw"
-            priority
-            className="object-cover object-center transition-[filter] duration-700 ease-in-out"
-            style={{
-              filter: currentLighting.filterStyle,
-            }}
-          />
+        <canvas ref={canvasRef} className="h-full w-full object-cover" />
 
-          {/* 纯净自然天光氛围微调 */}
-          <div
-            className="absolute inset-0 transition-opacity duration-700 ease-in-out pointer-events-none"
-            style={{
-              backgroundColor: currentLighting.scrimTone,
-            }}
-          />
-        </div>
-
-        {/* 左上角：地标宁静印章 */}
-        <div className="absolute top-8 left-8 z-10 max-w-md">
+        {/* 左上角：地标静穆印章 */}
+        <div className="absolute top-8 left-8 z-10 max-w-md pointer-events-none">
           <h2 className="text-[32px] sm:text-[44px] font-bold text-white tracking-tight">
             {currentSpot.nameZh}
           </h2>
           <div className="mt-1 text-[14px] text-white/80">
-            {currentSpot.locationZh} · {currentLighting.atmosphereName}
+            {currentSpot.locationZh} · {currentAtmosphere}
           </div>
         </div>
 
-        {/* 右下角：流转时钟控制（极简触感刻度） */}
-        <div className="absolute bottom-8 right-8 z-10 flex flex-col items-end gap-3">
-          <div className="text-[14px] text-white/50 tracking-wider">
-            光影时序流转
+        {/* 右下角：日晷流转时钟控制盘（连续滑动 + 4个锚点） */}
+        <div className="absolute bottom-8 right-8 z-10 flex flex-col items-end gap-3 max-w-[90vw]">
+          <div className="flex items-center gap-3 text-[14px] text-white/70">
+            <span>物理日晷流转</span>
+            <span className="font-bold text-white tnum">{timeString}</span>
           </div>
+
+          {/* 连续时间拖动轨道 */}
+          <div className="flex items-center gap-3 w-64 sm:w-80 rounded-full bg-[#18181b] px-4 py-2">
+            <input
+              type="range"
+              min="5.5"
+              max="22.0"
+              step="0.1"
+              value={currentHour}
+              onChange={(e) => handleHourChange(parseFloat(e.target.value))}
+              className="w-full accent-[#c23b3b] cursor-pointer"
+              aria-label="拖动日晷时间"
+            />
+          </div>
+
+          {/* 四时快捷锚点 */}
           <div className="flex items-center gap-2 rounded-full bg-[#18181b] p-1.5">
-            {LIGHTING_SETTINGS.map((setting) => {
-              const isSel = setting.id === currentTime;
+            {TIME_ANCHORS.map((anchor) => {
+              const isClose = Math.abs(currentHour - anchor.hour) < 1.2;
               return (
                 <button
-                  key={setting.id}
+                  key={anchor.id}
                   type="button"
-                  onClick={() => handleTimeChange(setting.id)}
-                  className={`terra-btn rounded-full px-4 py-1.5 text-[14px] transition ${
-                    isSel
+                  onClick={() => handleHourChange(anchor.hour)}
+                  className={`terra-btn rounded-full px-3.5 py-1.5 text-[14px] transition ${
+                    isClose
                       ? "bg-white text-black font-semibold"
                       : "text-white/60 hover:text-white"
                   }`}
                 >
-                  <span>{setting.label}</span>
+                  <span>{anchor.label}</span>
                   <span className="ml-1 text-[13px] opacity-70 tnum">
-                    {setting.clockTime}
+                    {anchor.timeString}
                   </span>
                 </button>
               );
@@ -222,10 +418,10 @@ export function BeijingSpatialWorldModel({
           </div>
         </div>
 
-        {/* 左下角：该时段的一抹静思 */}
-        <div className="absolute bottom-8 left-8 z-10 max-w-xl hidden sm:block">
+        {/* 左下角：该时段的岁月静好沉思 */}
+        <div className="absolute bottom-8 left-8 z-10 max-w-xl hidden sm:block pointer-events-none">
           <p className="text-[16px] text-white/90 leading-relaxed m-0">
-            {currentSpot.timeNotes[currentTime]}
+            {currentPoeticNote}
           </p>
         </div>
       </div>

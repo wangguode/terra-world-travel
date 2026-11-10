@@ -5,8 +5,9 @@ export interface ScenicSpot {
   locationZh: string;
   coordinates: string;
   image: string;
+  depthMap: string;
   aspectRatio: string;
-  defaultLight: "dawn" | "noon" | "sunset" | "night";
+  defaultHour: number; // 0.0 - 24.0
   timeNotes: {
     dawn: string;
     noon: string;
@@ -24,8 +25,9 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     locationZh: "东城 · 景山前街",
     coordinates: "39.9163° N, 116.3972° E",
     image: "/assets/forbidden-city.jpg",
+    depthMap: "/depth/forbidden-city.png",
     aspectRatio: "1279 / 640",
-    defaultLight: "sunset",
+    defaultHour: 17.5,
     timeNotes: {
       dawn: "清晨六点半，晨曦斜穿午门飞檐，九百八十座殿宇在薄光中逐渐苏醒，空气清澈冷冽。",
       noon: "正午十二点，日悬中天，汉白玉丹陛与红墙金瓦交相辉映，皇家气象巍然肃穆。",
@@ -42,8 +44,9 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     locationZh: "怀柔 · 燕山脊线",
     coordinates: "40.4319° N, 116.5704° E",
     image: "/assets/great-wall.jpg",
+    depthMap: "/depth/great-wall.png",
     aspectRatio: "1280 / 820",
-    defaultLight: "dawn",
+    defaultHour: 6.5,
     timeNotes: {
       dawn: "清晨六点半，初阳穿透苍茫林海与晨雾，石质烽火台在金色微光中舒展，游人未至，天地空旷。",
       noon: "正午十二点，长城如巨龙蜿蜒于千峰翠色之巅，视野辽阔极目远眺，山川壮丽。",
@@ -60,8 +63,9 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     locationZh: "东城 · 天坛路",
     coordinates: "39.8822° N, 116.4066° E",
     image: "/assets/temple-of-heaven.jpg",
+    depthMap: "/depth/temple-of-heaven.png",
     aspectRatio: "1280 / 853",
-    defaultLight: "noon",
+    defaultHour: 12.0,
     timeNotes: {
       dawn: "清晨六点半，古柏苍翠掩映间，祈年殿圆形蓝顶初沐晨光，空灵澄澈。",
       noon: "正午十二点，纯净高天之下，三重蓝琉璃瓦顶与三层汉白玉台基晶莹素洁，天圆地方之境至此圆满。",
@@ -78,8 +82,9 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     locationZh: "海淀 · 昆明湖畔",
     coordinates: "39.9999° N, 116.2755° E",
     image: "/assets/summer-palace.jpg",
+    depthMap: "/depth/summer-palace.png",
     aspectRatio: "1280 / 1934",
-    defaultLight: "sunset",
+    defaultHour: 17.5,
     timeNotes: {
       dawn: "清晨六点半，万寿山晨岚初散，昆明湖面波平如镜，画舫泛起第一道涟漪。",
       noon: "正午十二点，佛香阁傲立山峦，长廊千米画卷映衬碧水蓝天，皇家山水无尽明媚。",
@@ -96,8 +101,9 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     locationZh: "东城 · 老城街巷",
     coordinates: "39.9372° N, 116.4031° E",
     image: "/assets/nanluoguxiang.jpg",
+    depthMap: "/depth/nanluoguxiang.png",
     aspectRatio: "1280 / 960",
-    defaultLight: "night",
+    defaultHour: 20.0,
     timeNotes: {
       dawn: "清晨六点半，鸽哨掠过灰瓦四合院上空，胡同口升起早点炊烟，老北京最朴素的日常。",
       noon: "正午十二点，老槐树荫洒下斑驳光斑，深巷静谧，四合院如意门门簪古朴温润。",
@@ -114,8 +120,9 @@ export const SCENIC_SPOTS: ScenicSpot[] = [
     locationZh: "朝阳 · 酒仙桥",
     coordinates: "39.9842° N, 116.4947° E",
     image: "/assets/798.jpg",
+    depthMap: "/depth/798.png",
     aspectRatio: "1280 / 960",
-    defaultLight: "noon",
+    defaultHour: 12.0,
     timeNotes: {
       dawn: "清晨六点半，包豪斯锯齿形厂房在晨光中投下几何斜影，工业遗存静候前沿灵感。",
       noon: "正午十二点，天窗漫射天光照亮画廊白墙，雕塑与当代画布在静默中对话。",
@@ -135,6 +142,8 @@ export interface VisualChapter {
   image: string;
   essay: string;
   details: string;
+  targetSpotId: string;
+  targetHour: number;
 }
 
 export const VISUAL_CHAPTERS: VisualChapter[] = [
@@ -144,6 +153,8 @@ export const VISUAL_CHAPTERS: VisualChapter[] = [
     title: "暮色紫禁 · 六百年的沉思",
     subtitle: "FORBIDDEN CITY · DUSK",
     image: "/assets/forbidden-city.jpg",
+    targetSpotId: "forbidden-city",
+    targetHour: 17.5,
     essay:
       "当斜阳缓缓落入西山，紫禁城的重檐庑殿顶镀上了一层流转的暖金。红墙如血，金瓦如火，神武门外的护城河水静静流淌。站在景山之巅南望，中轴线上的重重宫阙在暮色中渐渐沉寂。六百年的兴衰沉浮，都在这一抹斜阳里化作了天地间的从容与静谧。",
     details: "明永乐十八年至今 · 中轴线宫殿建筑群 · 经纬度 39.91° N, 116.40° E",
@@ -154,6 +165,8 @@ export const VISUAL_CHAPTERS: VisualChapter[] = [
     title: "晨雾雄关 · 苍山古意",
     subtitle: "GREAT WALL · DAWN",
     image: "/assets/great-wall.jpg",
+    targetSpotId: "great-wall",
+    targetHour: 6.5,
     essay:
       "清晨，微风拂动燕山群峰的林海。薄雾如轻纱缭绕在崇山峻岭之间，朝阳的第一缕暖光穿透云岚，轻轻拂过斑驳的城砖与烽火台。没有如织的游人，唯有鸟鸣与山风穿行于箭楼空窗。千年的边关风云已散，留下的唯有苍山如海、残阳如血的苍茫气魄与岁月安宁。",
     details: "北齐至明代修筑 · 怀柔慕田峪 · 经纬度 40.43° N, 116.57° E",
@@ -164,6 +177,8 @@ export const VISUAL_CHAPTERS: VisualChapter[] = [
     title: "晴空素境 · 东方空间秩序",
     subtitle: "TEMPLE OF HEAVEN · HARMONY",
     image: "/assets/temple-of-heaven.jpg",
+    targetSpotId: "temple-of-heaven",
+    targetHour: 12.0,
     essay:
       "天圆地方，是古人对宇宙最纯粹的想象。正午的高天碧空如洗，祈年殿的三重蓝琉璃瓦在阳光下晶莹剔透，三层汉白玉圆台如云海托起天阙。这里没有繁复逼仄的装饰，只有绝对的几何对称与空灵的广袤空间。漫步于古柏树荫间，心灵仿佛也在这一方天地中找到了久违的澄澈与安放。",
     details: "明永乐十八年始建 · 皇家祭天坛庙 · 经纬度 39.88° N, 116.41° E",
