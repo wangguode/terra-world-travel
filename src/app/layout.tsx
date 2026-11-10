@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BEIJING PULSE // 360° 实景空间漫游与四时光影世界模型",
+  title: "TERRA-OASIS // 可交互神经世界模型应用 (Playable Neural World Simulator)",
   description:
-    "精选北京经典地标实景呈现，沉浸式 360° 真实空间漫游与四时光影变幻世界模型。",
+    "开源动作驱动交互式世界模型 Web 客户端应用。支持 WASD 实时漫游探索、物理微积分反馈、体素破拆扰动与多重沙盒世界维度推演。",
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.png",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Beijing Pulse",
+    title: "Terra Oasis",
   },
 };
 

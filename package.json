@@ -1,8 +1,8 @@
 {
-  "name": "terra-world-travel",
-  "version": "1.0.0",
+  "name": "terra-oasis",
+  "version": "2.0.0",
   "private": false,
-  "description": "TERRA // Cross-Border Touchdown Survival OS & Web 3D Gaussian World Model Explorer (Seoul & Beijing Edition)",
+  "description": "TERRA-OASIS // Open-Source Playable Neural World Model Application (Real-Time Action-Conditioned Causal World Simulator)",
   "author": "wangguode",
   "license": "MIT",
   "scripts": {

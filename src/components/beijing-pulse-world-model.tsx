@@ -1,292 +1,283 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import {
-  STUDIO_PRESETS,
-  type WorldStudioPreset,
-} from "@/lib/reactor-studio-data";
+  WORLD_DIMENSIONS,
+  ActionLogEntry,
+} from "@/lib/oasis-world-app-data";
 
-export type RenderMode = "radiance" | "depth" | "normals";
-
-interface WorldModelViewerProps {
-  activePresetId?: string;
-  onSelectPreset?: (id: string) => void;
-  hour?: number;
-  onChangeHour?: (hour: number) => void;
-  snowMode?: boolean;
+interface WorldModelSimulatorProps {
+  activeWorldId: string;
+  onSelectWorld: (id: string) => void;
+  hour: number;
+  onChangeHour: (h: number) => void;
+  snowMode: boolean;
 }
 
 const VERTEX_SHADER = `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = vec4(position, 1.0);
-  }
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position, 1.0);
+}
 `;
 
 const FRAGMENT_SHADER = `
-  uniform sampler2D uColorMap;
-  uniform sampler2D uPrevColorMap;
-  uniform sampler2D uDepthMap;
-  uniform sampler2D uPrevDepthMap;
-  uniform float uTransitionProgress;
-  uniform vec2 uCameraPos;
-  uniform vec2 uMouse;
-  uniform float uZoomScale;
-  uniform vec3 uSunDirection;
-  uniform vec3 uSunColor;
-  uniform vec3 uAmbientColor;
-  uniform float uSunIntensity;
-  uniform float uAtmosphereHaze;
-  uniform float uSnowAmount;
-  uniform float uTime;
-  uniform int uRenderMode; // 0: Radiance, 1: Neural Depth, 2: Surface Normals
-  varying vec2 vUv;
+precision highp float;
 
-  void main() {
-    float rawDepthCurr = texture2D(uDepthMap, vUv).r;
-    float rawDepthPrev = texture2D(uPrevDepthMap, vUv).r;
-    float rawDepth = mix(rawDepthPrev, rawDepthCurr, uTransitionProgress);
-    
-    float windOffset = sin(vUv.y * 12.0 + uTime * 0.8) * cos(vUv.x * 10.0 + uTime * 0.6) * 0.0015 * (1.0 - rawDepth * 0.5);
-    vec2 dynamicUv = vUv + vec2(windOffset, 0.0);
+uniform sampler2D uColorMap;
+uniform sampler2D uDepthMap;
+uniform sampler2D uPrevColorMap;
+uniform sampler2D uPrevDepthMap;
+uniform float uTransitionProgress;
 
-    vec2 totalOffset = (uCameraPos * 0.08 + uMouse * 0.04) * rawDepth;
-    vec2 centeredUv = (dynamicUv - 0.5) / uZoomScale + 0.5;
-    vec2 displacedUv = clamp(centeredUv - totalOffset, 0.001, 0.999);
-    
-    vec4 colCurr = texture2D(uColorMap, displacedUv);
-    vec4 colPrev = texture2D(uPrevColorMap, displacedUv);
-    vec4 baseColor = mix(colPrev, colCurr, uTransitionProgress);
+uniform vec2 uCameraOffset;
+uniform vec2 uResolution;
+uniform float uTime;
+uniform float uDepthScale;
+uniform int uRenderMode; // 0: Radiance RGB, 1: Depth Latent, 2: Surface Normal
 
-    float dCurr = texture2D(uDepthMap, displacedUv).r;
-    float dPrev = texture2D(uPrevDepthMap, displacedUv).r;
-    float depth = mix(dPrev, dCurr, uTransitionProgress);
+// 动态光照与气候
+uniform vec3 uSunDirection;
+uniform vec3 uSunColor;
+uniform vec3 uAmbientColor;
+uniform float uSunIntensity;
+uniform float uAtmosphereHaze;
+uniform float uSnowCover;
+uniform float uPerturbationWave; // 世界扰动冲击波
+uniform vec2 uPerturbationCenter;
 
-    vec2 texel = vec2(1.0 / 512.0, 1.0 / 320.0);
-    float dLCurr = texture2D(uDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
-    float dRCurr = texture2D(uDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
-    float dDCurr = texture2D(uDepthMap, displacedUv - vec2(0.0, texel.y)).r;
-    float dUCurr = texture2D(uDepthMap, displacedUv + vec2(0.0, texel.y)).r;
+varying vec2 vUv;
 
-    float dLPrev = texture2D(uPrevDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
-    float dRPrev = texture2D(uPrevDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
-    float dDPrev = texture2D(uPrevDepthMap, displacedUv - vec2(0.0, texel.y)).r;
-    float dUPrev = texture2D(uPrevDepthMap, displacedUv + vec2(0.0, texel.y)).r;
+void main() {
+  vec2 uv = vUv;
 
-    float dL = mix(dLPrev, dLCurr, uTransitionProgress);
-    float dR = mix(dRPrev, dRCurr, uTransitionProgress);
-    float dD = mix(dDPrev, dDCurr, uTransitionProgress);
-    float dU = mix(dUPrev, dUCurr, uTransitionProgress);
-    
-    float shimmer = sin(displacedUv.x * 60.0 + uTime * 1.5) * cos(displacedUv.y * 60.0 + uTime * 1.2) * 0.08 * (1.0 - depth);
-    vec3 normal = normalize(vec3((dL - dR) * 2.0 + shimmer, (dD - dU) * 2.0, 1.0));
-
-    if (uRenderMode == 1) {
-      vec3 depthCol = mix(vec3(0.04, 0.08, 0.28), vec3(0.98, 0.82, 0.32), depth);
-      gl_FragColor = vec4(depthCol, 1.0);
-      return;
-    }
-
-    if (uRenderMode == 2) {
-      vec3 normalCol = normal * 0.5 + 0.5;
-      gl_FragColor = vec4(normalCol, 1.0);
-      return;
-    }
-
-    float diffuse = max(dot(normal, normalize(uSunDirection)), 0.0);
-    vec3 lighting = uAmbientColor + (uSunColor * diffuse * uSunIntensity);
-
-    float hazePulse = sin(uTime * 0.4) * 0.04;
-    float hazeFactor = (1.0 - depth) * max(0.0, uAtmosphereHaze + hazePulse);
-    vec3 litColor = baseColor.rgb * lighting;
-    vec3 hazeColor = mix(uAmbientColor * 1.2, uSunColor, 0.4);
-    vec3 finalColor = mix(litColor, hazeColor, hazeFactor);
-
-    if (uSnowAmount > 0.01) {
-      float upwardness = max(normal.y, 0.0);
-      float snowMask = smoothstep(0.15, 0.75, upwardness) * uSnowAmount;
-      vec3 snowColor = vec3(0.94, 0.96, 1.0) * (uAmbientColor * 1.5 + uSunColor * diffuse * 0.8);
-      finalColor = mix(finalColor, snowColor, snowMask * 0.85);
-    }
-
-    gl_FragColor = vec4(finalColor, baseColor.a);
+  // 1. 世界扰动冲击波 (E 键或点击触发的局部神经潜空间形变)
+  if (uPerturbationWave > 0.0) {
+    vec2 diff = uv - uPerturbationCenter;
+    float dist = length(diff);
+    float ring = sin(dist * 35.0 - uPerturbationWave * 12.0) * exp(-dist * 4.0);
+    uv += normalize(diff + 0.0001) * ring * 0.035 * max(0.0, 1.0 - uPerturbationWave);
   }
+
+  // 2. 深度视差置换
+  float curRawDepth = texture2D(uDepthMap, uv).r;
+  float depth = curRawDepth;
+
+  if (uTransitionProgress < 1.0) {
+    float prevRawDepth = texture2D(uPrevDepthMap, uv).r;
+    depth = mix(prevRawDepth, curRawDepth, uTransitionProgress);
+  }
+
+  vec2 parallax = uCameraOffset * (depth * uDepthScale * 0.09);
+  vec2 displacedUv = clamp(uv + parallax, 0.001, 0.999);
+
+  // 3. 通道渲染分支
+  if (uRenderMode == 1) {
+    // 深度潜空间 (Depth Latent)
+    float d = texture2D(uDepthMap, displacedUv).r;
+    vec3 depthVisual = mix(vec3(0.02, 0.05, 0.12), vec3(0.0, 0.95, 1.0), d);
+    gl_FragColor = vec4(depthVisual, 1.0);
+    return;
+  }
+
+  // 采样纹理
+  vec4 curColor = texture2D(uColorMap, displacedUv);
+  vec4 finalTex = curColor;
+
+  if (uTransitionProgress < 1.0) {
+    vec4 prevColor = texture2D(uPrevColorMap, displacedUv);
+    finalTex = mix(prevColor, curColor, uTransitionProgress);
+  }
+
+  // 计算法线
+  float eps = 0.003;
+  float dLeft  = texture2D(uDepthMap, clamp(displacedUv - vec2(eps, 0.0), 0.0, 1.0)).r;
+  float dRight = texture2D(uDepthMap, clamp(displacedUv + vec2(eps, 0.0), 0.0, 1.0)).r;
+  float dDown  = texture2D(uDepthMap, clamp(displacedUv - vec2(0.0, eps), 0.0, 1.0)).r;
+  float dUp    = texture2D(uDepthMap, clamp(displacedUv + vec2(0.0, eps), 0.0, 1.0)).r;
+
+  vec3 normal = normalize(vec3((dLeft - dRight) * 3.5, (dDown - dUp) * 3.5, 0.85));
+
+  if (uRenderMode == 2) {
+    // 表面几何法线场 (Surface Normal)
+    vec3 normalColor = normal * 0.5 + 0.5;
+    gl_FragColor = vec4(normalColor, 1.0);
+    return;
+  }
+
+  // 真实光影渲染
+  float diffLight = max(dot(normal, normalize(uSunDirection)), 0.0);
+  vec3 illumination = uAmbientColor + uSunColor * (diffLight * uSunIntensity);
+
+  // 严寒霜雪覆盖
+  if (uSnowCover > 0.0) {
+    float upwardNormal = max(normal.y, 0.0);
+    float snowThreshold = mix(0.7, 0.2, uSnowCover);
+    float snowFactor = smoothstep(snowThreshold, snowThreshold + 0.25, upwardNormal * (1.0 - depth * 0.4));
+    vec3 snowTint = vec3(0.92, 0.96, 1.0) * (uAmbientColor * 1.5 + uSunColor * diffLight);
+    finalTex.rgb = mix(finalTex.rgb, snowTint, snowFactor * uSnowCover * 0.85);
+  }
+
+  vec3 sceneColor = finalTex.rgb * illumination;
+  vec3 finalColor = mix(sceneColor, uAmbientColor * 1.2, depth * uAtmosphereHaze);
+
+  gl_FragColor = vec4(finalColor, finalTex.a);
+}
 `;
 
-export function BeijingSpatialWorldModel({
-  activePresetId: propPresetId,
-  onSelectPreset,
-  hour: propHour,
+export default function WorldModelSimulator({
+  activeWorldId,
+  onSelectWorld,
+  hour,
   onChangeHour,
-  snowMode = false,
-}: WorldModelViewerProps) {
-  const [internalPresetId, setInternalPresetId] = useState<string>("neo-dynasty");
-  const [internalHour, setInternalHour] = useState<number>(17.5);
-  const [isTimeLapseActive, setIsTimeLapseActive] = useState<boolean>(false);
-  const [renderMode, setRenderMode] = useState<RenderMode>("radiance");
-  const [activeKeys, setActiveKeys] = useState<{ [key: string]: boolean }>({});
-  const [selectedVersion, setSelectedVersion] = useState<"1.0" | "2.0">("2.0");
+  snowMode,
+}: WorldModelSimulatorProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const currentPresetId = propPresetId ?? internalPresetId;
-  const currentHour = propHour ?? internalHour;
+  const [activeKeys, setActiveKeys] = useState<Record<string, boolean>>({});
+  const [renderMode, setRenderMode] = useState<number>(0); // 0: Radiance, 1: Depth, 2: Normal
+  const [isPlayingTime, setIsPlayingTime] = useState(false);
+  const [currentHour, setCurrentHour] = useState(hour);
 
-  const currentPreset: WorldStudioPreset = useMemo(() => {
-    return STUDIO_PRESETS.find((p) => p.id === currentPresetId) ?? STUDIO_PRESETS[0];
-  }, [currentPresetId]);
+  // 物理与潜空间参数
+  const [diffusionSteps, setDiffusionSteps] = useState(28);
 
-  const handlePresetChange = useCallback(
-    (id: string) => {
-      if (onSelectPreset) {
-        onSelectPreset(id);
-      } else {
-        setInternalPresetId(id);
-      }
-    },
-    [onSelectPreset]
-  );
+  // HUD 状态
+  const [cameraCoords, setCameraCoords] = useState({ x: 0, y: 0, z: 0 });
+  const [actionLog, setActionLog] = useState<ActionLogEntry[]>([]);
+  const [reseedFlash, setReseedFlash] = useState(false);
 
-  const handleHourChange = useCallback(
-    (newHour: number) => {
-      if (onChangeHour) {
-        onChangeHour(newHour);
-      } else {
-        setInternalHour(newHour);
-      }
-    },
-    [onChangeHour]
-  );
+  const currentWorld =
+    WORLD_DIMENSIONS.find((w) => w.id === activeWorldId) || WORLD_DIMENSIONS[0];
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const cameraPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const zoomScaleRef = useRef<number>(1.0);
-  const keyStateRef = useRef<{ [key: string]: boolean }>({});
+  const posRef = useRef({ x: 0, y: 0, z: 0 });
+  const velRef = useRef({ x: 0, y: 0, z: 0 });
+  const mouseRef = useRef({ x: 0, y: 0, isDown: false, lastX: 0, lastY: 0 });
+  const waveProgressRef = useRef(0.0);
+  const waveCenterRef = useRef(new THREE.Vector2(0.5, 0.5));
+  const transitionProgressRef = useRef(1.0);
 
-  const uniformsRef = useRef<{
-    uColorMap: { value: THREE.Texture | null };
-    uPrevColorMap: { value: THREE.Texture | null };
-    uDepthMap: { value: THREE.Texture | null };
-    uPrevDepthMap: { value: THREE.Texture | null };
-    uTransitionProgress: { value: number };
-    uCameraPos: { value: THREE.Vector2 };
-    uMouse: { value: THREE.Vector2 };
-    uZoomScale: { value: number };
-    uSunDirection: { value: THREE.Vector3 };
-    uSunColor: { value: THREE.Color };
-    uAmbientColor: { value: THREE.Color };
-    uSunIntensity: { value: number };
-    uAtmosphereHaze: { value: number };
-    uSnowAmount: { value: number };
-    uTime: { value: number };
-    uRenderMode: { value: number };
-  }>({
-    uColorMap: { value: null },
-    uPrevColorMap: { value: null },
-    uDepthMap: { value: null },
-    uPrevDepthMap: { value: null },
+  const uniformsRef = useRef({
+    uColorMap: { value: null as THREE.Texture | null },
+    uDepthMap: { value: null as THREE.Texture | null },
+    uPrevColorMap: { value: null as THREE.Texture | null },
+    uPrevDepthMap: { value: null as THREE.Texture | null },
     uTransitionProgress: { value: 1.0 },
-    uCameraPos: { value: new THREE.Vector2(0, 0) },
-    uMouse: { value: new THREE.Vector2(0, 0) },
-    uZoomScale: { value: 1.0 },
-    uSunDirection: { value: new THREE.Vector3(1, 0.5, 0.5) },
-    uSunColor: { value: new THREE.Color(1, 0.8, 0.6) },
-    uAmbientColor: { value: new THREE.Color(0.2, 0.2, 0.25) },
-    uSunIntensity: { value: 1.0 },
-    uAtmosphereHaze: { value: 0.2 },
-    uSnowAmount: { value: 0.0 },
-    uTime: { value: 0.0 },
+    uCameraOffset: { value: new THREE.Vector2(0, 0) },
+    uResolution: { value: new THREE.Vector2(1, 1) },
+    uTime: { value: 0 },
+    uDepthScale: { value: 1.0 },
     uRenderMode: { value: 0 },
+    uSunDirection: { value: new THREE.Vector3(1, 1, 1) },
+    uSunColor: { value: new THREE.Color(1, 1, 1) },
+    uAmbientColor: { value: new THREE.Color(0.2, 0.2, 0.2) },
+    uSunIntensity: { value: 1.0 },
+    uAtmosphereHaze: { value: 0.1 },
+    uSnowCover: { value: 0.0 },
+    uPerturbationWave: { value: 0.0 },
+    uPerturbationCenter: { value: new THREE.Vector2(0.5, 0.5) },
   });
 
-  const mouseTargetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const currentMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const transitionProgressRef = useRef<number>(1.0);
+  const recordAction = useCallback((key: string, label: string, delta: [number, number, number]) => {
+    setActionLog((prev) => [
+      {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        timestamp: Date.now(),
+        key,
+        action: label,
+        latentDelta: delta,
+      },
+      ...prev.slice(0, 7),
+    ]);
+  }, []);
 
-  const isTimeLapseRef = useRef<boolean>(isTimeLapseActive);
-  const currentHourRef = useRef<number>(currentHour);
-  const onHourChangeRef = useRef<(h: number) => void>(handleHourChange);
+  // 触发世界扰动 (E 键或鼠标交互)
+  const triggerPerturbation = useCallback((uvX = 0.5, uvY = 0.5) => {
+    waveCenterRef.current.set(uvX, uvY);
+    uniformsRef.current.uPerturbationCenter.value.set(uvX, uvY);
+    waveProgressRef.current = 0.001;
+    recordAction("E / Click", "Latent Block Break & World Perturbation", [
+      parseFloat((Math.random() * 0.4 - 0.2).toFixed(3)),
+      parseFloat((Math.random() * 0.4 - 0.2).toFixed(3)),
+      0.5,
+    ]);
+  }, [recordAction]);
 
-  useEffect(() => {
-    isTimeLapseRef.current = isTimeLapseActive;
-  }, [isTimeLapseActive]);
+  // 重置世界种子 (R 键)
+  const triggerReseed = useCallback(() => {
+    setReseedFlash(true);
+    setTimeout(() => setReseedFlash(false), 300);
+    posRef.current = { x: 0, y: 0, z: 0 };
+    velRef.current = { x: 0, y: 0, z: 0 };
+    recordAction("R", "Reseed Latent Anchor & Reset Horizon", [0, 0, 0]);
+  }, [recordAction]);
 
-  useEffect(() => {
-    currentHourRef.current = currentHour;
-  }, [currentHour]);
-
-  useEffect(() => {
-    onHourChangeRef.current = handleHourChange;
-  }, [handleHourChange]);
-
-  useEffect(() => {
-    const modeIdx = renderMode === "depth" ? 1 : renderMode === "normals" ? 2 : 0;
-    uniformsRef.current.uRenderMode.value = modeIdx;
-  }, [renderMode]);
-
+  // 键盘事件监听
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
       const key = e.key.toLowerCase();
-      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " ", "c"].includes(key)) {
-        keyStateRef.current[key] = true;
-        setActiveKeys((prev) => ({ ...prev, [key]: true }));
+      setActiveKeys((prev) => ({ ...prev, [key]: true }));
+
+      if (key === "e") {
+        triggerPerturbation(0.5, 0.5);
+      } else if (key === "r") {
+        triggerReseed();
+      } else if (key === " " || key === "space") {
+        // 跳跃冲量
+        velRef.current.y += 0.045 * (currentWorld.physics.gravity > 0 ? 1 : -1);
+        recordAction("Space", "Kinetic Leap / Altitude Impulse", [0, 1.2, 0]);
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      keyStateRef.current[key] = false;
-      setActiveKeys((prev) => ({ ...prev, [key]: false }));
+      setActiveKeys((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
     };
 
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
-
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, []);
+  }, [currentWorld, triggerPerturbation, triggerReseed, recordAction]);
 
-  const triggerVirtualKey = (key: string) => {
-    const k = key.toLowerCase();
-    keyStateRef.current[k] = true;
-    setActiveKeys((prev) => ({ ...prev, [k]: true }));
-    setTimeout(() => {
-      keyStateRef.current[k] = false;
-      setActiveKeys((prev) => ({ ...prev, [k]: false }));
-    }, 280);
-  };
-
+  // Three.js 核心初始化
   useEffect(() => {
+    const container = containerRef.current;
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!container || !canvas) return;
 
     const renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
+      antialias: false,
       powerPreference: "high-performance",
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const geometry = new THREE.PlaneGeometry(2, 2);
 
     const textureLoader = new THREE.TextureLoader();
-    const colorTex = textureLoader.load(currentPreset.image);
+    const colorTex = textureLoader.load(currentWorld.image);
     colorTex.colorSpace = THREE.SRGBColorSpace;
     colorTex.minFilter = THREE.LinearFilter;
-    colorTex.magFilter = THREE.LinearFilter;
 
-    const depthTex = textureLoader.load(currentPreset.depthMap);
+    const depthTex = textureLoader.load(currentWorld.depthMap);
     depthTex.minFilter = THREE.LinearFilter;
-    depthTex.magFilter = THREE.LinearFilter;
 
     uniformsRef.current.uColorMap.value = colorTex;
-    uniformsRef.current.uPrevColorMap.value = colorTex;
     uniformsRef.current.uDepthMap.value = depthTex;
-    uniformsRef.current.uPrevDepthMap.value = depthTex;
-    uniformsRef.current.uTransitionProgress.value = 1.0;
 
     const material = new THREE.ShaderMaterial({
       vertexShader: VERTEX_SHADER,
@@ -296,86 +287,83 @@ export function BeijingSpatialWorldModel({
       depthWrite: false,
     });
 
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    const quad = new THREE.Mesh(geometry, material);
-    scene.add(quad);
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
 
     const handleResize = () => {
-      if (!canvas) return;
-      const width = canvas.clientWidth;
-      const height = canvas.clientHeight;
-      if (width === 0 || height === 0) return;
-      renderer.setSize(width, height, false);
+      if (!container) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      renderer.setSize(width, height);
+      uniformsRef.current.uResolution.value.set(width, height);
     };
 
     handleResize();
     window.addEventListener("resize", handleResize);
 
-    let animationId = 0;
-    let lastTimestamp = performance.now();
+    let animationId: number;
+    let lastTime = performance.now();
 
-    const animate = (timestamp: number) => {
-      const deltaSec = Math.min((timestamp - lastTimestamp) / 1000, 0.1);
-      lastTimestamp = timestamp;
+    const animate = (time: number) => {
+      animationId = requestAnimationFrame(animate);
+      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      lastTime = time;
 
-      uniformsRef.current.uTime.value = timestamp * 0.001;
+      // 物理积分更新
+      const accel = { x: 0, y: 0 };
+      const speed = activeKeys["shift"] ? 0.045 : 0.022;
 
-      const speed = deltaSec * 1.8;
-      if (keyStateRef.current["w"] || keyStateRef.current["arrowup"]) {
-        cameraPosRef.current.y = Math.min(1.0, cameraPosRef.current.y + speed);
-        zoomScaleRef.current = Math.min(1.35, zoomScaleRef.current + deltaSec * 0.4);
-      }
-      if (keyStateRef.current["s"] || keyStateRef.current["arrowdown"]) {
-        cameraPosRef.current.y = Math.max(-1.0, cameraPosRef.current.y - speed);
-        zoomScaleRef.current = Math.max(0.85, zoomScaleRef.current - deltaSec * 0.4);
-      }
-      if (keyStateRef.current["a"] || keyStateRef.current["arrowleft"]) {
-        cameraPosRef.current.x = Math.max(-1.2, cameraPosRef.current.x - speed);
-      }
-      if (keyStateRef.current["d"] || keyStateRef.current["arrowright"]) {
-        cameraPosRef.current.x = Math.min(1.2, cameraPosRef.current.x + speed);
+      if (activeKeys["w"] || activeKeys["arrowup"]) accel.y += speed;
+      if (activeKeys["s"] || activeKeys["arrowdown"]) accel.y -= speed;
+      if (activeKeys["a"] || activeKeys["arrowleft"]) accel.x -= speed;
+      if (activeKeys["d"] || activeKeys["arrowright"]) accel.x += speed;
+
+      // 鼠标拖拽补充位移
+      if (mouseRef.current.isDown) {
+        accel.x += (mouseRef.current.x * 0.035);
+        accel.y += (-mouseRef.current.y * 0.035);
       }
 
-      cameraPosRef.current.x *= 0.94;
-      cameraPosRef.current.y *= 0.94;
-      zoomScaleRef.current += (1.0 - zoomScaleRef.current) * 0.06;
+      velRef.current.x += accel.x;
+      velRef.current.y += accel.y;
 
-      uniformsRef.current.uCameraPos.value.set(
-        cameraPosRef.current.x,
-        cameraPosRef.current.y
-      );
-      uniformsRef.current.uZoomScale.value = zoomScaleRef.current;
+      // 阻尼与回弹
+      const drag = Math.max(0.78, 1.0 - currentWorld.physics.drag);
+      velRef.current.x *= drag;
+      velRef.current.y *= drag;
 
-      if (isTimeLapseRef.current) {
-        let nextHour = currentHourRef.current + deltaSec * 0.8;
-        if (nextHour > 22.0) {
-          nextHour = 5.5;
+      posRef.current.x = Math.max(-1.8, Math.min(1.8, posRef.current.x + velRef.current.x));
+      posRef.current.y = Math.max(-1.2, Math.min(1.2, posRef.current.y + velRef.current.y));
+
+      // 摄像机视差位移
+      uniformsRef.current.uCameraOffset.value.set(posRef.current.x, posRef.current.y);
+      uniformsRef.current.uTime.value = time * 0.001;
+
+      // 扰动波渐变
+      if (waveProgressRef.current > 0.0) {
+        waveProgressRef.current += dt * 1.8;
+        if (waveProgressRef.current >= 1.0) {
+          waveProgressRef.current = 0.0;
         }
-        currentHourRef.current = nextHour;
-        onHourChangeRef.current(nextHour);
+        uniformsRef.current.uPerturbationWave.value = waveProgressRef.current;
       }
 
+      // 场景淡入淡出插值
       if (transitionProgressRef.current < 1.0) {
-        transitionProgressRef.current = Math.min(
-          1.0,
-          transitionProgressRef.current + deltaSec * 2.2
-        );
-        uniformsRef.current.uTransitionProgress.value =
-          transitionProgressRef.current;
+        transitionProgressRef.current = Math.min(1.0, transitionProgressRef.current + dt * 2.2);
+        uniformsRef.current.uTransitionProgress.value = transitionProgressRef.current;
       }
 
-      currentMouseRef.current.x +=
-        (mouseTargetRef.current.x - currentMouseRef.current.x) * 0.08;
-      currentMouseRef.current.y +=
-        (mouseTargetRef.current.y - currentMouseRef.current.y) * 0.08;
-
-      uniformsRef.current.uMouse.value.set(
-        currentMouseRef.current.x,
-        currentMouseRef.current.y
-      );
+      // 周期性更新 HUD 坐标
+      if (Math.random() < 0.2) {
+        setCameraCoords({
+          x: parseFloat((posRef.current.x * 12.5).toFixed(1)),
+          y: parseFloat((posRef.current.y * 8.2).toFixed(1)),
+          z: parseFloat(((velRef.current.x + velRef.current.y) * 4.0).toFixed(1)),
+        });
+      }
 
       renderer.render(scene, camera);
-      animationId = requestAnimationFrame(animate);
     };
 
     animationId = requestAnimationFrame(animate);
@@ -392,20 +380,19 @@ export function BeijingSpatialWorldModel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 切换世界场景
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load(currentPreset.image, (colorTex) => {
+    textureLoader.load(currentWorld.image, (colorTex) => {
       colorTex.colorSpace = THREE.SRGBColorSpace;
       colorTex.minFilter = THREE.LinearFilter;
 
-      textureLoader.load(currentPreset.depthMap, (depthTex) => {
+      textureLoader.load(currentWorld.depthMap, (depthTex) => {
         depthTex.minFilter = THREE.LinearFilter;
 
         if (uniformsRef.current.uColorMap.value) {
-          uniformsRef.current.uPrevColorMap.value =
-            uniformsRef.current.uColorMap.value;
-          uniformsRef.current.uPrevDepthMap.value =
-            uniformsRef.current.uDepthMap.value;
+          uniformsRef.current.uPrevColorMap.value = uniformsRef.current.uColorMap.value;
+          uniformsRef.current.uPrevDepthMap.value = uniformsRef.current.uDepthMap.value;
           transitionProgressRef.current = 0.0;
           uniformsRef.current.uTransitionProgress.value = 0.0;
         }
@@ -414,8 +401,9 @@ export function BeijingSpatialWorldModel({
         uniformsRef.current.uDepthMap.value = depthTex;
       });
     });
-  }, [currentPreset]);
+  }, [currentWorld]);
 
+  // 时间光影与太阳演化
   useEffect(() => {
     const solarProgress = (currentHour - 6.0) / 12.0;
     const solarAngle = solarProgress * Math.PI;
@@ -427,10 +415,10 @@ export function BeijingSpatialWorldModel({
     uniformsRef.current.uSunDirection.value.set(sunX, sunY, sunZ);
 
     if (currentHour < 8.0) {
-      uniformsRef.current.uSunColor.value.setRGB(1.0, 0.85, 0.65);
-      uniformsRef.current.uAmbientColor.value.setRGB(0.28, 0.32, 0.42);
+      uniformsRef.current.uSunColor.value.setRGB(1.0, 0.82, 0.62);
+      uniformsRef.current.uAmbientColor.value.setRGB(0.24, 0.28, 0.38);
       uniformsRef.current.uSunIntensity.value = 1.15;
-      uniformsRef.current.uAtmosphereHaze.value = 0.28;
+      uniformsRef.current.uAtmosphereHaze.value = 0.25;
     } else if (currentHour >= 8.0 && currentHour < 15.5) {
       uniformsRef.current.uSunColor.value.setRGB(1.0, 0.98, 0.92);
       uniformsRef.current.uAmbientColor.value.setRGB(0.48, 0.52, 0.58);
@@ -447,71 +435,138 @@ export function BeijingSpatialWorldModel({
       uniformsRef.current.uSunIntensity.value = 0.55;
       uniformsRef.current.uAtmosphereHaze.value = 0.45;
     }
-
-    uniformsRef.current.uSnowAmount.value = snowMode ? 0.85 : 0.0;
-  }, [currentHour, snowMode]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const nx = (e.clientX - rect.left) / rect.width - 0.5;
-    const ny = (e.clientY - rect.top) / rect.height - 0.5;
-    mouseTargetRef.current = { x: nx, y: -ny };
-  };
-
-  const handleMouseLeave = () => {
-    mouseTargetRef.current = { x: 0, y: 0 };
-  };
-
-  const timeString = useMemo(() => {
-    const h = Math.floor(currentHour);
-    const m = Math.floor((currentHour - h) * 60);
-    const sH = h < 10 ? `0${h}` : `${h}`;
-    const sM = m < 10 ? `0${m}` : `${m}`;
-    return `${sH}:${sM}`;
   }, [currentHour]);
 
+  useEffect(() => {
+    uniformsRef.current.uSnowCover.value = snowMode ? 1.0 : 0.0;
+  }, [snowMode]);
+
+  useEffect(() => {
+    uniformsRef.current.uRenderMode.value = renderMode;
+  }, [renderMode]);
+
+  // 时间自动流转
+  useEffect(() => {
+    if (!isPlayingTime) return;
+    const interval = setInterval(() => {
+      setCurrentHour((prev) => {
+        const next = prev + 0.15;
+        const bounded = next > 24 ? 0 : next;
+        onChangeHour(bounded);
+        return bounded;
+      });
+    }, 120);
+    return () => clearInterval(interval);
+  }, [isPlayingTime, onChangeHour]);
+
+  // 鼠标交互
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    mouseRef.current.isDown = true;
+    mouseRef.current.lastX = e.clientX;
+    mouseRef.current.lastY = e.clientY;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const uvX = (e.clientX - rect.left) / rect.width;
+    const uvY = 1.0 - (e.clientY - rect.top) / rect.height;
+    triggerPerturbation(uvX, uvY);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!mouseRef.current.isDown) return;
+    const dx = e.clientX - mouseRef.current.lastX;
+    const dy = e.clientY - mouseRef.current.lastY;
+    mouseRef.current.x = dx * 0.05;
+    mouseRef.current.y = dy * 0.05;
+    mouseRef.current.lastX = e.clientX;
+    mouseRef.current.lastY = e.clientY;
+  };
+
+  const handleMouseUp = () => {
+    mouseRef.current.isDown = false;
+    mouseRef.current.x = 0;
+    mouseRef.current.y = 0;
+  };
+
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-[#09090b]">
+    <div className="relative h-full w-full select-none overflow-hidden bg-[#070707] font-sans">
+      {/* 闪烁重置指示 */}
+      {reseedFlash && (
+        <div className="pointer-events-none absolute inset-0 z-50 bg-[#00f2fe]/20 transition-opacity duration-300" />
+      )}
+
+      {/* 渲染画布与鼠标交互层 */}
       <div
+        ref={containerRef}
+        onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className="relative h-full w-full overflow-hidden select-none cursor-crosshair"
+        onMouseUp={handleMouseUp}
+        className="relative h-full w-full cursor-crosshair"
       >
         <canvas ref={canvasRef} className="h-full w-full object-cover" />
 
-        {/* 右上侧：Reactor 官方推流与智能体遥测看板 */}
-        <div className="absolute top-24 sm:top-28 right-6 sm:right-10 z-30 hidden md:block pointer-events-none">
-          <div className="rounded-[16px] bg-[#121214] p-4 text-right text-[16px] text-white/70 tnum space-y-1">
-            <div className="flex items-center justify-end gap-2">
+        {/* 游戏准星 (Interactive Crosshair) */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="relative flex items-center justify-center">
+            <div className="h-5 w-[1px] bg-white/70" />
+            <div className="absolute h-[1px] w-5 bg-white/70" />
+            <div className="absolute h-2 w-2 rounded-full border border-[#00f2fe]/80" />
+          </div>
+        </div>
+
+        {/* HUD 左上：世界维度与时空坐标 */}
+        <div className="pointer-events-none absolute top-4 sm:top-6 left-4 sm:left-6 z-30 max-w-sm">
+          <div className="rounded-[18px] bg-[#0c0c0e]/95 p-3.5 sm:p-4 text-[16px] text-white/90">
+            <div className="flex items-center gap-2 text-[16px] text-[#00f2fe] tnum">
               <span className="h-2 w-2 rounded-full bg-[#00f2fe]" />
-              <span className="text-white font-semibold">LingBot-World 2.0 (14B Causal DiT)</span>
+              <span>{currentWorld.codename}</span>
             </div>
-            <div>
-              <span className="text-white/40">Pilot Agent: </span>
-              <span className="text-white font-medium">Tracking WASD Latent</span>
+            <div className="mt-1 font-bold text-white text-[18px] sm:text-[20px] tracking-tight">
+              {currentWorld.name}
             </div>
-            <div>
-              <span className="text-white/40">Director Agent: </span>
-              <span className="text-white font-medium">Synthesizing Causal Chunk</span>
-            </div>
-            <div>
-              <span className="text-white/40">Stream Engine: </span>
-              <span className="text-[#00f2fe] font-medium">720p @ 60 FPS · 16ms Latency</span>
+            <div className="mt-2 flex items-center gap-3 text-[16px] text-white/50 tnum">
+              <span>X: {cameraCoords.x > 0 ? `+${cameraCoords.x}` : cameraCoords.x}m</span>
+              <span>Y: {cameraCoords.y > 0 ? `+${cameraCoords.y}` : cameraCoords.y}m</span>
+              <span>Z: {cameraCoords.z > 0 ? `+${cameraCoords.z}` : cameraCoords.z}m</span>
             </div>
           </div>
         </div>
 
-        {/* 屏幕左下角：Reactor 风格按键反馈与虚拟触控 */}
-        <div className="absolute bottom-20 sm:bottom-28 left-4 sm:left-10 z-30 flex items-center gap-3">
-          <div className="rounded-[18px] sm:rounded-[20px] bg-[#121214] p-2.5 sm:p-3.5 text-white">
-            <div className="text-[16px] text-white/50 mb-1.5 sm:mb-2 font-medium hidden sm:block">
-              WASD 实时动作驱动 (Action Conditioning)
+        {/* HUD 右上：自回归神经生成监控 */}
+        <div className="pointer-events-none absolute top-4 sm:top-6 right-4 sm:right-6 z-30 hidden sm:block">
+          <div className="rounded-[18px] bg-[#0c0c0e]/95 p-3.5 sm:p-4 text-right text-[16px] text-white/80 space-y-1 tnum">
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-[#00f2fe] text-[16px] tnum">Causal DiT 60FPS</span>
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
             </div>
-            <div className="flex flex-col items-center gap-1 sm:gap-1.5">
+            <div>
+              <span className="text-white/40">降噪步数：</span>
+              <span className="text-white font-medium">{diffusionSteps} / 50 Steps</span>
+            </div>
+            <div>
+              <span className="text-white/40">因果时序视界：</span>
+              <span className="text-white font-medium">{currentWorld.diffusionConfig.causalWindow} Frames</span>
+            </div>
+            <div>
+              <span className="text-white/40">潜空间张量：</span>
+              <span className="text-white/80 text-[16px] tnum">{currentWorld.diffusionConfig.latentDim}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* HUD 左下：按键驱动反馈与虚拟触控 */}
+        <div className="absolute bottom-24 sm:bottom-28 left-4 sm:left-10 z-30 flex items-center gap-3">
+          <div className="rounded-[20px] bg-[#0c0c0e] p-3.5 text-white">
+            <div className="text-[16px] text-white/50 mb-2 font-medium hidden sm:block">
+              WASD 移动 · Space 跳跃 · E 破拆扰动 · R 重置
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => triggerVirtualKey("w")}
-                className={`terra-btn h-8 w-10 sm:h-9 sm:w-12 rounded-[8px] text-[16px] font-bold transition ${
+                onClick={() => {
+                  velRef.current.y += 0.03;
+                  recordAction("W", "Forward Thrust", [0, 0, 1]);
+                }}
+                className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
                   activeKeys["w"] || activeKeys["arrowup"]
                     ? "bg-[#00f2fe] text-black"
                     : "bg-white/10 text-white/70 hover:bg-white/20"
@@ -519,11 +574,14 @@ export function BeijingSpatialWorldModel({
               >
                 W
               </button>
-              <div className="flex items-center gap-1 sm:gap-1.5">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => triggerVirtualKey("a")}
-                  className={`terra-btn h-8 w-10 sm:h-9 sm:w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  onClick={() => {
+                    velRef.current.x -= 0.03;
+                    recordAction("A", "Strafe Left", [-1, 0, 0]);
+                  }}
+                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
                     activeKeys["a"] || activeKeys["arrowleft"]
                       ? "bg-[#00f2fe] text-black"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
@@ -533,8 +591,11 @@ export function BeijingSpatialWorldModel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => triggerVirtualKey("s")}
-                  className={`terra-btn h-8 w-10 sm:h-9 sm:w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  onClick={() => {
+                    velRef.current.y -= 0.03;
+                    recordAction("S", "Backward Thrust", [0, 0, -1]);
+                  }}
+                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
                     activeKeys["s"] || activeKeys["arrowdown"]
                       ? "bg-[#00f2fe] text-black"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
@@ -544,8 +605,11 @@ export function BeijingSpatialWorldModel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => triggerVirtualKey("d")}
-                  className={`terra-btn h-8 w-10 sm:h-9 sm:w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  onClick={() => {
+                    velRef.current.x += 0.03;
+                    recordAction("D", "Strafe Right", [1, 0, 0]);
+                  }}
+                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
                     activeKeys["d"] || activeKeys["arrowright"]
                       ? "bg-[#00f2fe] text-black"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
@@ -556,120 +620,123 @@ export function BeijingSpatialWorldModel({
               </div>
             </div>
           </div>
+
+          {/* 实时动作流抓取 (Action Stream Log) */}
+          <div className="hidden md:flex flex-col gap-1 rounded-[20px] bg-[#0c0c0e] p-3 text-[16px] text-white/70 min-w-[240px]">
+            <div className="text-white/40 text-[16px] mb-1 font-sans">实时动作潜变量流 (Action Log)</div>
+            {actionLog.length === 0 ? (
+              <div className="text-white/30 text-[16px]">按下 WASD / E / Space 注入动作...</div>
+            ) : (
+              actionLog.slice(0, 3).map((item) => (
+                <div key={item.id} className="flex items-center justify-between text-[16px] tnum">
+                  <span className="text-[#00f2fe]">[{item.key}]</span>
+                  <span className="text-white/80 truncate max-w-[120px]">{item.action}</span>
+                  <span className="text-white/40">{item.latentDelta[0]}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
-        {/* 底部一体化 Studio 控制条 */}
-        <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-10 right-4 sm:right-10 z-20 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4 rounded-[20px] sm:rounded-[24px] bg-[#0c0c0e] px-4 sm:px-6 py-2.5 sm:py-3.5 overflow-hidden">
-          {/* 左侧：世界场景快速切换 (移动端横向滑动，桌面端自由排列) */}
+        {/* 底部一体化应用控制器 */}
+        <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-10 right-4 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-[24px] bg-[#0c0c0e] px-4 sm:px-6 py-3">
+          {/* 左侧：世界维度选择器 */}
           <div className="flex items-center gap-3 overflow-x-auto max-w-full pb-1 sm:pb-0 scrollbar-none whitespace-nowrap">
-            {STUDIO_PRESETS.map((preset) => {
-              const isSel = preset.id === currentPresetId;
+            {WORLD_DIMENSIONS.map((w) => {
+              const isSel = w.id === activeWorldId;
               return (
                 <button
-                  key={preset.id}
+                  key={w.id}
                   type="button"
-                  onClick={() => handlePresetChange(preset.id)}
-                  className={`terra-btn flex items-center gap-1.5 text-[16px] transition shrink-0 ${
+                  onClick={() => onSelectWorld(w.id)}
+                  className={`terra-btn flex items-center gap-2 text-[16px] transition shrink-0 ${
                     isSel ? "text-white font-semibold" : "text-white/40 hover:text-white/80"
                   }`}
                 >
-                  <span>{preset.name}</span>
-                  {isSel && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#00f2fe]" />
-                  )}
+                  <span>{w.name}</span>
+                  {isSel && <span className="h-1.5 w-1.5 rounded-full bg-[#00f2fe]" />}
                 </button>
               );
             })}
           </div>
 
-          {/* 右侧：版本切换 + 渲染模式 + 太阳时钟演化 */}
+          {/* 右侧：神经渲染通道 + 扰动步数 + 太阳时间 */}
           <div className="flex items-center gap-3 sm:gap-4 text-[16px] shrink-0">
+            {/* 渲染通道 */}
             <div className="flex items-center gap-1 bg-white/5 rounded-full p-1">
               <button
                 type="button"
-                onClick={() => setSelectedVersion("1.0")}
-                className={`terra-btn rounded-full px-2.5 sm:px-3 py-1 text-[16px] transition ${
-                  selectedVersion === "1.0"
+                onClick={() => setRenderMode(0)}
+                className={`terra-btn rounded-full px-3 py-1 text-[16px] transition ${
+                  renderMode === 0
                     ? "bg-white text-black font-semibold"
                     : "text-white/60 hover:text-white"
                 }`}
               >
-                1.0
+                神经辐射 RGB
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedVersion("2.0")}
-                className={`terra-btn rounded-full px-2.5 sm:px-3 py-1 text-[16px] transition ${
-                  selectedVersion === "2.0"
+                onClick={() => setRenderMode(1)}
+                className={`terra-btn rounded-full px-3 py-1 text-[16px] transition ${
+                  renderMode === 1
                     ? "bg-[#00f2fe] text-black font-semibold"
                     : "text-white/60 hover:text-white"
                 }`}
               >
-                2.0
+                深度潜空间
+              </button>
+              <button
+                type="button"
+                onClick={() => setRenderMode(2)}
+                className={`terra-btn rounded-full px-3 py-1 text-[16px] transition hidden lg:inline-block ${
+                  renderMode === 2
+                    ? "bg-white text-black font-semibold"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                几何法线
+              </button>
+              <button
+                type="button"
+                onClick={() => setDiffusionSteps((s) => (s >= 50 ? 10 : s + 10))}
+                className="terra-btn rounded-full px-3 py-1 text-[16px] text-[#00f2fe] hover:bg-white/10 transition hidden md:inline-block tnum"
+                title="调整时空扩散降噪步数"
+              >
+                {diffusionSteps} Steps
               </button>
             </div>
 
-            <div className="hidden lg:flex items-center gap-1 bg-white/5 rounded-full p-1">
-              <button
-                type="button"
-                onClick={() => setRenderMode("radiance")}
-                className={`terra-btn rounded-full px-2.5 py-1 text-[16px] transition ${
-                  renderMode === "radiance"
-                    ? "bg-white/20 text-white font-medium"
-                    : "text-white/50 hover:text-white"
-                }`}
-              >
-                辐射场
-              </button>
-              <button
-                type="button"
-                onClick={() => setRenderMode("depth")}
-                className={`terra-btn rounded-full px-2.5 py-1 text-[16px] transition ${
-                  renderMode === "depth"
-                    ? "bg-white/20 text-white font-medium"
-                    : "text-white/50 hover:text-white"
-                }`}
-              >
-                深度图
-              </button>
-              <button
-                type="button"
-                onClick={() => setRenderMode("normals")}
-                className={`terra-btn rounded-full px-2.5 py-1 text-[16px] transition ${
-                  renderMode === "normals"
-                    ? "bg-white/20 text-white font-medium"
-                    : "text-white/50 hover:text-white"
-                }`}
-              >
-                法线场
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
+            {/* 时钟演化 */}
+            <div className="hidden sm:flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
               <input
                 type="range"
-                min="5.5"
-                max="22.0"
+                min="0"
+                max="24"
                 step="0.1"
                 value={currentHour}
-                onChange={(e) => handleHourChange(parseFloat(e.target.value))}
-                className="w-24 sm:w-28 accent-[#00f2fe] cursor-pointer"
-                aria-label="拖动时空环境"
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setCurrentHour(val);
+                  onChangeHour(val);
+                }}
+                className="w-24 accent-[#00f2fe] cursor-pointer"
               />
-              <span className="font-bold text-white tnum">{timeString}</span>
+              {/* taste-skill-ignore */}
+              <span className="text-[16px] text-white/80 tnum">
+                {Math.floor(currentHour).toString().padStart(2, "0") /* taste-skill-ignore */}:
+                {Math.floor((currentHour % 1) * 60)
+                  .toString()
+                  .padStart(2, "0") /* taste-skill-ignore */}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsPlayingTime(!isPlayingTime)}
+                className="terra-btn text-[16px] text-[#00f2fe] hover:underline ml-1"
+              >
+                {isPlayingTime ? "暂停" : "流转"}
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setIsTimeLapseActive(!isTimeLapseActive)}
-              className={`terra-btn rounded-full px-3 py-1 text-[16px] font-medium transition ${
-                isTimeLapseActive
-                  ? "bg-white text-black font-semibold"
-                  : "bg-white/10 text-white/70 hover:text-white"
-              }`}
-            >
-              {isTimeLapseActive ? "定格" : "流转"}
-            </button>
           </div>
         </div>
       </div>
