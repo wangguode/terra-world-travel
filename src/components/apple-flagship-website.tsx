@@ -148,7 +148,7 @@ export function AppleFlagshipWebsite() {
               width={1600}
               height={900}
               priority
-              className="h-full w-full object-cover object-center brightness-90"
+              className="h-full w-full object-cover object-center brightness-90 terra-drift"
             />
             <div className="absolute inset-0 bg-[#070707]/60" />
           </div>
@@ -220,19 +220,27 @@ export function AppleFlagshipWebsite() {
             <article className="mt-20 sm:mt-28 terra-reveal">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
                 <div className="lg:col-span-7">
-                  <div className="overflow-hidden rounded-[28px] relative aspect-[16/10]">
+                  <div
+                    onClick={() =>
+                      handleTeleportToSpot(
+                        VISUAL_CHAPTERS[0].targetSpotId,
+                        VISUAL_CHAPTERS[0].targetHour
+                      )
+                    }
+                    className="group overflow-hidden rounded-[28px] relative aspect-[16/10] cursor-pointer"
+                  >
                     <Image
                       src={VISUAL_CHAPTERS[0].image}
                       alt={VISUAL_CHAPTERS[0].title}
                       fill
                       sizes="(max-width: 1024px) 100vw, 60vw"
-                      className="object-cover object-center"
+                      className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   </div>
                 </div>
 
                 <div className="lg:col-span-5 lg:pl-6 space-y-4">
-                  <h3 className="text-[32px] sm:text-[38px] font-bold text-white tracking-tight">
+                  <h3 className="text-[36px] font-bold text-white tracking-tight">
                     {VISUAL_CHAPTERS[0].chapterNumber} · {VISUAL_CHAPTERS[0].title}
                   </h3>
                   <p className="text-[16px] text-white/80 leading-relaxed">
@@ -263,7 +271,7 @@ export function AppleFlagshipWebsite() {
             <article className="mt-24 sm:mt-36 terra-reveal">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
                 <div className="lg:col-span-5 lg:pr-6 space-y-4 order-2 lg:order-1">
-                  <h3 className="text-[32px] sm:text-[38px] font-bold text-white tracking-tight">
+                  <h3 className="text-[36px] font-bold text-white tracking-tight">
                     {VISUAL_CHAPTERS[1].chapterNumber} · {VISUAL_CHAPTERS[1].title}
                   </h3>
                   <p className="text-[16px] text-white/80 leading-relaxed">
@@ -289,13 +297,21 @@ export function AppleFlagshipWebsite() {
                 </div>
 
                 <div className="lg:col-span-7 order-1 lg:order-2">
-                  <div className="overflow-hidden rounded-[28px] relative aspect-[16/10]">
+                  <div
+                    onClick={() =>
+                      handleTeleportToSpot(
+                        VISUAL_CHAPTERS[1].targetSpotId,
+                        VISUAL_CHAPTERS[1].targetHour
+                      )
+                    }
+                    className="group overflow-hidden rounded-[28px] relative aspect-[16/10] cursor-pointer"
+                  >
                     <Image
                       src={VISUAL_CHAPTERS[1].image}
                       alt={VISUAL_CHAPTERS[1].title}
                       fill
                       sizes="(max-width: 1024px) 100vw, 60vw"
-                      className="object-cover object-center"
+                      className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   </div>
                 </div>
@@ -306,19 +322,27 @@ export function AppleFlagshipWebsite() {
             <article className="mt-24 sm:mt-36 terra-reveal">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
                 <div className="lg:col-span-7">
-                  <div className="overflow-hidden rounded-[28px] relative aspect-[16/10]">
+                  <div
+                    onClick={() =>
+                      handleTeleportToSpot(
+                        VISUAL_CHAPTERS[2].targetSpotId,
+                        VISUAL_CHAPTERS[2].targetHour
+                      )
+                    }
+                    className="group overflow-hidden rounded-[28px] relative aspect-[16/10] cursor-pointer"
+                  >
                     <Image
                       src={VISUAL_CHAPTERS[2].image}
                       alt={VISUAL_CHAPTERS[2].title}
                       fill
                       sizes="(max-width: 1024px) 100vw, 60vw"
-                      className="object-cover object-center"
+                      className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   </div>
                 </div>
 
                 <div className="lg:col-span-5 lg:pl-6 space-y-4">
-                  <h3 className="text-[32px] sm:text-[38px] font-bold text-white tracking-tight">
+                  <h3 className="text-[36px] font-bold text-white tracking-tight">
                     {VISUAL_CHAPTERS[2].chapterNumber} · {VISUAL_CHAPTERS[2].title}
                   </h3>
                   <p className="text-[16px] text-white/80 leading-relaxed">

@@ -36,7 +36,10 @@ const VERTEX_SHADER = `
 
 const FRAGMENT_SHADER = `
   uniform sampler2D uColorMap;
+  uniform sampler2D uPrevColorMap;
   uniform sampler2D uDepthMap;
+  uniform sampler2D uPrevDepthMap;
+  uniform float uTransitionProgress;
   uniform vec2 uMouse;
   uniform float uParallaxScale;
   uniform vec3 uSunDirection;
@@ -50,7 +53,9 @@ const FRAGMENT_SHADER = `
 
   void main() {
     // 1. 读取基础深度值（0.0 远景，1.0 近景）
-    float rawDepth = texture2D(uDepthMap, vUv).r;
+    float rawDepthCurr = texture2D(uDepthMap, vUv).r;
+    float rawDepthPrev = texture2D(uPrevDepthMap, vUv).r;
+    float rawDepth = mix(rawDepthPrev, rawDepthCurr, uTransitionProgress);
     
     // 2. 4D 动态微风扰动（远景云气与近景微澜轻拂）
     float windOffset = sin(vUv.y * 12.0 + uTime * 0.8) * cos(vUv.x * 10.0 + uTime * 0.6) * 0.0015 * (1.0 - rawDepth * 0.5);
@@ -60,16 +65,31 @@ const FRAGMENT_SHADER = `
     vec2 parallaxOffset = uMouse * (rawDepth * uParallaxScale);
     vec2 displacedUv = clamp(dynamicUv - parallaxOffset, 0.001, 0.999);
     
-    // 4. 采样原始高清摄影原图与真实深度
-    vec4 baseColor = texture2D(uColorMap, displacedUv);
-    float depth = texture2D(uDepthMap, displacedUv).r;
+    // 4. 双场景平滑交叉淡入淡出（Crossfade）
+    vec4 colCurr = texture2D(uColorMap, displacedUv);
+    vec4 colPrev = texture2D(uPrevColorMap, displacedUv);
+    vec4 baseColor = mix(colPrev, colCurr, uTransitionProgress);
+
+    float dCurr = texture2D(uDepthMap, displacedUv).r;
+    float dPrev = texture2D(uPrevDepthMap, displacedUv).r;
+    float depth = mix(dPrev, dCurr, uTransitionProgress);
 
     // 5. 从深度图推导微表面法线场（Sobel 边缘微分）并叠加时间微光波动
     vec2 texel = vec2(1.0 / 512.0, 1.0 / 320.0);
-    float dL = texture2D(uDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
-    float dR = texture2D(uDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
-    float dD = texture2D(uDepthMap, displacedUv - vec2(0.0, texel.y)).r;
-    float dU = texture2D(uDepthMap, displacedUv + vec2(0.0, texel.y)).r;
+    float dLCurr = texture2D(uDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
+    float dRCurr = texture2D(uDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
+    float dDCurr = texture2D(uDepthMap, displacedUv - vec2(0.0, texel.y)).r;
+    float dUCurr = texture2D(uDepthMap, displacedUv + vec2(0.0, texel.y)).r;
+
+    float dLPrev = texture2D(uPrevDepthMap, displacedUv - vec2(texel.x, 0.0)).r;
+    float dRPrev = texture2D(uPrevDepthMap, displacedUv + vec2(texel.x, 0.0)).r;
+    float dDPrev = texture2D(uPrevDepthMap, displacedUv - vec2(0.0, texel.y)).r;
+    float dUPrev = texture2D(uPrevDepthMap, displacedUv + vec2(0.0, texel.y)).r;
+
+    float dL = mix(dLPrev, dLCurr, uTransitionProgress);
+    float dR = mix(dRPrev, dRCurr, uTransitionProgress);
+    float dD = mix(dDPrev, dDCurr, uTransitionProgress);
+    float dU = mix(dUPrev, dUCurr, uTransitionProgress);
     
     // 琉璃瓦在光照下的微颤波光
     float shimmer = sin(displacedUv.x * 60.0 + uTime * 1.5) * cos(displacedUv.y * 60.0 + uTime * 1.2) * 0.08 * (1.0 - depth);
@@ -167,7 +187,10 @@ export function BeijingSpatialWorldModel({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const uniformsRef = useRef<{
     uColorMap: { value: THREE.Texture | null };
+    uPrevColorMap: { value: THREE.Texture | null };
     uDepthMap: { value: THREE.Texture | null };
+    uPrevDepthMap: { value: THREE.Texture | null };
+    uTransitionProgress: { value: number };
     uMouse: { value: THREE.Vector2 };
     uParallaxScale: { value: number };
     uSunDirection: { value: THREE.Vector3 };
@@ -179,7 +202,10 @@ export function BeijingSpatialWorldModel({
     uTime: { value: number };
   }>({
     uColorMap: { value: null },
+    uPrevColorMap: { value: null },
     uDepthMap: { value: null },
+    uPrevDepthMap: { value: null },
+    uTransitionProgress: { value: 1.0 },
     uMouse: { value: new THREE.Vector2(0, 0) },
     uParallaxScale: { value: 0.035 },
     uSunDirection: { value: new THREE.Vector3(1, 0.5, 0.5) },
@@ -193,6 +219,7 @@ export function BeijingSpatialWorldModel({
 
   const mouseTargetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const currentMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const transitionProgressRef = useRef<number>(1.0);
 
   const isTimeLapseRef = useRef<boolean>(isTimeLapseActive);
   const currentHourRef = useRef<number>(currentHour);
@@ -236,7 +263,10 @@ export function BeijingSpatialWorldModel({
     depthTex.magFilter = THREE.LinearFilter;
 
     uniformsRef.current.uColorMap.value = colorTex;
+    uniformsRef.current.uPrevColorMap.value = colorTex;
     uniformsRef.current.uDepthMap.value = depthTex;
+    uniformsRef.current.uPrevDepthMap.value = depthTex;
+    uniformsRef.current.uTransitionProgress.value = 1.0;
 
     const material = new THREE.ShaderMaterial({
       vertexShader: VERTEX_SHADER,
@@ -281,6 +311,16 @@ export function BeijingSpatialWorldModel({
         onHourChangeRef.current(nextHour);
       }
 
+      // 场景淡入淡出插值（Crossfade）
+      if (transitionProgressRef.current < 1.0) {
+        transitionProgressRef.current = Math.min(
+          1.0,
+          transitionProgressRef.current + deltaSec * 2.2
+        );
+        uniformsRef.current.uTransitionProgress.value =
+          transitionProgressRef.current;
+      }
+
       // 平滑缓动插值
       currentMouseRef.current.x +=
         (mouseTargetRef.current.x - currentMouseRef.current.x) * 0.08;
@@ -310,18 +350,28 @@ export function BeijingSpatialWorldModel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 切换景点贴图
+  // 切换景点贴图（平滑淡入淡出过渡）
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(currentSpot.image, (colorTex) => {
       colorTex.colorSpace = THREE.SRGBColorSpace;
       colorTex.minFilter = THREE.LinearFilter;
-      uniformsRef.current.uColorMap.value = colorTex;
-    });
 
-    textureLoader.load(currentSpot.depthMap, (depthTex) => {
-      depthTex.minFilter = THREE.LinearFilter;
-      uniformsRef.current.uDepthMap.value = depthTex;
+      textureLoader.load(currentSpot.depthMap, (depthTex) => {
+        depthTex.minFilter = THREE.LinearFilter;
+
+        if (uniformsRef.current.uColorMap.value) {
+          uniformsRef.current.uPrevColorMap.value =
+            uniformsRef.current.uColorMap.value;
+          uniformsRef.current.uPrevDepthMap.value =
+            uniformsRef.current.uDepthMap.value;
+          transitionProgressRef.current = 0.0;
+          uniformsRef.current.uTransitionProgress.value = 0.0;
+        }
+
+        uniformsRef.current.uColorMap.value = colorTex;
+        uniformsRef.current.uDepthMap.value = depthTex;
+      });
     });
   }, [currentSpot]);
 
@@ -403,6 +453,52 @@ export function BeijingSpatialWorldModel({
     return currentSpot.timeNotes.night;
   }, [currentHour, currentSpot]);
 
+  // 真实物理太阳几何与色温计算
+  const solarMetrics = useMemo(() => {
+    const phi = (39.9 * Math.PI) / 180;
+    const delta = (-17.0 * Math.PI) / 180;
+    const omega = ((currentHour - 12.0) * 15.0 * Math.PI) / 180;
+
+    const sinAlt =
+      Math.sin(phi) * Math.sin(delta) +
+      Math.cos(phi) * Math.cos(delta) * Math.cos(omega);
+    const altitudeDeg =
+      Math.asin(Math.max(-1, Math.min(1, sinAlt))) * (180 / Math.PI);
+
+    let azimuthDeg = 180;
+    const cosAlt = Math.cos((altitudeDeg * Math.PI) / 180);
+    if (Math.abs(cosAlt) > 0.01) {
+      const cosAz =
+        (Math.sin((altitudeDeg * Math.PI) / 180) * Math.sin(phi) - Math.sin(delta)) /
+        (cosAlt * Math.cos(phi));
+      const azRad = Math.acos(Math.max(-1, Math.min(1, cosAz)));
+      azimuthDeg =
+        currentHour <= 12
+          ? 180 - (azRad * 180) / Math.PI
+          : 180 + (azRad * 180) / Math.PI;
+    }
+
+    let kelvin = 5400;
+    if (altitudeDeg < 0) {
+      kelvin = 9200;
+    } else if (altitudeDeg < 8) {
+      kelvin = 2900;
+    } else if (altitudeDeg < 25) {
+      kelvin = 4600;
+    } else {
+      kelvin = 5800;
+    }
+
+    const altText = altitudeDeg > 0 ? `${altitudeDeg.toFixed(1)}°` : "地平线下";
+    const azDir = azimuthDeg < 135 ? "东偏南" : azimuthDeg < 225 ? "正南" : "西偏南";
+
+    return {
+      altitude: altText,
+      azimuth: `${Math.round(azimuthDeg)}° (${azDir})`,
+      kelvin: `${kelvin}K`,
+    };
+  }, [currentHour]);
+
   return (
     <div className="relative overflow-hidden rounded-[32px] bg-[#0c0c0e]">
       {/* 顶部极简地标名录切换 */}
@@ -456,6 +552,10 @@ export function BeijingSpatialWorldModel({
 
         {/* 右下角：4D 时空与日晷控制盘 */}
         <div className="absolute bottom-8 right-8 z-10 flex flex-col items-end gap-3 max-w-[90vw]">
+          <div className="text-[14px] text-white/50 tnum hidden sm:block">
+            <span>太阳高度 {solarMetrics.altitude} · 方位 {solarMetrics.azimuth} · 色温 {solarMetrics.kelvin}</span>
+          </div>
+
           <div className="flex items-center gap-3 text-[14px] text-white/70">
             {/* 4D 动态控制按钮组 */}
             <div className="flex items-center gap-2">
