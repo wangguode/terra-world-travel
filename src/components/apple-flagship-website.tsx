@@ -84,40 +84,40 @@ export function AppleFlagshipWebsite() {
 
   return (
     <div className="min-h-[100dvh] bg-[#070707] text-[#f5f5f7]">
-      {/* 顶部极简 Topbar */}
-      <header className="sticky top-0 z-40 bg-[#070707] py-5">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 sm:px-10">
+      {/* 顶部极简透明悬浮 Topbar */}
+      <header className="absolute top-0 left-0 right-0 z-40 bg-transparent py-4 sm:py-5 pointer-events-none">
+        <div className="flex w-full items-center justify-between gap-4 px-6 sm:px-10">
           <a
-            href="#top"
-            className="flex items-center gap-2.5 text-[18px] font-bold tracking-tight text-white no-underline"
+            href="#spatial-stage"
+            className="pointer-events-auto flex items-center gap-2 text-[16px] sm:text-[18px] font-bold tracking-tight text-white no-underline"
           >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#c23b3b]" />
+            <span className="h-2 w-2 rounded-full bg-[#c23b3b]" />
             <span>BEIJING PULSE</span>
             <span className="text-[14px] font-normal text-white/40 tracking-wider hidden sm:inline">
-              北京 · 岁月静好
+              北京 · 4D空间世界模型
             </span>
           </a>
 
           <nav
             aria-label="主导航"
-            className="flex flex-wrap items-center gap-6 sm:gap-10 text-[16px]"
+            className="pointer-events-auto flex items-center gap-4 sm:gap-8 text-[14px] sm:text-[16px]"
           >
             <a
               href="#spatial-stage"
-              className="text-white/70 hover:text-white no-underline transition"
+              className="text-white/70 hover:text-white no-underline transition hidden md:inline"
             >
               时空光影
             </a>
             <a
               href="#visual-chapters"
-              className="text-white/70 hover:text-white no-underline transition"
+              className="text-white/70 hover:text-white no-underline transition hidden md:inline"
             >
               画报长卷
             </a>
             <button
               type="button"
               onClick={() => setSnowMode(!snowMode)}
-              className={`terra-btn rounded-full px-4 py-1.5 text-[14px] font-medium transition ${
+              className={`terra-btn rounded-full px-3.5 sm:px-4 py-1.5 text-[14px] font-medium transition ${
                 snowMode
                   ? "bg-[#c23b3b] text-white"
                   : "bg-white/10 text-white/80 hover:bg-white/20"
@@ -127,7 +127,7 @@ export function AppleFlagshipWebsite() {
             </button>
             <a
               href="#mobile-companion"
-              className="terra-btn rounded-full bg-white px-5 py-1.5 text-[14px] font-semibold text-[#070707] no-underline hover:bg-white/90"
+              className="terra-btn rounded-full bg-white px-4 sm:px-5 py-1.5 text-[14px] font-semibold text-[#070707] no-underline hover:bg-white/90"
             >
               装进手机
             </a>
@@ -136,79 +136,32 @@ export function AppleFlagshipWebsite() {
       </header>
 
       <main id="top">
-        {/* 纯净诗意 Hero */}
-        <section
-          id="hero"
-          className="relative min-h-[75vh] flex items-end overflow-hidden pb-16 sm:pb-24"
-        >
-          <div className="absolute inset-0 z-0">
-            <Image
-              src="/assets/forbidden-city.jpg"
-              alt="故宫紫禁城全景晨曦"
-              width={1600}
-              height={900}
-              priority
-              className="h-full w-full object-cover object-center brightness-90 terra-drift"
-            />
-            <div className="absolute inset-0 bg-[#070707]/60" />
+        {/* 核心第一屏：全屏 4D 真实城市时空世界模型仿真仪 */}
+        <section id="spatial-stage" className="relative w-full h-[100dvh] overflow-hidden bg-[#070707]">
+          {/* 左上侧：主标题与世界模型定位说明（高层级首帧呈现） */}
+          <div className="absolute top-24 left-6 right-6 sm:right-auto sm:left-10 z-30 max-w-xl pointer-events-auto">
+            <h1 className="text-[32px] sm:text-[36px] font-bold text-white tracking-tight leading-tight">
+              北京 · 4D 城市时空世界模型
+            </h1>
+            <p className="mt-3 text-[16px] sm:text-[18px] text-white/80 leading-relaxed m-0">
+              基于单目神经深度与物理太阳天顶角，六百年古都四时光影连续仿真推演。
+            </p>
           </div>
 
-          <div className="relative z-10 mx-auto max-w-7xl px-6 sm:px-10 w-full terra-enter">
-            <div className="max-w-3xl">
-              <h1 className="text-[36px] sm:text-[56px] lg:text-[80px] font-bold tracking-tight text-white leading-[1.05]">
-                Beijing in Timeless Light.
-              </h1>
-              <p className="mt-5 text-[22px] font-medium text-white/90 leading-relaxed">
-                六百年古都，在晨曦、晴空、金辉与蓝调之间无声流淌。静下心，感受每一寸建筑与时光的静默守候。
-              </p>
-
-              <div className="mt-8 flex flex-wrap gap-4">
-                <a
-                  href="#spatial-stage"
-                  className="terra-btn rounded-full bg-[#c23b3b] px-7 py-3 text-[16px] font-semibold text-white no-underline hover:bg-[#d44343] transition"
-                >
-                  静观四时光影 ↓
-                </a>
-                <a
-                  href="#visual-chapters"
-                  className="terra-btn rounded-full bg-white/10 px-7 py-3 text-[16px] font-medium text-white no-underline hover:bg-white/15 transition"
-                >
-                  翻阅岁月长卷
-                </a>
-              </div>
-            </div>
-          </div>
+          <BeijingSpatialWorldModel
+            selectedSpotId={activeSpotId}
+            onSelectSpot={setActiveSpotId}
+            hour={activeHour}
+            onChangeHour={setActiveHour}
+            snowMode={snowMode}
+          />
         </section>
 
-        {/* 核心剧场：真实无畸变四时光影视窗 (The Main Stage) */}
-        <section id="spatial-stage" className="bg-[#070707] py-20 sm:py-28">
-          <div className="mx-auto max-w-7xl px-6 sm:px-10">
-            <div className="max-w-2xl terra-reveal">
-              <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                四时光影 · 神经空间视界
-              </h2>
-              <p className="mt-3 text-[18px] text-white/70 leading-relaxed">
-                基于单目神经深度与物理太阳轨迹。鼠标移动感受景深视差，拖动右下角日晷，静看阳光寸寸抚过六百年红墙。
-              </p>
-            </div>
-
-            <div className="mt-10 terra-reveal">
-              <BeijingSpatialWorldModel
-                selectedSpotId={activeSpotId}
-                onSelectSpot={setActiveSpotId}
-                hour={activeHour}
-                onChangeHour={setActiveHour}
-                snowMode={snowMode}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* 岁月长卷：画报散文流（彻底抛弃小卡片堆砌，回归画报大美） */}
+        {/* 岁月长卷：画报散文流（次级深度沉思） */}
         <section id="visual-chapters" className="bg-[#0c0c0e] py-24 sm:py-36">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
             <div className="max-w-2xl terra-reveal">
-              <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
+              <h2 className="text-[36px] font-bold text-white tracking-tight">
                 岁月沉思 · 散文长卷
               </h2>
               <p className="mt-3 text-[18px] text-white/70 leading-relaxed">
@@ -217,9 +170,9 @@ export function AppleFlagshipWebsite() {
             </div>
 
             {/* 章节一：暮色紫禁 */}
-            <article className="mt-20 sm:mt-28 terra-reveal">
+            <article className="mt-20 sm:mt-28">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-                <div className="lg:col-span-7">
+                <div className="lg:col-span-7 terra-reveal">
                   <div
                     onClick={() =>
                       handleTeleportToSpot(
@@ -239,7 +192,7 @@ export function AppleFlagshipWebsite() {
                   </div>
                 </div>
 
-                <div className="lg:col-span-5 lg:pl-6 space-y-4">
+                <div className="lg:col-span-5 lg:pl-6 space-y-4 terra-reveal">
                   <h3 className="text-[36px] font-bold text-white tracking-tight">
                     {VISUAL_CHAPTERS[0].chapterNumber} · {VISUAL_CHAPTERS[0].title}
                   </h3>
@@ -268,9 +221,9 @@ export function AppleFlagshipWebsite() {
             </article>
 
             {/* 章节二：晨雾雄关（反向构图，丰富节奏） */}
-            <article className="mt-24 sm:mt-36 terra-reveal">
+            <article className="mt-24 sm:mt-36">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-                <div className="lg:col-span-5 lg:pr-6 space-y-4 order-2 lg:order-1">
+                <div className="lg:col-span-5 lg:pr-6 space-y-4 order-2 lg:order-1 terra-reveal">
                   <h3 className="text-[36px] font-bold text-white tracking-tight">
                     {VISUAL_CHAPTERS[1].chapterNumber} · {VISUAL_CHAPTERS[1].title}
                   </h3>
@@ -296,7 +249,7 @@ export function AppleFlagshipWebsite() {
                   </div>
                 </div>
 
-                <div className="lg:col-span-7 order-1 lg:order-2">
+                <div className="lg:col-span-7 order-1 lg:order-2 terra-reveal">
                   <div
                     onClick={() =>
                       handleTeleportToSpot(
@@ -319,9 +272,9 @@ export function AppleFlagshipWebsite() {
             </article>
 
             {/* 章节三：晴空坛庙 */}
-            <article className="mt-24 sm:mt-36 terra-reveal">
+            <article className="mt-24 sm:mt-36">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-                <div className="lg:col-span-7">
+                <div className="lg:col-span-7 terra-reveal">
                   <div
                     onClick={() =>
                       handleTeleportToSpot(
@@ -341,7 +294,7 @@ export function AppleFlagshipWebsite() {
                   </div>
                 </div>
 
-                <div className="lg:col-span-5 lg:pl-6 space-y-4">
+                <div className="lg:col-span-5 lg:pl-6 space-y-4 terra-reveal">
                   <h3 className="text-[36px] font-bold text-white tracking-tight">
                     {VISUAL_CHAPTERS[2].chapterNumber} · {VISUAL_CHAPTERS[2].title}
                   </h3>

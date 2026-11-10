@@ -500,59 +500,59 @@ export function BeijingSpatialWorldModel({
   }, [currentHour]);
 
   return (
-    <div className="relative overflow-hidden rounded-[32px] bg-[#0c0c0e]">
-      {/* 顶部极简地标名录切换 */}
-      <div className="flex flex-wrap items-center justify-between gap-6 px-8 py-5">
-        <div className="flex flex-wrap items-center gap-6 sm:gap-8">
-          {SCENIC_SPOTS.map((spot) => {
-            const isSel = spot.id === currentSpotId;
-            return (
-              <button
-                key={spot.id}
-                type="button"
-                onClick={() => handleSpotChange(spot.id)}
-                className={`terra-btn group flex items-center gap-2 text-[14px] transition ${
-                  isSel ? "text-white font-semibold" : "text-white/40 hover:text-white/80"
-                }`}
-              >
-                <span>{spot.nameZh}</span>
-                {isSel && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#c23b3b]" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-4 text-[14px] tnum text-white/40 hidden lg:flex">
-          <span>4D 神经深度场 · 真实太阳向量</span>
-          <span>{currentSpot.coordinates}</span>
-        </div>
-      </div>
-
-      {/* 核心无畸变神经空间光影画布 */}
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-[#070707]">
+      {/* 核心无畸变神经空间光影画布（全屏撑满） */}
       <div
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative h-[480px] sm:h-[640px] w-full overflow-hidden select-none cursor-crosshair"
+        className="relative h-full w-full overflow-hidden select-none cursor-crosshair"
       >
         <canvas ref={canvasRef} className="h-full w-full object-cover" />
 
-        {/* 左上角：地标静穆印章 */}
-        <div className="absolute top-8 left-8 z-10 max-w-md pointer-events-none">
-          <h2 className="text-[36px] font-bold text-white tracking-tight">
-            {currentSpot.nameZh}
-          </h2>
-          <div className="mt-1 text-[14px] text-white/80">
-            {currentSpot.locationZh} · {currentAtmosphere}
+        {/* 左上侧：当前视界状态印记 */}
+        <div className="absolute top-48 sm:top-44 left-6 sm:left-10 z-10 max-w-md pointer-events-none">
+          <div className="text-[18px] sm:text-[22px] font-bold text-white tracking-tight">
+            {currentSpot.nameZh} · {currentSpot.locationZh}
+          </div>
+          <div className="mt-1 text-[14px] text-white/60 font-medium">
+            {currentAtmosphere}
             {isLiveSynced && " · 真实时空对齐"}
             {isTimeLapseActive && " · 4D延时流转"}
+          </div>
+          <p className="mt-2 text-[14px] text-white/70 leading-relaxed max-w-sm hidden md:block m-0">
+            {currentPoeticNote}
+          </p>
+        </div>
+
+        {/* 左下角：核心地标切片栏 */}
+        <div className="absolute bottom-10 left-6 sm:left-10 z-10 flex flex-wrap items-center gap-3 pointer-events-auto">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-full bg-[#0c0c0e] p-1.5">
+            {SCENIC_SPOTS.map((spot) => {
+              const isSel = spot.id === currentSpotId;
+              return (
+                <button
+                  key={spot.id}
+                  type="button"
+                  onClick={() => handleSpotChange(spot.id)}
+                  className={`terra-btn group flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[14px] transition ${
+                    isSel
+                      ? "bg-white text-black font-semibold"
+                      : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  <span>{spot.nameZh}</span>
+                  {isSel && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#c23b3b]" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* 右下角：4D 时空与日晷控制盘 */}
-        <div className="absolute bottom-8 right-8 z-10 flex flex-col items-end gap-3 max-w-[90vw]">
-          <div className="text-[14px] text-white/50 tnum hidden sm:block">
+        <div className="absolute bottom-10 right-6 sm:right-10 z-10 flex flex-col items-end gap-3 max-w-[90vw]">
+          <div className="text-[14px] text-white/70 tnum hidden sm:block bg-[#0c0c0e] px-4 py-1.5 rounded-full">
             <span>太阳高度 {solarMetrics.altitude} · 方位 {solarMetrics.azimuth} · 色温 {solarMetrics.kelvin}</span>
           </div>
 
@@ -583,7 +583,7 @@ export function BeijingSpatialWorldModel({
               </button>
             </div>
 
-            <div className="flex items-center gap-1.5 ml-2">
+            <div className="flex items-center gap-1.5 ml-2 bg-[#0c0c0e] px-3.5 py-1 rounded-full">
               <span>日晷时标</span>
               <span className="font-bold text-white tnum">{timeString}</span>
             </div>
@@ -628,11 +628,9 @@ export function BeijingSpatialWorldModel({
           </div>
         </div>
 
-        {/* 左下角：该时段的岁月静好沉思 */}
-        <div className="absolute bottom-8 left-8 z-10 max-w-xl hidden sm:block pointer-events-none">
-          <p className="text-[16px] text-white/90 leading-relaxed m-0">
-            {currentPoeticNote}
-          </p>
+        {/* 底部正中：极简下翻指引 */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none text-white/30 text-[14px] flex items-center gap-1.5">
+          <span>岁月长卷 ↓</span>
         </div>
       </div>
     </div>
