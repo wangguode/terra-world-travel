@@ -114,6 +114,25 @@ const FRAGMENT_SHADER = `
       finalColor = mix(finalColor, snowColor, snowMask * 0.85);
     }
 
+    // 9. 物理漂浮粒子系统（初雪飞雪 / 晨光光尘）
+    // 近景粒子层（下落速度稍快，景深感强烈）
+    vec2 pUv1 = vUv * vec2(14.0, 9.0) + vec2(uTime * 0.12, uTime * 0.35);
+    pUv1.x += sin(pUv1.y * 3.0 + uTime * 0.5) * 0.18;
+    vec2 pGrid1 = fract(pUv1) - 0.5;
+    float particleLayer1 = smoothstep(0.08, 0.02, length(pGrid1)) * 0.65;
+
+    // 远景粒子层（微风轻扬，密度更高，半透明微小）
+    vec2 pUv2 = vUv * vec2(28.0, 18.0) + vec2(uTime * 0.06, uTime * 0.2);
+    pUv2.x += cos(pUv2.y * 4.0 + uTime * 0.4) * 0.12;
+    vec2 pGrid2 = fract(pUv2) - 0.5;
+    float particleLayer2 = smoothstep(0.06, 0.01, length(pGrid2)) * 0.35;
+
+    float particleIntensity = (uSnowAmount > 0.01) ? 1.0 : (uSunIntensity > 1.15 ? 0.25 : 0.04);
+    vec3 particleColor = (uSnowAmount > 0.01) ? vec3(0.96, 0.98, 1.0) : uSunColor * 1.25;
+    float combinedParticles = (particleLayer1 * 0.7 + particleLayer2 * 0.3) * particleIntensity;
+
+    finalColor += particleColor * combinedParticles;
+
     gl_FragColor = vec4(finalColor, baseColor.a);
   }
 `;
@@ -129,6 +148,11 @@ export function BeijingSpatialWorldModel({
   const [internalHour, setInternalHour] = useState<number>(17.5);
   const [isTimeLapseActive, setIsTimeLapseActive] = useState<boolean>(false);
   const [isLiveSynced, setIsLiveSynced] = useState<boolean>(false);
+  const [isAudioActive, setIsAudioActive] = useState<boolean>(false);
+
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const filterNodeRef = useRef<BiquadFilterNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
 
   const currentSpotId = propSpotId ?? internalSpotId;
   const currentHour = propHour ?? internalHour;
@@ -183,6 +207,97 @@ export function BeijingSpatialWorldModel({
     setIsLiveSynced(false);
     setIsTimeLapseActive((prev) => !prev);
   };
+
+  // 原生 Web Audio 生成式空间微环境声场（低通滤波古都清风）
+  const toggleAudio = () => {
+    if (isAudioActive) {
+      if (gainNodeRef.current && audioCtxRef.current) {
+        gainNodeRef.current.gain.setTargetAtTime(0, audioCtxRef.current.currentTime, 0.3);
+      }
+      setIsAudioActive(false);
+      return;
+    }
+
+    try {
+      if (!audioCtxRef.current) {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AudioCtx();
+        audioCtxRef.current = ctx;
+
+        // 生成 2 秒粉红噪声循环 buffer
+        const bufferSize = ctx.sampleRate * 2;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let b0 = 0;
+        let b1 = 0;
+        let b2 = 0;
+        let b3 = 0;
+        let b4 = 0;
+        let b5 = 0;
+        let b6 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.035;
+          b6 = white * 0.115926;
+        }
+
+        const whiteNoise = ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(420, ctx.currentTime);
+        filterNodeRef.current = filter;
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gainNodeRef.current = gain;
+
+        whiteNoise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        whiteNoise.start(0);
+      }
+
+      if (audioCtxRef.current.state === "suspended") {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+
+      if (gainNodeRef.current && audioCtxRef.current) {
+        gainNodeRef.current.gain.setTargetAtTime(0.06, audioCtxRef.current.currentTime, 0.4);
+      }
+      setIsAudioActive(true);
+    } catch {
+      // 容错处理
+    }
+  };
+
+  // 随四时日晷平滑调节声场截止频率
+  useEffect(() => {
+    if (filterNodeRef.current && audioCtxRef.current) {
+      const targetFreq = currentHour > 7.0 && currentHour < 18.0 ? 520 : 320;
+      filterNodeRef.current.frequency.setTargetAtTime(targetFreq, audioCtxRef.current.currentTime, 1.2);
+    }
+  }, [currentHour]);
+
+  // 组件卸载时释放音频资源
+  useEffect(() => {
+    return () => {
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+      }
+    };
+  }, []);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const uniformsRef = useRef<{
@@ -559,6 +674,17 @@ export function BeijingSpatialWorldModel({
           <div className="flex items-center gap-3 text-[14px] text-white/70">
             {/* 4D 动态控制按钮组 */}
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleAudio}
+                className={`terra-btn rounded-full px-3.5 py-1 text-[14px] font-medium transition ${
+                  isAudioActive
+                    ? "bg-[#c23b3b] text-white"
+                    : "bg-[#18181b] text-white/70 hover:text-white"
+                }`}
+              >
+                {isAudioActive ? "天籁微风" : "静音境"}
+              </button>
               <button
                 type="button"
                 onClick={toggleLiveSync}
