@@ -138,13 +138,13 @@ export function AppleFlagshipWebsite() {
       <main id="top">
         {/* 核心第一屏：全屏 4D 真实城市时空世界模型仿真仪 */}
         <section id="spatial-stage" className="relative w-full h-[100dvh] overflow-hidden bg-[#070707]">
-          {/* 左上侧：主标题与世界模型定位说明（高层级首帧呈现） */}
-          <div className="absolute top-24 left-6 right-6 sm:right-auto sm:left-10 z-30 max-w-xl pointer-events-auto">
+          {/* 左上侧：主标题与世界模型定位（高技术简约风） */}
+          <div className="absolute top-24 left-6 right-6 sm:right-auto sm:left-10 z-30 max-w-lg pointer-events-auto">
             <h1 className="text-[32px] sm:text-[36px] font-bold text-white tracking-tight leading-tight">
               北京 · 4D 城市时空世界模型
             </h1>
-            <p className="mt-3 text-[16px] sm:text-[18px] text-white/80 leading-relaxed m-0">
-              基于单目神经深度与物理太阳天顶角，六百年古都四时光影连续仿真推演。
+            <p className="mt-2 text-[16px] sm:text-[18px] text-white/70 leading-relaxed m-0 tnum">
+              六百年古都神经深度场与物理太阳光影实时推演
             </p>
           </div>
 
