@@ -7,9 +7,10 @@ import {
   BeijingSpatialWorldModel,
 } from "@/components/beijing-pulse-world-model";
 import {
-  WORLD_MODEL_DOMAINS,
-  type WorldModelDomain,
-} from "@/lib/world-model-catalog";
+  WORLD_PRESETS,
+  LINGBOT_VERSIONS,
+  type WorldPreset,
+} from "@/lib/lingbot-data";
 
 export function AppleFlagshipWebsite() {
   const [currentUrl, setCurrentUrl] = useState<string>(
@@ -18,7 +19,7 @@ export function AppleFlagshipWebsite() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
-  const [activeDomainId, setActiveDomainId] = useState<string>("autonomous-driving");
+  const [activePresetId, setActivePresetId] = useState<string>("imperial-palace");
   const [activeHour, setActiveHour] = useState<number>(17.5);
   const [snowMode, setSnowMode] = useState<boolean>(false);
 
@@ -74,8 +75,8 @@ export function AppleFlagshipWebsite() {
     }
   };
 
-  const handleTeleportToDomain = (domainId: string) => {
-    setActiveDomainId(domainId);
+  const handleTeleportToPreset = (presetId: string) => {
+    setActivePresetId(presetId);
     const el = document.getElementById("spatial-stage");
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
@@ -92,38 +93,38 @@ export function AppleFlagshipWebsite() {
             className="pointer-events-auto flex items-center gap-2 text-[16px] sm:text-[18px] font-bold tracking-tight text-white no-underline"
           >
             <span className="h-2 w-2 rounded-full bg-[#c23b3b]" />
-            <span>TERRA WORLD MODEL NEXUS</span>
-            <span className="text-[14px] font-normal text-white/40 tracking-wider hidden sm:inline">
-              统一世界模型仿真平台
+            <span>LINGBOT-WORLD // REACTOR PLAYGROUND</span>
+            <span className="text-[16px] font-normal text-white/40 tracking-wider hidden sm:inline">
+              灵波交互式世界模型
             </span>
           </a>
 
           <nav
             aria-label="主导航"
-            className="pointer-events-auto flex items-center gap-4 sm:gap-8 text-[14px] sm:text-[16px]"
+            className="pointer-events-auto flex items-center gap-4 sm:gap-8 text-[16px]"
           >
             <a
               href="#spatial-stage"
               className="text-white/70 hover:text-white no-underline transition hidden md:inline"
             >
-              交互仿真
+              动作交互视界
             </a>
             <a
-              href="#domain-matrix"
+              href="#technology-matrix"
               className="text-white/70 hover:text-white no-underline transition hidden md:inline"
             >
-              六大核心领域
+              核心技术架构
             </a>
             <a
-              href="#enterprise-scenarios"
+              href="#commercial-scenarios"
               className="text-white/70 hover:text-white no-underline transition hidden md:inline"
             >
-              商业与客户价值
+              商业场景与受众
             </a>
             <button
               type="button"
               onClick={() => setSnowMode(!snowMode)}
-              className={`terra-btn rounded-full px-3.5 sm:px-4 py-1.5 text-[14px] font-medium transition ${
+              className={`terra-btn rounded-full px-3.5 sm:px-4 py-1.5 text-[16px] font-medium transition ${
                 snowMode
                   ? "bg-[#c23b3b] text-white"
                   : "bg-white/10 text-white/80 hover:bg-white/20"
@@ -132,200 +133,263 @@ export function AppleFlagshipWebsite() {
               {snowMode ? "已覆初雪" : "严苛环境模拟"}
             </button>
             <a
-              href="#enterprise-scenarios"
-              className="terra-btn rounded-full bg-white px-4 sm:px-5 py-1.5 text-[14px] font-semibold text-[#070707] no-underline hover:bg-white/90"
+              href="#commercial-scenarios"
+              className="terra-btn rounded-full bg-white px-4 sm:px-5 py-1.5 text-[16px] font-semibold text-[#070707] no-underline hover:bg-white/90"
             >
-              商业方案
+              开发者接入
             </a>
           </nav>
         </div>
       </header>
 
       <main id="top">
-        {/* 核心第一屏：开源世界模型统一交互仿真控制台 */}
+        {/* 核心第一屏：LingBot-World 实时动作生成交互游乐场 */}
         <section id="spatial-stage" className="relative w-full h-[100dvh] overflow-hidden bg-[#070707]">
-          <div className="absolute top-20 sm:top-24 left-6 right-6 sm:right-auto sm:left-10 z-30 max-w-2xl pointer-events-auto">
-            <h1 className="text-[32px] sm:text-[36px] font-bold text-white tracking-tight leading-tight">
-              世界模型前沿仿真平台 // TERRA World Model
+          <div className="absolute top-20 sm:top-24 left-6 right-6 sm:right-auto sm:left-10 z-40 max-w-2xl pointer-events-auto bg-[#070707]/60 sm:bg-transparent rounded-[16px] p-3 sm:p-0">
+            <h1 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight leading-tight">
+              LingBot-World 2.0 // 动作驱动交互式世界模型
             </h1>
-            <p className="mt-2 text-[18px] sm:text-[20px] text-white/80 leading-relaxed m-0 tnum">
-              面向自驾因果预测、具身动力学评测与宏观战术沙盘的统一空间物理仿真系统
+            <p className="mt-2 text-[16px] sm:text-[18px] text-white/80 leading-relaxed m-0 tnum">
+              轻按键盘 WASD 实时漫游探索 · 14B 因果生成无尽时空
             </p>
           </div>
 
           <BeijingSpatialWorldModel
-            activeDomainId={activeDomainId}
-            onSelectDomain={setActiveDomainId}
+            activePresetId={activePresetId}
+            onSelectPreset={setActivePresetId}
             hour={activeHour}
             onChangeHour={setActiveHour}
             snowMode={snowMode}
           />
         </section>
 
-        {/* 核心第二屏：六大世界模型应用领域矩阵 */}
-        <section id="domain-matrix" className="bg-[#0c0c0e] py-20 sm:py-28">
+        {/* 核心第二屏：核心技术矩阵与版本演进 */}
+        <section id="technology-matrix" className="bg-[#0c0c0e] py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
             <div className="max-w-2xl terra-reveal">
               <h2 className="text-[32px] sm:text-[36px] font-bold text-white tracking-tight">
-                六大世界模型技术矩阵
+                LingBot-World 核心架构与演进
               </h2>
               <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
-                涵盖工业级闭环自驾、具身智能虚实迁移、交互式时空扩散及防务推演，点击一键载入上方交互视界。
+                彻底告别传统 AI 视频的静态片段生成模式，开启端到端因果注意力与实时可玩视界时代。
               </p>
             </div>
 
-            <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-              {WORLD_MODEL_DOMAINS.map((domain: WorldModelDomain) => (
-                <article
-                  key={domain.id}
-                  className="terra-reveal rounded-[24px] bg-[#141416] p-5 flex flex-col justify-between transition-transform duration-300 hover:scale-[1.01]"
-                >
-                  <div>
-                    <div className="relative aspect-[16/10] overflow-hidden rounded-[18px]">
-                      <Image
-                        src={domain.previewImage}
-                        alt={domain.nameZh}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover transition-transform duration-500 hover:scale-105"
-                      />
+            {/* 版本对比：1.0 vs 2.0 Infinity */}
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="rounded-[24px] bg-[#141416] p-8 terra-reveal flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-full bg-white/5 px-3 py-1 text-[16px] text-white/60">
+                      {LINGBOT_VERSIONS["1.0"].badge}
+                    </span>
+                    <span className="text-[16px] text-white/40 tnum">Baseline Prototype</span>
+                  </div>
+                  <h3 className="mt-4 text-[24px] font-bold text-white tracking-tight">
+                    {LINGBOT_VERSIONS["1.0"].title}
+                  </h3>
+                  <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
+                    {LINGBOT_VERSIONS["1.0"].descriptionZh}
+                  </p>
+                  
+                  <div className="mt-6 grid grid-cols-2 gap-4 bg-white/5 rounded-[16px] p-4 text-[16px] tnum">
+                    <div>
+                      <div className="text-white/40">模型规模</div>
+                      <div className="text-white font-medium">{LINGBOT_VERSIONS["1.0"].parameterCount}</div>
                     </div>
-
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[14px] text-white/60">
-                        {domain.badge}
-                      </span>
-                      <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[14px] text-white/40">
-                        {domain.openSourceReference}
-                      </span>
+                    <div>
+                      <div className="text-white/40">渲染性能</div>
+                      <div className="text-white font-medium">{LINGBOT_VERSIONS["1.0"].fps}</div>
                     </div>
-
-                    <h3 className="mt-3 text-[20px] font-bold text-white tracking-tight">
-                      {domain.nameZh}
-                      <span className="block text-[14px] font-normal text-white/40">
-                        {domain.nameEn}
-                      </span>
-                    </h3>
-
-                    <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
-                      {domain.summaryZh}
-                    </p>
-
-                    <div className="mt-4 grid grid-cols-3 gap-2 bg-white/5 rounded-[12px] p-2.5 text-[14px] tnum">
-                      {domain.benchmarkMetrics.map((metric) => (
-                        <div key={metric.label}>
-                          <div className="text-white/40 text-[14px]">{metric.label}</div>
-                          <div className="text-white font-medium text-[14px]">{metric.value}</div>
-                        </div>
-                      ))}
+                    <div>
+                      <div className="text-white/40">生成持续性</div>
+                      <div className="text-white font-medium">{LINGBOT_VERSIONS["1.0"].durationCapability}</div>
+                    </div>
+                    <div>
+                      <div className="text-white/40">内核算法</div>
+                      <div className="text-white font-medium">{LINGBOT_VERSIONS["1.0"].architecture}</div>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <div className="mt-5 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => handleTeleportToDomain(domain.id)}
-                      className="terra-btn w-full rounded-full bg-white/10 py-2.5 text-[14px] font-medium text-white hover:bg-white/20 transition"
-                    >
-                      在世界模型中载入仿真 ↑
-                    </button>
+              <div className="rounded-[24px] bg-[#18181c] p-8 terra-reveal flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-full bg-[#c23b3b]/20 px-3 py-1 text-[16px] text-[#ff7a7a] font-medium">
+                      {LINGBOT_VERSIONS["2.0"].badge}
+                    </span>
+                    <span className="text-[16px] text-white/40 tnum">Flagship Production</span>
                   </div>
-                </article>
-              ))}
+                  <h3 className="mt-4 text-[24px] font-bold text-white tracking-tight">
+                    {LINGBOT_VERSIONS["2.0"].title}
+                  </h3>
+                  <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
+                    {LINGBOT_VERSIONS["2.0"].descriptionZh}
+                  </p>
+                  
+                  <div className="mt-6 grid grid-cols-2 gap-4 bg-white/5 rounded-[16px] p-4 text-[16px] tnum">
+                    <div>
+                      <div className="text-white/40">模型规模</div>
+                      <div className="text-white font-medium">{LINGBOT_VERSIONS["2.0"].parameterCount}</div>
+                    </div>
+                    <div>
+                      <div className="text-white/40">渲染性能</div>
+                      <div className="text-[#34c759] font-medium">{LINGBOT_VERSIONS["2.0"].fps} · 720p HD</div>
+                    </div>
+                    <div>
+                      <div className="text-white/40">生成持续性</div>
+                      <div className="text-white font-medium">{LINGBOT_VERSIONS["2.0"].durationCapability}</div>
+                    </div>
+                    <div>
+                      <div className="text-white/40">双智能体机制</div>
+                      <div className="text-white font-medium">Pilot + Director Agents</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 世界预设卡片库 */}
+            <div className="mt-16">
+              <h3 className="text-[24px] font-bold text-white tracking-tight">
+                交互世界初始化预设 (World Presets)
+              </h3>
+              <p className="mt-2 text-[16px] text-white/60">
+                支持以实景摄影或提示词一键初始化三维世界，点击即可在上方交互视界中加载探索。
+              </p>
+
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                {WORLD_PRESETS.map((preset: WorldPreset) => (
+                  <article
+                    key={preset.id}
+                    className="rounded-[20px] bg-[#141416] p-5 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="relative aspect-[16/10] overflow-hidden rounded-[16px]">
+                        <Image
+                          src={preset.image}
+                          alt={preset.nameZh}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="mt-3 text-[16px] text-white/50">{preset.tag}</div>
+                      <h4 className="mt-1 text-[20px] font-bold text-white tracking-tight">
+                        {preset.nameZh}
+                      </h4>
+                      <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
+                        {preset.descriptionZh}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTeleportToPreset(preset.id)}
+                        className="terra-btn w-full rounded-full bg-white/10 py-2.5 text-[16px] font-medium text-white hover:bg-white/20 transition"
+                      >
+                        在游乐场中载入生成 ↑
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
-        {/* 核心第三屏：受众、客户与商业落地场景专章 */}
-        <section id="enterprise-scenarios" className="bg-[#070707] py-20 sm:py-28">
+        {/* 核心第三屏：商业模式、受众画像与 Reactor 平台服务 */}
+        <section id="commercial-scenarios" className="bg-[#070707] py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-6 sm:px-10">
             <div className="max-w-2xl terra-reveal">
               <h2 className="text-[32px] sm:text-[36px] font-bold text-white tracking-tight">
-                商业场景与客户价值全景
+                商业应用与受众客户全景
               </h2>
               <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
-                明确回答本平台的面向受众、目标客户、使用场景及商业变现闭环。
+                对标 Reactor.inc 云端平台商业模式，明确面向受众、目标客户与变现闭环。
               </p>
             </div>
 
             <div className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* 客户群体与受众画像 */}
+              {/* 核心受众画像 */}
               <div className="rounded-[28px] bg-[#121214] p-8 terra-reveal space-y-6">
-                <h3 className="text-[24px] font-bold text-white tracking-tight">
-                  面向受众与核心客户画像
+                <h3 className="text-[20px] sm:text-[24px] font-bold text-white tracking-tight">
+                  面向的受众与使用者
                 </h3>
                 
                 <div className="space-y-4 text-[16px] leading-relaxed">
                   <div className="bg-white/5 rounded-[16px] p-4">
-                    <div className="font-semibold text-white">自动驾驶主机厂与 Tier 1 方案商</div>
+                    <div className="font-semibold text-white">次世代开放世界与游戏开发者</div>
                     <div className="text-white/70 mt-1">
-                      面向自驾算法团队与测试部门。痛点在于真实道路长尾危险极端工况采集极其困难，通过世界模型日行千万公里虚拟路测，降低 90% 实车成本。
+                      无需耗费数月编写物理引擎和搭建三维建模资产，通过提示词与首帧直接生成可玩的世界关卡与沙盒原型。
                     </div>
                   </div>
 
                   <div className="bg-white/5 rounded-[16px] p-4">
-                    <div className="font-semibold text-white">具身智能与人形机器人研发团队</div>
+                    <div className="font-semibold text-white">具身智能机器人训练团队</div>
                     <div className="text-white/70 mt-1">
-                      面向机械臂与双足机器人研发科学家。在全物理守恒仿真环境中完成灵巧抓取与避障策略的 Sim-to-Real 闭环迁移，零硬件损耗。
+                      通过动作条件驱动持续合成长程、多视角、符合真实动力学因果规律的交互视频流，解决 Sim-to-Real 数据匮乏。
                     </div>
                   </div>
 
                   <div className="bg-white/5 rounded-[16px] p-4">
-                    <div className="font-semibold text-white">国防防务推演中心与应急管理智库</div>
+                    <div className="font-semibold text-white">互动影视与空间叙事创作者</div>
                     <div className="text-white/70 mt-1">
-                      面向战略态势研判与灾害预防规划。在真实地理 GIS 时空阵列上进行千级智能体非完全信息对抗博弈与地质灾害推演。
+                      观众不再是单向被动观看影片，而是可以随时拿起按键走入场景，直接影响剧情与环境的时空走向。
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 商业落地场景与变现模式 */}
+              {/* 商业化与变现模式 */}
               <div className="rounded-[28px] bg-[#121214] p-8 terra-reveal space-y-6">
-                <h3 className="text-[24px] font-bold text-white tracking-tight">
-                  商业落地场景与变现闭环
+                <h3 className="text-[20px] sm:text-[24px] font-bold text-white tracking-tight">
+                  商业变现与落地模式
                 </h3>
 
                 <div className="space-y-4 text-[16px] leading-relaxed">
                   <div className="bg-white/5 rounded-[16px] p-4">
-                    <div className="font-semibold text-white">虚拟路测与极端工况推演 SaaS 订阅</div>
+                    <div className="font-semibold text-white">云端交互时长按秒计费</div>
                     <div className="text-white/70 mt-1">
-                      向车企提供多视角自驾世界模型 API 与私有化集群部署，按日测里程与算力节点按需计费，支持量产车规级安全评测。
+                      基于 WebSocket 低延迟推流，向个人创作者和独立工作室按秒/按分钟收取云端多卡 GPU 实时推理点数。
                     </div>
                   </div>
 
                   <div className="bg-white/5 rounded-[16px] p-4">
-                    <div className="font-semibold text-white">具身合成数据流水线服务（Data-as-a-Service）</div>
+                    <div className="font-semibold text-white">企业级专属集群私有化部署</div>
                     <div className="text-white/70 mt-1">
-                      为机器人公司生产物理规律完备的合成视频与点云轨迹数据，按数据包规模与复杂交互轮次收费。
+                      为大厂游戏工作室和主机厂智驾团队提供本地私有集群部署套件，保证核心数据安全与独占算力带宽。
                     </div>
                   </div>
 
                   <div className="bg-white/5 rounded-[16px] p-4">
-                    <div className="font-semibold text-white">大模型物理常识安全认证与沙盘定制</div>
+                    <div className="font-semibold text-white">实时动作流交互 API 订阅</div>
                     <div className="text-white/70 mt-1">
-                      作为空间智能领域的权威基准测试平台，提供基础模型物理常识准入认证报告与军工/应急沙盘专属项目交付。
+                      对外开放低延迟动作注入与视频帧返回的标准 REST/WebSocket SDK，赋能第三方应用接入世界模型底座。
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 体验与离线手持伴侣 */}
+            {/* 体验与离线伴侣 */}
             <div className="mt-10 rounded-[32px] bg-[#121214] p-8 sm:p-14 terra-reveal">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
                 <div className="lg:col-span-7">
                   <h3 className="text-[24px] sm:text-[32px] font-bold text-white tracking-tight">
-                    即刻接入世界模型仿真引擎
+                    在移动设备上启动交互游乐场
                   </h3>
                   <p className="mt-4 text-[16px] sm:text-[18px] text-white/70 leading-relaxed max-w-xl">
-                    支持在任意移动设备与工作站上无缝预览开源世界模型仿真流，随时随地接入标准化空间物理推理接口。
+                    支持在任意手机浏览器中通过触摸方向键体验 LingBot-World 2.0 实时因果流式生成，随时随地探索交互时空。
                   </p>
 
                   <div className="mt-8 flex flex-wrap gap-4">
                     <button
                       type="button"
                       onClick={handleCopyUrl}
-                      className="terra-btn rounded-full bg-white px-7 py-3 text-[14px] font-bold text-black hover:bg-white/90 transition"
+                      className="terra-btn rounded-full bg-white px-7 py-3 text-[16px] font-bold text-black hover:bg-white/90 transition"
                     >
                       {copiedLink ? "已复制引擎访问网址" : "复制网址到移动端"}
                     </button>
@@ -344,15 +408,15 @@ export function AppleFlagshipWebsite() {
                         className="h-48 w-48 rounded-xl object-contain mx-auto"
                       />
                     ) : (
-                      <div className="h-48 w-48 rounded-xl bg-gray-100 flex items-center justify-center text-black/50 text-[14px]">
+                      <div className="h-48 w-48 rounded-xl bg-gray-100 flex items-center justify-center text-black/50 text-[16px]">
                         加载二维码中
                       </div>
                     )}
-                    <p className="mt-3 text-[14px] font-medium text-[#070707]">
-                      手机扫码 · 实时仿真
+                    <p className="mt-3 text-[16px] font-medium text-[#070707]">
+                      手机扫码 · 即刻交互
                     </p>
-                    <p className="text-[14px] text-[#070707]/60">
-                      支持 iOS 与 Android 空间预览
+                    <p className="text-[16px] text-[#070707]/60">
+                      支持 iOS 与 Android 触控漫游
                     </p>
                   </div>
                 </div>
@@ -362,10 +426,10 @@ export function AppleFlagshipWebsite() {
         </section>
       </main>
 
-      <footer className="bg-[#070707] py-12 text-center text-[14px] text-white/40">
+      <footer className="bg-[#070707] py-12 text-center text-[16px] text-white/40">
         <div className="mx-auto max-w-7xl px-6 sm:px-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 TERRA // World Model Nexus. Open Source Simulation.</p>
-          <p>Autonomous Driving · Embodied AI · Physical Laws · Sandtable Wargaming</p>
+          <p>© 2026 LINGBOT-WORLD // Reactor.inc Playground & Robbyant Open Source.</p>
+          <p>Real-Time Action-Conditioned 14B Causal World Model.</p>
         </div>
       </footer>
     </div>
