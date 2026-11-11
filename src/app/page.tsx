@@ -12,8 +12,9 @@ import { CopilotDrawer } from "@/components/copilot-drawer";
 import { AppleStoryGallery } from "@/components/apple-story-gallery";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
+import { PaperMarkdownView } from "@/components/paper-markdown-view";
 import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
-import { WorldModelPaper } from "@/lib/world-model-papers-100";
+import { WORLD_MODEL_PAPERS_100, WorldModelPaper } from "@/lib/world-model-papers-100";
 
 export default function HomePage() {
   const router = useRouter();
@@ -28,7 +29,10 @@ export default function HomePage() {
   const [copilotOpen, setCopilotOpen] = useState<boolean>(false);
   const [copilotQuery, setCopilotQuery] = useState<string>("");
 
-  // 论文深度阅读器状态
+  // 图谱当前选中的论文 (默认展示首篇 Oasis 核心世界模型，并在下方直接 Markdown 阅读)
+  const [selectedPaper, setSelectedPaper] = useState<WorldModelPaper>(WORLD_MODEL_PAPERS_100[0]);
+
+  // 论文深度阅读抽屉状态 (可选)
   const [readingPaper, setReadingPaper] = useState<WorldModelPaper | null>(null);
   const [readerOpen, setReaderOpen] = useState<boolean>(false);
 
@@ -53,8 +57,12 @@ export default function HomePage() {
   }, [lang]);
 
   const handleSelectPaperFromGraph = (paper: WorldModelPaper) => {
+    setSelectedPaper(paper);
     setReadingPaper(paper);
-    setReaderOpen(true);
+    const el = document.getElementById("paper-markdown-reader");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const handleAskAiAboutPaper = (paperTitle: string) => {
@@ -235,7 +243,35 @@ export default function HomePage() {
             </div>
 
             {/* 知识图谱画布视窗 */}
-            <WorldModelKnowledgeGraph onSelectPaper={handleSelectPaperFromGraph} />
+            <WorldModelKnowledgeGraph
+              onSelectPaper={handleSelectPaperFromGraph}
+              selectedPaperId={selectedPaper.id}
+            />
+
+            {/* 核心系统级联动：选中的论文直接在当前平台的该区域以 Markdown 风格沉浸式研读 */}
+            <div className="pt-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-[#0071e3]" />
+                  <span className="text-[14px] font-semibold text-[#1d1d1f]">
+                    {lang === "en" ? "Selected Paper · Markdown Deep Dive" : "图谱当前选中成果 · Markdown 风格学术研读"}
+                  </span>
+                  <span className="text-[13px] text-[#86868b] truncate max-w-md">
+                    ({selectedPaper.title})
+                  </span>
+                </div>
+                <div className="text-[13px] text-[#0071e3] font-medium">
+                  {lang === "en" ? "Click any node in graph above to switch" : "点击上方任意图谱节点即刻切换研读 ↓"}
+                </div>
+              </div>
+
+              <PaperMarkdownView
+                paper={selectedPaper}
+                onAskAi={handleAskAiAboutPaper}
+                onSelectOtherPaper={(other) => setSelectedPaper(other)}
+                allPapers={WORLD_MODEL_PAPERS_100}
+              />
+            </div>
           </div>
         </section>
 

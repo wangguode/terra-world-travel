@@ -20,6 +20,7 @@ import { CopilotDrawer } from "@/components/copilot-drawer";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
 import { PaperBlogViewer } from "@/components/paper-blog-viewer";
+import { PaperMarkdownView } from "@/components/paper-markdown-view";
 
 function ResearchContent() {
   const { lang } = useLanguage();
@@ -37,6 +38,11 @@ function ResearchContent() {
     }
     return null;
   });
+
+  // 图谱当前选中的论文 (用于下方 Markdown 风格即时研读)
+  const [selectedGraphPaper, setSelectedGraphPaper] = useState<WorldModelPaper>(
+    WORLD_MODEL_PAPERS_100[0]
+  );
 
   // 论文轻量抽屉状态
   const [readingPaper, setReadingPaper] = useState<WorldModelPaper | null>(null);
@@ -275,10 +281,10 @@ function ResearchContent() {
           ) : (
             <>
               {/* =====================================================================
-                  B. 模式二：知识图谱视图 (Knowledge Graph)
+                  B. 模式二：知识图谱视图 (Knowledge Graph + Markdown Reading Area)
                  ===================================================================== */}
               {viewMode === "graph" && (
-                <section className="space-y-6 terra-reveal">
+                <section className="space-y-10 terra-reveal">
                   <div className="max-w-3xl space-y-2">
                     <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
                       <span>Interactive Academic Universe</span>
@@ -292,13 +298,45 @@ function ResearchContent() {
                     </h1>
                     <p className="text-[16px] text-[#515154] leading-relaxed">
                       {lang === "en"
-                        ? "Explore citation networks and thematic clusters across 100+ top publications (2024–2026). Click any node to read the paper drawer or launch the full deep-dive blog."
-                        : "可拖拽探索 2024–2026 年全球 100+ 篇顶尖世界模型文献的因果引用脉络。点击任意节点即可滑出文献摘要，或一键进入图文并茂的深度学术长文博客。"}
+                        ? "Explore citation networks across 100+ top publications. Click any node in the graph, and read the full paper below in clean Markdown style."
+                        : "可拖拽探索 100+ 篇全球前沿世界模型文献脉络。点击图谱中任意节点，选中的学术成果将直接在下方以 Markdown 风格展开研读，零弹窗阻隔。"}
                     </p>
                   </div>
 
                   {/* 交互知识图谱 */}
-                  <WorldModelKnowledgeGraph onSelectPaper={handleOpenPaper} />
+                  <WorldModelKnowledgeGraph
+                    onSelectPaper={(paper) => {
+                      setSelectedGraphPaper(paper);
+                      const el = document.getElementById("paper-markdown-reader");
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    selectedPaperId={selectedGraphPaper.id}
+                  />
+
+                  {/* 核心联动：图谱下方直接呈现 Markdown 风格研读专区 */}
+                  <div className="pt-4 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-[#0071e3]" />
+                        <span className="text-[15px] font-semibold text-[#1d1d1f]">
+                          {lang === "en" ? "Selected Paper · Markdown Reading Area" : "图谱当前选中成果 · Markdown 风格学术研读专区"}
+                        </span>
+                        <span className="text-[13px] text-[#86868b] truncate max-w-md">
+                          ({selectedGraphPaper.title})
+                        </span>
+                      </div>
+                      <div className="text-[13px] text-[#0071e3] font-medium">
+                        {lang === "en" ? "Click any node in graph above to switch" : "点击上方任意图谱节点即刻切换研读 ↓"}
+                      </div>
+                    </div>
+
+                    <PaperMarkdownView
+                      paper={selectedGraphPaper}
+                      onAskAi={handleAskAiAboutPaper}
+                      onSelectOtherPaper={(p) => setSelectedGraphPaper(p)}
+                      allPapers={WORLD_MODEL_PAPERS_100}
+                    />
+                  </div>
                 </section>
               )}
 

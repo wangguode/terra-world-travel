@@ -31,6 +31,7 @@ interface GraphLink {
 
 interface KnowledgeGraphProps {
   onSelectPaper: (paper: WorldModelPaper) => void;
+  selectedPaperId?: string;
   className?: string;
 }
 
@@ -45,6 +46,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export function WorldModelKnowledgeGraph({
   onSelectPaper,
+  selectedPaperId,
   className = "",
 }: KnowledgeGraphProps) {
   const { lang } = useLanguage();
@@ -304,10 +306,25 @@ export function WorldModelKnowledgeGraph({
           node.labelZh.includes(searchQuery) ||
           node.paper?.org.toLowerCase().includes(searchQuery.toLowerCase());
 
-        const opacity = isCatMatch && isSearchMatch ? 1 : 0.15;
+        const isSelected = !!selectedPaperId && node.paper?.id === selectedPaperId;
+        const opacity = (isCatMatch && isSearchMatch) || isSelected ? 1 : 0.15;
 
         ctx.save();
         ctx.globalAlpha = opacity;
+
+        // 选中高亮光晕 (Selected Glow Ring)
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius + 12, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0, 113, 227, 0.2)";
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
+          ctx.strokeStyle = "#0071e3";
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
 
         // 节点外环发光
         if (node.type === "root") {
@@ -337,12 +354,24 @@ export function WorldModelKnowledgeGraph({
         }
 
         // 节点文字 Label
-        if (node.type === "root" || node.type === "hub" || isHovered || zoomLevel > 1.2) {
-          ctx.font = node.type === "root" ? "600 13px -apple-system, sans-serif" : node.type === "hub" ? "500 12px -apple-system, sans-serif" : "400 11px -apple-system, sans-serif";
-          ctx.fillStyle = isHovered ? "#0071e3" : "#1d1d1f";
+        if (node.type === "root" || node.type === "hub" || isHovered || isSelected || zoomLevel > 1.2) {
+          ctx.font = isSelected
+            ? "600 13px -apple-system, sans-serif"
+            : node.type === "root"
+            ? "600 13px -apple-system, sans-serif"
+            : node.type === "hub"
+            ? "500 12px -apple-system, sans-serif"
+            : "400 11px -apple-system, sans-serif";
+          ctx.fillStyle = isSelected ? "#0071e3" : isHovered ? "#0071e3" : "#1d1d1f";
           ctx.textAlign = "center";
           const displayLabel = lang === "en" ? node.label : node.labelZh;
           ctx.fillText(displayLabel, node.x, node.y + node.radius + 14);
+
+          if (isSelected) {
+            ctx.font = "600 10px -apple-system, sans-serif";
+            ctx.fillStyle = "#0071e3";
+            ctx.fillText(lang === "en" ? "[Reading Below]" : "[正在下方阅读]", node.x, node.y + node.radius + 28);
+          }
         }
 
         ctx.restore();
@@ -359,7 +388,7 @@ export function WorldModelKnowledgeGraph({
       isRunning = false;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [panOffset, zoomLevel, selectedCat, hoveredNode, searchQuery, lang]);
+  }, [panOffset, zoomLevel, selectedCat, hoveredNode, searchQuery, selectedPaperId, lang]);
 
   // 画布重设与响应式缩放
   useEffect(() => {
@@ -452,6 +481,11 @@ export function WorldModelKnowledgeGraph({
 
     if (clickedNode?.paper) {
       onSelectPaper(clickedNode.paper);
+    } else if (clickedNode?.type === "root") {
+      onSelectPaper(WORLD_MODEL_PAPERS_100[0]);
+    } else if (clickedNode?.type === "hub") {
+      const firstInCat = WORLD_MODEL_PAPERS_100.find((p) => p.category === clickedNode.category);
+      if (firstInCat) onSelectPaper(firstInCat);
     }
   };
 
@@ -570,7 +604,7 @@ export function WorldModelKnowledgeGraph({
               <div>{hoveredNode.paper.org} · {hoveredNode.paper.venue}</div>
               <div className="text-[12px] text-[#86868b]">{hoveredNode.paper.arxiv}</div>
               <div className="text-[12px] text-[#0071e3] font-medium pt-1">
-                {lang === "en" ? "Click to open full paper reader &gt;" : "点击展开沉浸式论文深度阅读 &gt;"}
+                {lang === "en" ? "Click to read full Markdown below ↓" : "点击直接在下方以 Markdown 风格阅读 ↓"}
               </div>
             </div>
           ) : (
@@ -582,10 +616,10 @@ export function WorldModelKnowledgeGraph({
       )}
 
       {/* 底部交互指引小注脚 */}
-      <div className="absolute bottom-4 right-4 z-10 text-[12px] text-[#86868b] bg-[#f5f5f7] px-3 py-1 rounded-full pointer-events-none">
+      <div className="absolute bottom-4 right-4 z-10 text-[12px] text-[#86868b] bg-[#f5f5f7] px-3.5 py-1 rounded-full pointer-events-none">
         {lang === "en"
-          ? "Drag nodes · Scroll to zoom · Click to read paper"
-          : "可自由拖拽节点 · 滚轮缩放 · 点击任意节点直达深度阅读"}
+          ? "Drag nodes · Scroll to zoom · Click node to read Markdown below"
+          : "可自由拖拽节点 · 滚轮缩放 · 点击任意节点直接在下方以 Markdown 风格阅读"}
       </div>
     </div>
   );
