@@ -342,34 +342,32 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            6. Interactive 3D Simulator (感受我们的世界模型：剧场级实机沙盒)
+            6. Interactive 3D Simulator (Apple 剧场级深黑实机沙盒)
            ========================================================================= */}
-        <section id="interactive-playground" className="bg-white py-20 sm:py-28 terra-reveal w-full box-border">
-          <div className="mx-auto max-w-7xl px-6 sm:px-8 space-y-10">
+        <section id="interactive-playground" className="bg-[#000000] text-white py-24 sm:py-32 terra-reveal w-full box-border relative overflow-hidden">
+          <div className="relative z-10 mx-auto max-w-7xl px-6 sm:px-8 space-y-10">
             <div className="max-w-3xl space-y-3">
-              <h2 className="text-[32px] sm:text-[44px] lg:text-[52px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
-                {lang === "en"
-                  ? "Intuitive Physics Playground"
-                  : "亲历自发涌现的直觉物理世界模型。"}
-              </h2>
-
-              <div className="flex items-center gap-2 text-[14px] text-[#0062c4] font-medium">
-                <span>Three.js Engine</span>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[13px] font-medium text-[#2997ff]">
+                <span>WebGPU Client Decode</span>
                 <span>·</span>
-                <span className="text-[#333336]">WebGL 2.0 Shaders</span>
-                <span>·</span>
-                <span className="text-[#333336]">60 FPS Action Feed</span>
+                <span>60 FPS Action-Conditioned</span>
               </div>
 
-              <p className="text-[16px] sm:text-[18px] text-[#515154] leading-relaxed">
+              <h2 className="text-[34px] sm:text-[48px] lg:text-[56px] font-semibold text-white tracking-tight leading-[1.06]">
                 {lang === "en"
-                  ? "Take control using WASD keys for dynamic camera motion, press E to trigger procedural neural latent shockwaves, and slide the celestial controller to evolve daylight."
-                  : "键盘 WASD 键平滑走行动力学，E 键触发局部潜空间形变冲击波，滑动时间轴实时感受北京古建与现代园区的天光云影演变。"}
+                  ? "Intuitive physics. Synthesized live in your browser."
+                  : "自发涌现的直觉物理，在浏览器中即刻亲历。"}
+              </h2>
+
+              <p className="text-[17px] sm:text-[19px] text-[#86868b] leading-relaxed">
+                {lang === "en"
+                  ? "Take control using WASD keys for 6-DoF continuous camera kinematics, press E to trigger neural latent shockwaves, and slide the celestial controller to evolve daylight and solar angles."
+                  : "键盘 WASD 键平滑走行动力学，E 键触发局部潜空间形变冲击波，滑动时间轴实时感受天光云影与太阳高度角的连续因果演变。"}
               </p>
             </div>
 
             {/* 实机运行的 3D 模拟器外壳 */}
-            <div className="rounded-[32px] bg-[#121214] p-4 sm:p-6 w-full box-border text-white">
+            <div className="rounded-[32px] sm:rounded-[40px] bg-[#121214] p-3 sm:p-5 w-full box-border text-white" data-ui="true">
               <WorldModelSimulator
                 activeWorldId={activeWorldId}
                 onSelectWorld={setActiveWorldId}

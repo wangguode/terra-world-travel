@@ -143,6 +143,54 @@ export function AppleArchitectureCompare() {
               </p>
             </div>
 
+            {/* Apple 芯片发布会式动态管线流向 */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold tracking-wider uppercase text-[#86868b]">
+                {activeMode === "oasis"
+                  ? (lang === "en" ? "AUTOREGRESSIVE PIPELINE" : "自回归计算管线流程")
+                  : (lang === "en" ? "LEGACY DISCRETE PIPELINE" : "传统离散渲染管线流程")}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                {activeMode === "oasis" ? (
+                  <>
+                    <span className="rounded-full bg-white px-3 py-1 font-medium text-[#1d1d1f]">
+                      {lang === "en" ? "Action Input a(t)" : "连续动作向量 a(t)"}
+                    </span>
+                    <span className="text-[#86868b]">→</span>
+                    <span className="rounded-full bg-[#0071e3]/10 px-3 py-1 font-semibold text-[#0071e3]">
+                      {lang === "en" ? "14B Causal DiT" : "14B 因果时空 DiT"}
+                    </span>
+                    <span className="text-[#86868b]">→</span>
+                    <span className="rounded-full bg-white px-3 py-1 font-medium text-[#1d1d1f]">
+                      {lang === "en" ? "Dual Memory Anchors" : "双记忆锚点"}
+                    </span>
+                    <span className="text-[#86868b]">→</span>
+                    <span className="rounded-full bg-white px-3 py-1 font-medium text-[#34c759]">
+                      {lang === "en" ? "60 FPS Photons" : "60 FPS 无坍塌光子"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="rounded-full bg-white px-3 py-1 font-medium text-[#1d1d1f]">
+                      {lang === "en" ? "Discrete Meshes" : "离散网格资产"}
+                    </span>
+                    <span className="text-[#86868b]">→</span>
+                    <span className="rounded-full bg-white px-3 py-1 font-medium text-[#1d1d1f]">
+                      {lang === "en" ? "Hand-tuned Colliders" : "手工碰撞体"}
+                    </span>
+                    <span className="text-[#86868b]">→</span>
+                    <span className="rounded-full bg-white px-3 py-1 font-medium text-[#1d1d1f]">
+                      {lang === "en" ? "Discrete PhysX Raycast" : "离散物理检测"}
+                    </span>
+                    <span className="text-[#86868b]">→</span>
+                    <span className="rounded-full bg-white px-3 py-1 font-medium text-[#ff3b30]">
+                      {lang === "en" ? "Frequent Clipping" : "易穿模/坍塌"}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* 关键特性胶囊组 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
               <div className="space-y-1">
