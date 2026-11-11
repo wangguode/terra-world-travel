@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
 import { OFFICIAL_DOCS, DocSection } from "@/lib/oasis-docs-data";
@@ -74,26 +73,27 @@ function DocsContent() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#000000] text-[#f5f5f7] flex flex-col justify-between overflow-x-hidden selection:bg-[#0071e3] selection:text-white">
+    <div className="min-h-[100dvh] bg-white text-[#1d1d1f] flex flex-col justify-between overflow-x-hidden selection:bg-[#0071e3] selection:text-white">
+      {/* 1. 统一 Apple 白昼磨砂玻璃导航 */}
       <AppleHeader onOpenCopilot={() => setCopilotOpen(true)} />
 
-      {/* Apple Developer 专属浮动副导航栏 (Sub-header) */}
-      <div className="bg-[#0a0a0c] px-6 sm:px-8 py-3.5 text-[14px] text-[#86868b] w-full">
-        <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-3">
+      {/* 2. Apple Developer 浅色专属浮动副导航栏 (Sub-header) */}
+      <div className="bg-[#f5f5f7] px-6 sm:px-8 py-3 text-[14px] text-[#515154] w-full">
+        <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-3">
           <nav aria-label="Breadcrumbs" className="flex items-center gap-2 flex-wrap">
-            <Link href="/" className="hover:text-white transition no-underline text-[#86868b]">
+            <Link href="/" className="hover:text-[#0071e3] transition no-underline text-[#515154]">
               TERRA-OASIS
             </Link>
-            <span className="text-[#515154]">/</span>
-            <span className="text-[#a1a1a6]">Developer Documentation</span>
-            <span className="text-[#515154]">/</span>
-            <span className="text-[#a1a1a6]">{currentDoc.category}</span>
-            <span className="text-[#515154]">/</span>
-            <span className="text-white font-medium">{currentDoc.title}</span>
+            <span className="text-[#86868b]">/</span>
+            <span className="text-[#86868b]">Developer Documentation</span>
+            <span className="text-[#86868b]">/</span>
+            <span className="text-[#86868b]">{currentDoc.category}</span>
+            <span className="text-[#86868b]">/</span>
+            <span className="text-[#1d1d1f] font-semibold">{currentDoc.title}</span>
           </nav>
 
           <div className="flex items-center gap-3 text-[13px]">
-            <span className="rounded-full bg-[#0071e3]/20 px-3 py-1 text-[#2997ff] font-medium">
+            <span className="rounded-full bg-[#0071e3]/10 px-3 py-1 text-[#0071e3] font-medium">
               {currentDoc.framework}
             </span>
             <span className="hidden sm:inline text-[#86868b]">
@@ -103,264 +103,253 @@ function DocsContent() {
         </div>
       </div>
 
-      <main className="flex-1 py-10 sm:py-16 w-full">
-        <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12 w-full box-border">
-          {/* 1. 具有绝对视觉焦点的 Apple Developer 头部 Hero 卡片 */}
-          <div className="rounded-[32px] bg-[#121214] p-8 sm:p-12 terra-reveal w-full box-border">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-7 space-y-4">
-                <h1 className="text-[32px] sm:text-[48px] lg:text-[56px] font-semibold text-white tracking-tight leading-[1.08]">
-                  {currentDoc.title}
-                </h1>
-
-                <div className="flex flex-wrap items-center gap-2 text-[14px] text-[#2997ff] font-medium">
-                  <span>{currentDoc.category}</span>
-                  <span className="text-[#515154]">·</span>
-                  <span>{currentDoc.badge}</span>
-                  <span className="text-[#515154]">·</span>
-                  <span className="text-[#86868b]">{currentDoc.framework}</span>
+      {/* 3. 主体工作区：浅色分栏架构 (对标 Apple Developer Docs) */}
+      <main className="flex-1 py-10 sm:py-14 w-full">
+        <div className="mx-auto max-w-7xl px-6 sm:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12">
+            {/* 左侧：文档导航与目录 (浅灰温润底座) */}
+            <aside className="lg:col-span-4 space-y-6">
+              {/* 搜索与过滤框 */}
+              <div className="rounded-[20px] bg-[#f5f5f7] p-4 space-y-3">
+                <div className="text-[13px] font-semibold tracking-wider text-[#86868b]">
+                  {lang === "en" ? "SEARCH DOCUMENTATION" : "检索官方技术规范"}
                 </div>
-
-                <p className="text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed max-w-2xl font-normal">
-                  {lang === "en" ? currentDoc.summaryEn : currentDoc.summaryZh}
-                </p>
-
-                <div className="pt-2 flex flex-wrap items-center gap-3 text-[14px]">
-                  <a
-                    href="#sample-code"
-                    className="rounded-full bg-[#0071e3] px-6 py-2.5 text-white font-medium hover:bg-[#0077ed] transition no-underline"
-                  >
-                    View Code Samples
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => setCopilotOpen(true)}
-                    className="rounded-full bg-white/10 px-5 py-2.5 text-[#2997ff] font-medium hover:bg-white/20 transition cursor-pointer"
-                  >
-                    Ask AI Copilot &gt;
-                  </button>
-                </div>
-              </div>
-
-              {/* 架构透视大图 */}
-              <div className="lg:col-span-5 w-full">
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[24px] bg-[#0c0c0e]">
-                  <Image
-                    src="/images/beijing-pulse/798.jpg"
-                    alt="Neural Architecture Schema"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 40vw"
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. 双栏架构：左侧 Navigator + 右侧主 API 详注 */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full box-border">
-            {/* 左侧 Navigator (Apple 开发者文档导航树) */}
-            <aside className="lg:col-span-4 rounded-[28px] bg-[#121214] p-6 space-y-4 lg:sticky lg:top-16 terra-reveal w-full box-border">
-              {/* 搜索过滤框 */}
-              <div className="relative w-full">
                 <input
                   type="text"
                   value={filterQuery}
                   onChange={(e) => setFilterQuery(e.target.value)}
-                  placeholder={lang === "en" ? "Filter documentation..." : "搜索技术文档专栏..."}
-                  className="w-full rounded-full bg-[#1c1c1f] px-4 py-2.5 text-[15px] text-white placeholder-[#86868b] focus:outline-none focus:ring-1 focus:ring-[#2997ff]"
+                  placeholder={lang === "en" ? "Filter APIs, topics, weights..." : "搜索模块、算子或参数..."}
+                  className="w-full rounded-full bg-white px-4 py-2 text-[14px] text-[#1d1d1f] placeholder-[#86868b] outline-none transition"
                 />
               </div>
 
-              <div className="text-[14px] font-semibold text-[#86868b] px-2">
-                {lang === "en" ? "Topics and API Reference" : "技术专栏与接口参考"}
+              {/* 文档目录列表 */}
+              <div className="rounded-[24px] bg-[#f5f5f7] p-3 space-y-1">
+                <div className="px-3 py-2 text-[13px] font-semibold text-[#86868b] tracking-wider">
+                  {lang === "en" ? "TABLE OF CONTENTS" : "技术章节目录"}
+                </div>
+                <div className="space-y-1">
+                  {filteredDocs.map((doc) => {
+                    const isActive = doc.id === currentDoc.id;
+                    return (
+                      <button
+                        key={doc.id}
+                        type="button"
+                        onClick={() => setActiveDocId(doc.id)}
+                        className={`w-full text-left rounded-[16px] px-3.5 py-3 text-[14px] transition flex items-center justify-between cursor-pointer ${
+                          isActive
+                            ? "bg-white text-[#0071e3] font-semibold"
+                            : "text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                        }`}
+                      >
+                        <div className="space-y-0.5">
+                          <div className="text-[13px] font-normal text-[#86868b]">{doc.category}</div>
+                          <div className="leading-snug">{doc.title}</div>
+                        </div>
+                        {isActive && (
+                          <span className="h-2 w-2 rounded-full bg-[#0071e3] shrink-0 ml-2" />
+                        )}
+                      </button>
+                    );
+                  })}
+                  {filteredDocs.length === 0 && (
+                    <div className="p-4 text-center text-[13px] text-[#86868b]">
+                      {lang === "en" ? "No matching topics found." : "未找到匹配的技术文档条目。"}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-1.5 max-h-[70vh] overflow-y-auto w-full pr-1">
-                {filteredDocs.map((doc) => {
-                  const isActive = doc.id === activeDocId;
-                  return (
-                    <button
-                      key={doc.id}
-                      type="button"
-                      onClick={() => setActiveDocId(doc.id)}
-                      className={`w-full text-left rounded-[18px] px-4 py-3.5 transition flex items-center justify-between cursor-pointer ${
-                        isActive
-                          ? "bg-[#1d1d21] text-white font-medium"
-                          : "text-[#a1a1a6] hover:bg-white/5 hover:text-white"
-                      }`}
-                    >
-                      <div className="pr-2">
-                        <div className="text-[15px] sm:text-[16px] leading-snug">{doc.title}</div>
-                        <div className="text-[13px] text-[#86868b] mt-0.5 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#2997ff]" />
-                          <span>{doc.badge}</span>
-                        </div>
-                      </div>
-                      {isActive && (
-                        <span className="text-[16px] text-[#2997ff] shrink-0 font-bold">
-                          •
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+              {/* 开发者支持卡片 (浅灰高级卡片) */}
+              <div className="rounded-[24px] bg-[#f5f5f7] p-6 space-y-3">
+                <div className="text-[14px] font-semibold text-[#1d1d1f]">
+                  {lang === "en" ? "Enterprise Architecture Team" : "企业级世界模型技术支持"}
+                </div>
+                <p className="text-[13px] text-[#515154] leading-relaxed">
+                  {lang === "en"
+                    ? "Need dedicated inference cluster design or robotics hardware sensor calibration?"
+                    : "需要大规模推理集群定制规划、具身硬件传感器标定或私有化部署支持？"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCopilotOpen(true)}
+                  className="rounded-full bg-[#0071e3] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition w-full text-center"
+                >
+                  {lang === "en" ? "Ask AI Assistant" : "与架构助手在线对话"}
+                </button>
               </div>
             </aside>
 
-            {/* 右侧主文档排版区 (Apple Developer Reference 规范) */}
-            <div className="lg:col-span-8 space-y-10 w-full box-border">
-              {/* Apple 经典 Declaration (语法声明框) */}
-              <div className="rounded-[28px] bg-[#121214] p-8 sm:p-10 space-y-4 terra-reveal w-full box-border">
-                <div className="text-[16px] font-semibold text-white">
-                  Declaration & Signature
+            {/* 右侧：文档主展台 (纯白背景 + Apple 经典排版) */}
+            <article className="lg:col-span-8 space-y-10 terra-reveal">
+              {/* 文档头部 */}
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
+                  <span>{currentDoc.category}</span>
+                  <span>·</span>
+                  <span>{currentDoc.framework}</span>
                 </div>
-                <pre className="rounded-[22px] bg-[#070709] p-6 text-[15px] text-white/95 overflow-x-auto leading-relaxed max-w-full">
-                  <code>{currentDoc.declaration}</code>
-                </pre>
+
+                <h1 className="text-[32px] sm:text-[44px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
+                  {currentDoc.title}
+                </h1>
+
+                <p className="text-[17px] sm:text-[19px] text-[#515154] leading-relaxed font-normal">
+                  {lang === "en" ? currentDoc.summaryEn : currentDoc.summaryZh}
+                </p>
               </div>
 
-              {/* 多语言代码实战示例 (Language Tabs) */}
-              <div id="sample-code" className="rounded-[28px] bg-[#121214] p-8 sm:p-10 space-y-6 terra-reveal w-full box-border">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="text-[16px] font-semibold text-white">
-                    Sample Code and Implementation
-                  </div>
-
-                  {/* 语言选项卡 */}
-                  <div className="flex items-center gap-1.5 rounded-full bg-[#1c1c1f] p-1 text-[13px]">
-                    {currentDoc.codeTabs.python && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveCodeTab("python")}
-                        className={`rounded-full px-3.5 py-1.5 font-medium transition cursor-pointer ${
-                          activeCodeTab === "python"
-                            ? "bg-[#0071e3] text-white"
-                            : "text-[#a1a1a6] hover:text-white"
-                        }`}
-                      >
-                        Python
-                      </button>
-                    )}
-                    {currentDoc.codeTabs.typescript && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveCodeTab("typescript")}
-                        className={`rounded-full px-3.5 py-1.5 font-medium transition cursor-pointer ${
-                          activeCodeTab === "typescript"
-                            ? "bg-[#0071e3] text-white"
-                            : "text-[#a1a1a6] hover:text-white"
-                        }`}
-                      >
-                        TypeScript
-                      </button>
-                    )}
-                    {currentDoc.codeTabs.bash && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveCodeTab("bash")}
-                        className={`rounded-full px-3.5 py-1.5 font-medium transition cursor-pointer ${
-                          activeCodeTab === "bash"
-                            ? "bg-[#0071e3] text-white"
-                            : "text-[#a1a1a6] hover:text-white"
-                        }`}
-                      >
-                        Bash / CLI
-                      </button>
-                    )}
-                  </div>
+              {/* 规格属性展示条 (浅灰四栏网格) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                <div className="rounded-[18px] bg-[#f5f5f7] p-4 space-y-1">
+                  <div className="text-[13px] text-[#86868b]">{lang === "en" ? "Target Runtime" : "目标运行时"}</div>
+                  <div className="text-[15px] font-semibold text-[#1d1d1f]">{currentDoc.framework}</div>
                 </div>
+                <div className="rounded-[18px] bg-[#f5f5f7] p-4 space-y-1">
+                  <div className="text-[13px] text-[#86868b]">{lang === "en" ? "Precision" : "量化精度"}</div>
+                  <div className="text-[15px] font-semibold text-[#1d1d1f]">FP16 / INT4</div>
+                </div>
+                <div className="rounded-[18px] bg-[#f5f5f7] p-4 space-y-1">
+                  <div className="text-[13px] text-[#86868b]">{lang === "en" ? "Latency Budget" : "延迟预算"}</div>
+                  <div className="text-[15px] font-semibold text-[#0071e3]">&lt; 16 ms</div>
+                </div>
+                <div className="rounded-[18px] bg-[#f5f5f7] p-4 space-y-1">
+                  <div className="text-[13px] text-[#86868b]">{lang === "en" ? "License" : "开源协议"}</div>
+                  <div className="text-[15px] font-semibold text-[#1d1d1f]">Apache 2.0</div>
+                </div>
+              </div>
 
-                <div className="relative w-full">
-                  <pre className="text-[15px] text-white/95 p-6 bg-[#070709] rounded-[22px] overflow-x-auto leading-relaxed max-w-full">
-                    <code>{activeSnippet}</code>
-                  </pre>
+              {/* 核心代码实现展台 (Apple Developer 经典高对比度代码窗，外壳浅灰) */}
+              <div className="rounded-[28px] bg-[#f5f5f7] p-5 sm:p-7 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* 代码语言切换 Tab */}
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-white p-1">
+                    {(["python", "typescript", "bash"] as const).map((tab) => {
+                      const isTabActive = activeCodeTab === tab;
+                      return (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setActiveCodeTab(tab)}
+                          className={`rounded-full px-3.5 py-1 text-[13px] font-medium transition cursor-pointer ${
+                            isTabActive
+                              ? "bg-[#0071e3] text-white"
+                              : "text-[#515154] hover:text-[#1d1d1f]"
+                          }`}
+                        >
+                          {tab === "python" ? "Python SDK" : tab === "typescript" ? "TypeScript (WebGPU)" : "Shell / CLI"}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* 复制按钮 */}
                   <button
                     type="button"
                     onClick={handleCopySnippet}
-                    className="absolute top-4 right-4 rounded-full bg-white/10 px-4 py-1.5 text-[13px] font-medium text-white hover:bg-white/20 transition cursor-pointer"
+                    className="rounded-full bg-white px-3.5 py-1 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition flex items-center gap-1.5 cursor-pointer"
                   >
-                    {copiedCode
-                      ? lang === "en"
-                        ? "Copied"
-                        : "已复制"
-                      : lang === "en"
-                      ? "Copy Code"
-                      : "复制代码"}
+                    <span>{copiedCode ? (lang === "en" ? "Copied!" : "已复制!") : (lang === "en" ? "Copy Code" : "复制代码")}</span>
                   </button>
                 </div>
+
+                {/* 代码高亮块 (Apple 开发者高对比度深色晶体容器，保证极客代码最佳易读性) */}
+                <div className="relative rounded-[20px] bg-[#1d1d1f] p-5 sm:p-6 overflow-x-auto text-[13px] sm:text-[14px] leading-relaxed text-[#f5f5f7]">
+                  <pre className="m-0 whitespace-pre">
+                    <code>{activeSnippet}</code>
+                  </pre>
+                </div>
               </div>
 
-              {/* 参数规格说明表 (Parameters Table) */}
-              {currentDoc.parameters.length > 0 && (
-                <div className="rounded-[28px] bg-[#121214] p-8 sm:p-10 space-y-6 terra-reveal w-full box-border">
-                  <div className="text-[16px] font-semibold text-white">
-                    Parameters and Arguments
-                  </div>
-                  <div className="space-y-4">
-                    {currentDoc.parameters.map((param) => (
-                      <div
-                        key={param.name}
-                        className="rounded-[20px] bg-[#161619] p-5 space-y-2 w-full box-border"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <code className="text-[15px] font-bold text-[#2997ff]">
-                            {param.name}
-                          </code>
-                          <code className="text-[13px] text-[#a1a1a6] bg-white/5 px-2.5 py-0.5 rounded-[6px]">
-                            {param.type}
-                          </code>
-                        </div>
-                        <p className="text-[16px] text-[#f5f5f7] leading-relaxed">
-                          {lang === "en" ? param.descEn : param.descZh}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* 接口参数规范详细说明 (浅灰表格) */}
+              <div className="space-y-4" data-ui="true">
+                <h2 className="text-[22px] sm:text-[26px] font-semibold text-[#1d1d1f] tracking-tight">
+                  {lang === "en" ? "Parameters & Signature" : "接口签名与参数规范"}
+                </h2>
 
-              {/* 相关主题卡片网格 (Apple Developer Topics Grid) */}
-              <div className="rounded-[28px] bg-[#121214] p-8 sm:p-10 space-y-6 terra-reveal w-full box-border">
-                <div className="text-[16px] font-semibold text-white">
-                  Related Topics & Extensions
+                <div className="overflow-hidden rounded-[20px] bg-[#f5f5f7]">
+                  <table className="w-full text-left text-[14px]">
+                    <thead className="bg-[#e8e8ed] text-[13px] font-semibold text-[#515154] tracking-wider">
+                      <tr>
+                        <th className="p-4">Parameter</th>
+                        <th className="p-4">Type</th>
+                        <th className="p-4">Default</th>
+                        <th className="p-4">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-[#1d1d1f]">
+                      <tr className="bg-white/40">
+                        <td className="p-4 text-[13px] font-semibold text-[#0071e3]"><code>action_vector</code></td>
+                        <td className="p-4 text-[13px] text-[#515154]">Float[6]</td>
+                        <td className="p-4 text-[13px] text-[#86868b]">[0,0,0,0,0,0]</td>
+                        <td className="p-4 text-[#515154]">6-DoF continuous camera or robot actuator input.</td>
+                      </tr>
+                      <tr>
+                        <td className="p-4 text-[13px] font-semibold text-[#0071e3]"><code>temporal_window</code></td>
+                        <td className="p-4 text-[13px] text-[#515154]">Integer</td>
+                        <td className="p-4 text-[13px] text-[#86868b]">32</td>
+                        <td className="p-4 text-[#515154]">Sliding causal attention window size across frames.</td>
+                      </tr>
+                      <tr className="bg-white/40">
+                        <td className="p-4 text-[13px] font-semibold text-[#0071e3]"><code>latent_guidance_scale</code></td>
+                        <td className="p-4 text-[13px] text-[#515154]">Float</td>
+                        <td className="p-4 text-[13px] text-[#86868b]">4.5</td>
+                        <td className="p-4 text-[#515154]">Classifier-free causal guidance strength for physics.</td>
+                      </tr>
+                      <tr>
+                        <td className="p-4 text-[13px] font-semibold text-[#0071e3]"><code>webrtc_stream_url</code></td>
+                        <td className="p-4 text-[13px] text-[#515154]">String</td>
+                        <td className="p-4 text-[13px] text-[#86868b]">ws://localhost:3200</td>
+                        <td className="p-4 text-[#515154]">H.265 / AV1 low-latency streaming endpoint.</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
+              </div>
+
+              {/* 关联技术议题与下一篇推荐 (浅灰卡片网格) */}
+              <div className="space-y-4 pt-4">
+                <h3 className="text-[20px] font-semibold text-[#1d1d1f]">
+                  {lang === "en" ? "Related Topics" : "推荐进阶议题"}
+                </h3>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {currentDoc.topics.map((topic, i) => (
-                    <div
-                      key={topic.title}
-                      className="rounded-[20px] bg-[#161619] p-5 space-y-3 transition hover:bg-[#1c1c20] w-full box-border"
-                    >
-                      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[14px]">
-                        <Image
-                          src={
-                            i === 0
-                              ? "/images/beijing-pulse/forbidden-city.jpg"
-                              : "/images/beijing-pulse/temple-of-heaven.jpg"
-                          }
-                          alt={topic.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, 30vw"
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="text-[16px] font-semibold text-[#2997ff]">
-                        {topic.title}
-                      </div>
-                      <p className="text-[15px] sm:text-[16px] text-[#d2d2d7] leading-relaxed">
-                        {lang === "en" ? topic.descEn : topic.descZh}
-                      </p>
+                  <Link
+                    href="/research#infinite-causal-dit"
+                    className="rounded-[20px] bg-[#f5f5f7] p-5 space-y-2 hover:bg-[#e8e8ed] transition no-underline block"
+                  >
+                    <div className="text-[13px] font-semibold text-[#0071e3]">Academic Preprint</div>
+                    <div className="text-[16px] font-semibold text-[#1d1d1f]">
+                      Infinite-Horizon Causal DiT (CVPR 2026) ↗
                     </div>
-                  ))}
+                    <p className="text-[13px] text-[#515154] leading-relaxed">
+                      Deep mathematical derivation of non-collapsing autoregressive video diffusion transformers.
+                    </p>
+                  </Link>
+
+                  <Link
+                    href="/#interactive-playground"
+                    className="rounded-[20px] bg-[#f5f5f7] p-5 space-y-2 hover:bg-[#e8e8ed] transition no-underline block"
+                  >
+                    <div className="text-[13px] font-semibold text-[#0071e3]">Live Interactive Sandpit</div>
+                    <div className="text-[16px] font-semibold text-[#1d1d1f]">
+                      Interactive 3D WebGL / WebGPU Sandbox ↗
+                    </div>
+                    <p className="text-[13px] text-[#515154] leading-relaxed">
+                      Experience real-time neural latent shockwaves and daylight path simulation in browser.
+                    </p>
+                  </Link>
                 </div>
               </div>
-            </div>
+            </article>
           </div>
         </div>
       </main>
 
+      {/* 4. 统一 Apple 浅灰底脚 */}
       <AppleFooter />
+
+      {/* 5. AI 侧边抽屉 */}
       <CopilotDrawer isOpen={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
@@ -370,8 +359,8 @@ export default function DocsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[100dvh] bg-[#000000] text-white flex items-center justify-center">
-          <div className="text-[15px] text-[#86868b]">Loading Documentation...</div>
+        <div className="min-h-[100dvh] bg-white flex items-center justify-center text-[#515154] text-[15px]">
+          Loading Developer Documentation...
         </div>
       }
     >
