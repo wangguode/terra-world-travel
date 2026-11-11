@@ -58,9 +58,9 @@ export default function HomePage() {
   const handleSelectPaperFromGraph = (paper: WorldModelPaper) => {
     setSelectedPaper(paper);
     setReadingPaper(paper);
-    const el = document.getElementById("paper-markdown-reader");
+    const el = document.getElementById("selected-paper-card");
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   };
 
@@ -248,7 +248,7 @@ export default function HomePage() {
             />
 
             {/* 选中文献精炼卡片 (Apple 官方发布风格，点击一键跳转至专属学术长文页面) */}
-            <div className="pt-6">
+            <div id="selected-paper-card" className="pt-6">
               <div className="rounded-[28px] bg-[#f5f5f7] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 transition">
                 <div className="space-y-3 max-w-3xl">
                   <div className="flex flex-wrap items-center gap-2 text-[12px]">
