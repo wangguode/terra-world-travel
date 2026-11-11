@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import WorldModelSimulator from "@/components/beijing-pulse-world-model";
 import { useLanguage } from "@/lib/language-context";
 import { AppleHeader } from "@/components/apple-header";
@@ -15,6 +16,7 @@ import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
 import { WorldModelPaper } from "@/lib/world-model-papers-100";
 
 export default function HomePage() {
+  const router = useRouter();
   const { lang } = useLanguage();
 
   // 3D 模拟器状态
@@ -489,6 +491,10 @@ export default function HomePage() {
         isOpen={readerOpen}
         onClose={() => setReaderOpen(false)}
         onAskAi={handleAskAiAboutPaper}
+        onOpenBlog={(blog) => {
+          setReaderOpen(false);
+          router.push(`/research?blog=${blog.id}`);
+        }}
       />
 
       {/* 12. AI 知识库智能问答抽屉 */}

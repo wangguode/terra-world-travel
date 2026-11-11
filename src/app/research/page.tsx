@@ -1,27 +1,44 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import {
   WORLD_MODEL_PAPERS_100,
   WORLD_MODEL_CATEGORIES,
   WorldModelPaper,
 } from "@/lib/world-model-papers-100";
+import {
+  WORLD_MODEL_BLOG_ARTICLES,
+  PaperBlogArticle,
+} from "@/lib/world-model-blogs-rich";
 import { AppleHeader } from "@/components/apple-header";
 import { AppleFooter } from "@/components/apple-footer";
 import { CopilotDrawer } from "@/components/copilot-drawer";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
+import { PaperBlogViewer } from "@/components/paper-blog-viewer";
 
-export default function ResearchPage() {
+function ResearchContent() {
   const { lang } = useLanguage();
+  const searchParams = useSearchParams();
+  const initialBlogParam = searchParams.get("blog");
+
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [viewMode, setViewMode] = useState<"graph" | "cards">("graph");
+  const [viewMode, setViewMode] = useState<"graph" | "blogs" | "papers">("graph");
 
-  // 论文深度阅读器状态
+  // 深度论文博客全屏研读状态
+  const [activeBlog, setActiveBlog] = useState<PaperBlogArticle | null>(() => {
+    if (initialBlogParam) {
+      return WORLD_MODEL_BLOG_ARTICLES.find((b) => b.id === initialBlogParam) || null;
+    }
+    return null;
+  });
+
+  // 论文轻量抽屉状态
   const [readingPaper, setReadingPaper] = useState<WorldModelPaper | null>(null);
   const [readerOpen, setReaderOpen] = useState<boolean>(false);
 
@@ -30,6 +47,18 @@ export default function ResearchPage() {
   const [copilotQuery, setCopilotQuery] = useState("");
 
   const [copiedBibtexId, setCopiedBibtexId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialBlogParam) {
+      const target = WORLD_MODEL_BLOG_ARTICLES.find((b) => b.id === initialBlogParam);
+      if (target) {
+        const timer = setTimeout(() => {
+          setActiveBlog(target);
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [initialBlogParam]);
 
   useEffect(() => {
     const nodes = document.querySelectorAll(".terra-reveal");
@@ -49,7 +78,7 @@ export default function ResearchPage() {
     );
     nodes.forEach((n) => io.observe(n));
     return () => io.disconnect();
-  }, [selectedCategory, searchQuery, lang]);
+  }, [selectedCategory, searchQuery, viewMode, activeBlog, lang]);
 
   const filteredPapers = WORLD_MODEL_PAPERS_100.filter((paper) => {
     const matchCategory = selectedCategory === "all" || paper.category === selectedCategory;
@@ -81,8 +110,22 @@ export default function ResearchPage() {
   };
 
   const handleOpenPaper = (paper: WorldModelPaper) => {
+    // 检查是否有对应的深度博客，如果有且在 blogs 模式下直接打开博客，否则打开抽屉
+    const matchedBlog = WORLD_MODEL_BLOG_ARTICLES.find(
+      (b) => b.paperId === paper.id || b.title.toLowerCase().includes(paper.title.slice(0, 15).toLowerCase())
+    );
+    if (matchedBlog && viewMode === "blogs") {
+      setActiveBlog(matchedBlog);
+      return;
+    }
     setReadingPaper(paper);
     setReaderOpen(true);
+  };
+
+  const handleOpenBlogFromDrawer = (blog: PaperBlogArticle) => {
+    setReaderOpen(false);
+    setActiveBlog(blog);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleAskAiAboutPaper = (paperTitle: string) => {
@@ -97,7 +140,7 @@ export default function ResearchPage() {
 
   return (
     <div className="min-h-[100dvh] bg-white text-[#1d1d1f] flex flex-col justify-between overflow-x-hidden selection:bg-[#0071e3] selection:text-white">
-      {/* 1. 统一 Apple 白昼磨砂玻璃导航 */}
+      {/* 1. 统一 Apple 磨砂玻璃主导航 */}
       <AppleHeader
         onOpenCopilot={() => {
           setCopilotQuery("");
@@ -105,312 +148,456 @@ export default function ResearchPage() {
         }}
       />
 
-      {/* 2. Apple 极简纯净副导航 */}
-      <div className="bg-[#f5f5f7] px-6 sm:px-8 py-3.5 text-[14px] text-[#515154] w-full">
+      {/* 2. Apple 极简纯净副导航 (彻底取消厚重灰横条，采用白底自然留白) */}
+      <div className="bg-white px-6 sm:px-8 py-3 text-[13px] text-[#515154] w-full sticky top-12 z-20">
         <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-3">
           <nav aria-label="Breadcrumbs" className="flex items-center gap-2">
             <Link href="/" className="hover:text-[#0071e3] transition no-underline text-[#515154]">
               TERRA-OASIS
             </Link>
-            <span className="text-[#86868b]">/</span>
-            <span className="text-[#1d1d1f] font-semibold">
-              {lang === "en" ? "100+ World Model Papers" : "100+ 篇世界模型文献与知识图谱"}
-            </span>
-          </nav>
-
-          {/* 视图切换：知识图谱 vs 列表卡片 */}
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-1 rounded-full bg-white p-1">
-              <button
-                type="button"
-                onClick={() => setViewMode("graph")}
-                className={`rounded-full px-3.5 py-1 text-[12px] font-medium transition cursor-pointer ${
-                  viewMode === "graph"
-                    ? "bg-[#0071e3] text-white"
-                    : "text-[#515154] hover:text-[#1d1d1f]"
-                }`}
-              >
-                {lang === "en" ? "Graph View" : "知识图谱视图"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("cards")}
-                className={`rounded-full px-3.5 py-1 text-[12px] font-medium transition cursor-pointer ${
-                  viewMode === "cards"
-                    ? "bg-[#0071e3] text-white"
-                    : "text-[#515154] hover:text-[#1d1d1f]"
-                }`}
-              >
-                {lang === "en" ? "Paper List (100)" : "文献列表 (100)"}
-              </button>
-            </div>
-
+            <span className="text-[#d2d2d7]">/</span>
             <button
               type="button"
               onClick={() => {
-                setCopilotQuery("");
-                setCopilotOpen(true);
+                setActiveBlog(null);
+                setViewMode("graph");
               }}
-              className="rounded-full bg-white px-3 py-1 text-[12px] font-medium text-[#0071e3] hover:bg-[#e8e8ed] transition cursor-pointer"
+              className="hover:text-[#0071e3] transition cursor-pointer text-[#515154]"
             >
-              {lang === "en" ? "Ask Copilot AI" : "AI 智能问答"}
+              {lang === "en" ? "Research & Knowledge Base" : "前沿科研与学术知识库"}
             </button>
+            {activeBlog ? (
+              <>
+                <span className="text-[#d2d2d7]">/</span>
+                <span className="text-[#1d1d1f] font-medium truncate max-w-xs sm:max-w-md">
+                  {lang === "en" ? activeBlog.title : activeBlog.titleZh}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-[#d2d2d7]">/</span>
+                <span className="text-[#1d1d1f] font-medium">
+                  {viewMode === "graph"
+                    ? (lang === "en" ? "Knowledge Graph" : "学术知识图谱")
+                    : viewMode === "blogs"
+                    ? (lang === "en" ? "Deep-Dive Blogs" : "深度论文博客")
+                    : (lang === "en" ? "100+ Indexed Papers" : "100+ 篇文献库")}
+                </span>
+              </>
+            )}
+          </nav>
+
+          {/* 顶层视图切换胶囊 (Apple 纯白悬浮药丸) */}
+          <div className="flex items-center gap-2">
+            {!activeBlog && (
+              <div className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f7] p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("graph")}
+                  className={`rounded-full px-3 py-1 text-[12px] font-medium transition cursor-pointer ${
+                    viewMode === "graph"
+                      ? "bg-white text-[#1d1d1f] font-semibold"
+                      : "text-[#515154] hover:text-[#1d1d1f]"
+                  }`}
+                >
+                  {lang === "en" ? "Knowledge Graph" : "知识图谱"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("blogs")}
+                  className={`rounded-full px-3 py-1 text-[12px] font-medium transition cursor-pointer ${
+                    viewMode === "blogs"
+                      ? "bg-white text-[#1d1d1f] font-semibold"
+                      : "text-[#515154] hover:text-[#1d1d1f]"
+                  }`}
+                >
+                  {lang === "en" ? "Deep-Dive Blogs" : "精选论文博客"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("papers")}
+                  className={`rounded-full px-3 py-1 text-[12px] font-medium transition cursor-pointer ${
+                    viewMode === "papers"
+                      ? "bg-white text-[#1d1d1f] font-semibold"
+                      : "text-[#515154] hover:text-[#1d1d1f]"
+                  }`}
+                >
+                  {lang === "en" ? "100+ Papers" : "100 篇文献库"}
+                </button>
+              </div>
+            )}
+
+            {activeBlog ? (
+              <button
+                type="button"
+                onClick={() => setActiveBlog(null)}
+                className="rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[12px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition cursor-pointer"
+              >
+                {lang === "en" ? "← Back to Hub" : "← 返回知识库主页"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setCopilotQuery("");
+                  setCopilotOpen(true);
+                }}
+                className="rounded-full bg-[#0071e3] px-3.5 py-1 text-[12px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer flex items-center gap-1.5"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                <span>{lang === "en" ? "Ask Copilot AI" : "AI 智能问答"}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       <main className="flex-1 py-10 sm:py-16 w-full">
         <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-16 w-full box-border">
-          {/* 3. 核心知识图谱探索视窗 (用户可直接在科研专栏把玩星空图谱并点击阅读) */}
-          {viewMode === "graph" && (
-            <section className="space-y-6 terra-reveal">
-              <div className="max-w-3xl space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
-                  <span>Connected Knowledge Graph</span>
-                  <span>·</span>
-                  <span>Click to Read Paper</span>
-                </div>
-                <h1 className="text-[32px] sm:text-[44px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
-                  {lang === "en"
-                    ? "Interactive Knowledge Graph of 100+ Papers"
-                    : "100+ 篇世界模型前沿学术星空图谱"}
-                </h1>
-                <p className="text-[16px] text-[#515154]">
-                  {lang === "en"
-                    ? "Drag nodes, explore citation clusters, and click any paper node to slide open the full reading drawer."
-                    : "自由拖拽节点，探索全球顶尖学术脉络与因果演进网络。点击任意论文节点直接滑出沉浸式深度阅读面板。"}
-                </p>
-              </div>
-
-              {/* 嵌入式交互图谱 */}
-              <WorldModelKnowledgeGraph onSelectPaper={handleOpenPaper} />
+          {/* =====================================================================
+              A. 模式一：如果选中了具体某篇论文博客，全景沉浸研读
+             ===================================================================== */}
+          {activeBlog ? (
+            <section className="terra-reveal">
+              <PaperBlogViewer
+                article={activeBlog}
+                onBackToGraph={() => {
+                  setActiveBlog(null);
+                  setViewMode("graph");
+                }}
+                onSelectArticle={(other) => {
+                  setActiveBlog(other);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                onAskAi={handleAskAiAboutPaper}
+              />
             </section>
-          )}
-
-          {/* 4. 精选封面论文展台 (Apple 风格大画幅浅灰展台) */}
-          <section className="rounded-[32px] bg-[#f5f5f7] p-8 sm:p-12 terra-reveal w-full box-border">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-7 space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
-                  <span>Featured Publication</span>
-                  <span>·</span>
-                  <span>{featuredPaper.venue}</span>
-                </div>
-
-                <h2 className="text-[28px] sm:text-[38px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
-                  {lang === "en" ? featuredPaper.title : featuredPaper.titleZh}
-                </h2>
-
-                <p className="text-[15px] sm:text-[17px] text-[#515154] leading-relaxed">
-                  {lang === "en" ? featuredPaper.abstract : featuredPaper.abstractZh}
-                </p>
-
-                <div className="text-[13px] text-[#86868b]">
-                  <span className="font-medium text-[#1d1d1f]">Organizations: </span>
-                  {featuredPaper.org}
-                </div>
-
-                <div className="pt-2 flex flex-wrap items-center gap-3 text-[14px]">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenPaper(featuredPaper)}
-                    className="rounded-full bg-[#0071e3] px-5 py-2 text-white font-medium hover:bg-[#0077ed] transition cursor-pointer"
-                  >
-                    {lang === "en" ? "Read Full Paper" : "阅读论文全文"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopyBibtex(featuredPaper.id, featuredPaper.bibtex)}
-                    className="rounded-full bg-white px-5 py-2 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition cursor-pointer"
-                  >
-                    {copiedBibtexId === featuredPaper.id
-                      ? (lang === "en" ? "BibTeX Copied!" : "已复制 BibTeX!")
-                      : (lang === "en" ? "Copy BibTeX" : "复制 BibTeX")}
-                  </button>
-
-                  <a
-                    href="https://arxiv.org"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-full bg-white px-5 py-2 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition no-underline"
-                  >
-                    <span>{featuredPaper.arxiv}</span>
-                    <span className="ml-1 text-[#0071e3]">↗</span>
-                  </a>
-                </div>
-              </div>
-
-              {/* 封面学术大图 */}
-              <div className="lg:col-span-5">
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[24px] bg-white">
-                  <Image
-                    src="/images/beijing-pulse/hero-beijing.jpg"
-                    alt={featuredPaper.titleZh}
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 40vw"
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-x-0 bottom-0 bg-white/95 p-3 text-[13px] text-[#515154] flex items-center justify-between">
-                    <span className="font-semibold text-[#1d1d1f]">{featuredPaper.venue}</span>
-                    <span className="text-[#0071e3]">{featuredPaper.arxiv}</span>
+          ) : (
+            <>
+              {/* =====================================================================
+                  B. 模式二：知识图谱视图 (Knowledge Graph)
+                 ===================================================================== */}
+              {viewMode === "graph" && (
+                <section className="space-y-6 terra-reveal">
+                  <div className="max-w-3xl space-y-2">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
+                      <span>Interactive Academic Universe</span>
+                      <span>·</span>
+                      <span>100+ Papers</span>
+                    </div>
+                    <h1 className="text-[32px] sm:text-[46px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
+                      {lang === "en"
+                        ? "Interactive Knowledge Graph of World Models"
+                        : "世界模型前沿学术星空知识图谱"}
+                    </h1>
+                    <p className="text-[16px] text-[#515154] leading-relaxed">
+                      {lang === "en"
+                        ? "Explore citation networks and thematic clusters across 100+ top publications (2024–2026). Click any node to read the paper drawer or launch the full deep-dive blog."
+                        : "可拖拽探索 2024–2026 年全球 100+ 篇顶尖世界模型文献的因果引用脉络。点击任意节点即可滑出文献摘要，或一键进入图文并茂的深度学术长文博客。"}
+                    </p>
                   </div>
-                </div>
-              </div>
-            </div>
-          </section>
 
-          {/* 5. 100 篇前沿文献库列表 (可检索、分类过滤、一键滑出阅读器) */}
-          <section className="space-y-6 terra-reveal">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <h2 className="text-[26px] sm:text-[32px] font-semibold text-[#1d1d1f] tracking-tight">
-                  {lang === "en" ? "Indexed 100 World Model Papers" : "收录的 100 篇前沿世界模型文献"}
-                </h2>
-                <p className="text-[14px] text-[#515154]">
-                  {lang === "en"
-                    ? "Click any paper to open the full reader drawer, copy BibTeX, or ask Copilot AI."
-                    : "点击任意论文卡片即可滑出全文阅读抽屉，复制标准 BibTeX 引用或与 AI 助手实时问答。"}
-                </p>
-              </div>
+                  {/* 交互知识图谱 */}
+                  <WorldModelKnowledgeGraph onSelectPaper={handleOpenPaper} />
+                </section>
+              )}
 
-              {/* 实时搜索框 */}
-              <div className="w-full md:w-72">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={lang === "en" ? "Filter by title, org, or arXiv..." : "检索论文、机构或主题..."}
-                  className="w-full rounded-full bg-[#f5f5f7] px-4 py-2.5 text-[14px] text-[#1d1d1f] placeholder-[#86868b] outline-none transition"
-                />
-              </div>
-            </div>
+              {/* =====================================================================
+                  C. 模式三：精选深度论文博客画廊 (Deep-Dive Paper Blogs Gallery)
+                 ===================================================================== */}
+              {viewMode === "blogs" && (
+                <section className="space-y-8 terra-reveal">
+                  <div className="max-w-3xl space-y-2">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
+                      <span>Peer-Reviewed Deep Dives</span>
+                      <span>·</span>
+                      <span>Integrated Blog Knowledge Base</span>
+                    </div>
+                    <h1 className="text-[32px] sm:text-[46px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
+                      {lang === "en"
+                        ? "Curated World Model Paper Blogs"
+                        : "精选前沿世界模型深度研读长文"}
+                    </h1>
+                    <p className="text-[16px] text-[#515154] leading-relaxed">
+                      {lang === "en"
+                        ? "Read long-form architectural breakdowns, mathematical equations, code implementations, and empirical benchmark tables directly within the TERRA platform."
+                        : "在平台中直接全景研读全球 Top 论文的深度博客：涵盖架构推导、可运行伪代码、消融实验表与工程启示，支持随时唤醒 AI 助手智能问答。"}
+                    </p>
+                  </div>
 
-            {/* 6 大分类过滤 Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("all")}
-                className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition shrink-0 cursor-pointer ${
-                  selectedCategory === "all"
-                    ? "bg-[#0071e3] text-white"
-                    : "bg-[#f5f5f7] text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
-                }`}
-              >
-                {lang === "en" ? "All (100)" : "全部 (100)"}
-              </button>
+                  {/* 精选论文博客网格卡片 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {WORLD_MODEL_BLOG_ARTICLES.map((blog) => (
+                      <article
+                        key={blog.id}
+                        onClick={() => {
+                          setActiveBlog(blog);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="group rounded-[28px] bg-[#f5f5f7] overflow-hidden p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:bg-[#e8e8ed] transition cursor-pointer"
+                      >
+                        <div className="space-y-4">
+                          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px] bg-white">
+                            <Image
+                              src={blog.coverImage}
+                              alt={blog.title}
+                              fill
+                              sizes="(max-width: 768px) 100vw, 50vw"
+                              className="object-cover group-hover:scale-105 transition duration-500"
+                            />
+                            <div className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[12px] font-semibold text-[#0071e3]">
+                              {blog.category}
+                            </div>
+                          </div>
 
-              {WORLD_MODEL_CATEGORIES.map((cat) => {
-                const isSelected = selectedCategory === cat.id;
-                const count = WORLD_MODEL_PAPERS_100.filter((p) => p.category === cat.id).length;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition shrink-0 cursor-pointer ${
-                      isSelected
-                        ? "bg-[#0071e3] text-white"
-                        : "bg-[#f5f5f7] text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
-                    }`}
-                  >
-                    <span>{lang === "en" ? cat.name : cat.nameZh}</span>
-                    <span className="ml-1.5 opacity-75">({count})</span>
-                  </button>
-                );
-              })}
-            </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-[12px] text-[#86868b]">
+                              <span className="font-semibold text-[#1d1d1f]">{blog.venue}</span>
+                              <span>·</span>
+                              <span>{blog.date}</span>
+                              <span>·</span>
+                              <span>{blog.readTime}</span>
+                            </div>
 
-            {/* 论文卡片列表 */}
-            <div className="space-y-5">
-              {filteredPapers.map((paper: WorldModelPaper) => (
-                <article
-                  key={paper.id}
-                  id={paper.id}
-                  className="rounded-[24px] bg-[#f5f5f7] p-6 sm:p-7 space-y-4 transition hover:bg-[#eef0f3]"
-                >
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="space-y-1.5 max-w-3xl">
-                      <div className="flex items-center gap-2.5 text-[13px] flex-wrap">
-                        <span className="rounded-full bg-white px-3 py-0.5 font-medium text-[#0071e3]">
-                          {lang === "en" ? paper.categoryNameEn : paper.categoryNameZh}
-                        </span>
-                        <span className="text-[#86868b]">{paper.venue}</span>
-                        <span className="text-[#86868b]">·</span>
-                        <span className="text-[#86868b]">{paper.arxiv}</span>
-                      </div>
+                            <h2 className="text-[20px] sm:text-[22px] font-semibold text-[#1d1d1f] tracking-tight leading-snug group-hover:text-[#0071e3] transition">
+                              {lang === "en" ? blog.title : blog.titleZh}
+                            </h2>
 
-                      <h3 className="text-[19px] sm:text-[22px] font-semibold text-[#1d1d1f] tracking-tight">
-                        {lang === "en" ? paper.title : paper.titleZh}
-                      </h3>
+                            <p className="text-[14px] text-[#515154] line-clamp-3 leading-relaxed">
+                              {lang === "en" ? blog.summaryEn : blog.summaryZh}
+                            </p>
+                          </div>
+                        </div>
 
-                      <p className="text-[13px] text-[#515154]">
-                        <span className="font-semibold text-[#1d1d1f]">Organizations: </span>
-                        {paper.org}
+                        <div className="flex items-center justify-between pt-2 text-[13px]">
+                          <span className="text-[#86868b]">{blog.org}</span>
+                          <span className="text-[#0071e3] font-medium flex items-center gap-1">
+                            <span>{lang === "en" ? "Read Full Blog" : "研读深度长文"}</span>
+                            <span>→</span>
+                          </span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* =====================================================================
+                  D. 模式四：100 篇前沿文献库列表 (Indexed 100 Papers)
+                 ===================================================================== */}
+              {viewMode === "papers" && (
+                <section className="space-y-6 terra-reveal">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h2 className="text-[26px] sm:text-[34px] font-semibold text-[#1d1d1f] tracking-tight">
+                        {lang === "en" ? "Indexed 100 World Model Papers" : "收录的 100 篇前沿世界模型文献"}
+                      </h2>
+                      <p className="text-[14px] text-[#515154]">
+                        {lang === "en"
+                          ? "Filter by domain, search authors, copy BibTeX, or ask Copilot AI."
+                          : "按 6 大领域结构化分类，支持全文快速检索与 BibTeX 引用。"}
                       </p>
                     </div>
 
-                    {/* 动作按钮：直接阅读 */}
-                    <div className="flex items-center gap-2.5 shrink-0">
+                    {/* 实时搜索框 */}
+                    <div className="w-full md:w-72">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={lang === "en" ? "Filter by title, org, or arXiv..." : "检索论文、机构或主题..."}
+                        className="w-full rounded-full bg-[#f5f5f7] px-4 py-2.5 text-[14px] text-[#1d1d1f] placeholder-[#86868b] outline-none transition"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 6 大分类过滤 Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("all")}
+                      className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition shrink-0 cursor-pointer ${
+                        selectedCategory === "all"
+                          ? "bg-[#0071e3] text-white"
+                          : "bg-[#f5f5f7] text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                      }`}
+                    >
+                      {lang === "en" ? "All (100)" : "全部 (100)"}
+                    </button>
+                    {WORLD_MODEL_CATEGORIES.map((cat) => {
+                      const count = WORLD_MODEL_PAPERS_100.filter((p) => p.category === cat.id).length;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat.id)}
+                          className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition shrink-0 cursor-pointer ${
+                            selectedCategory === cat.id
+                              ? "bg-[#0071e3] text-white"
+                              : "bg-[#f5f5f7] text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                          }`}
+                        >
+                          <span>{lang === "en" ? cat.name : cat.nameZh}</span>
+                          <span className="ml-1.5 opacity-75">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* 文献卡片流 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredPapers.map((paper) => (
+                      <div
+                        key={paper.id}
+                        className="rounded-[22px] bg-[#f5f5f7] p-5 sm:p-6 flex flex-col justify-between space-y-4 hover:bg-[#e8e8ed] transition"
+                      >
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between text-[12px] text-[#86868b]">
+                            <span className="rounded-full bg-white px-2.5 py-0.5 font-medium text-[#0071e3]">
+                              {lang === "en" ? paper.categoryNameEn : paper.categoryNameZh}
+                            </span>
+                            <span>{paper.venue} · {paper.year}</span>
+                          </div>
+
+                          <h3
+                            onClick={() => handleOpenPaper(paper)}
+                            className="text-[17px] font-semibold text-[#1d1d1f] tracking-tight leading-snug cursor-pointer hover:text-[#0071e3] transition"
+                          >
+                            {paper.title}
+                          </h3>
+
+                          <div className="text-[14px] text-[#515154]">
+                            {paper.titleZh}
+                          </div>
+
+                          <p className="text-[13px] text-[#515154] line-clamp-3 leading-relaxed">
+                            {lang === "en" ? paper.abstract : paper.abstractZh}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+                          <span className="text-[#86868b] truncate max-w-[200px]">{paper.org}</span>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyBibtex(paper.id, paper.bibtex)}
+                              className="rounded-full bg-white px-3 py-1 font-medium text-[#1d1d1f] hover:bg-[#d2d2d7]/50 transition cursor-pointer"
+                            >
+                              {copiedBibtexId === paper.id
+                                ? (lang === "en" ? "Copied" : "已复制")
+                                : "BibTeX"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPaper(paper)}
+                              className="rounded-full bg-[#0071e3] px-3 py-1 font-medium text-white hover:bg-[#0077ed] transition cursor-pointer"
+                            >
+                              {lang === "en" ? "Read" : "阅读"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* 精选封面展台 (当未打开具体博客时，展示在最底部作为学术引领) */}
+              <section className="rounded-[32px] bg-[#f5f5f7] p-8 sm:p-12 terra-reveal w-full box-border">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  <div className="lg:col-span-7 space-y-4">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
+                      <span>Featured Milestone Publication</span>
+                      <span>·</span>
+                      <span>{featuredPaper.venue}</span>
+                    </div>
+
+                    <h2 className="text-[28px] sm:text-[38px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
+                      {lang === "en" ? featuredPaper.title : featuredPaper.titleZh}
+                    </h2>
+
+                    <p className="text-[15px] sm:text-[17px] text-[#515154] leading-relaxed">
+                      {lang === "en" ? featuredPaper.abstract : featuredPaper.abstractZh}
+                    </p>
+
+                    <div className="text-[13px] text-[#86868b]">
+                      <span className="font-medium text-[#1d1d1f]">Organizations: </span>
+                      {featuredPaper.org}
+                    </div>
+
+                    <div className="pt-2 flex flex-wrap items-center gap-3 text-[14px]">
                       <button
                         type="button"
-                        onClick={() => handleCopyBibtex(paper.id, paper.bibtex)}
-                        className="rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition cursor-pointer"
+                        onClick={() => handleOpenPaper(featuredPaper)}
+                        className="rounded-full bg-[#0071e3] px-5 py-2 text-white font-medium hover:bg-[#0077ed] transition cursor-pointer"
                       >
-                        {copiedBibtexId === paper.id
-                          ? (lang === "en" ? "Copied!" : "已复制!")
-                          : (lang === "en" ? "Copy BibTeX" : "复制 BibTeX")}
+                        {lang === "en" ? "Read Milestone Paper" : "阅读里程碑论文"}
                       </button>
+
                       <button
                         type="button"
-                        onClick={() => handleOpenPaper(paper)}
-                        className="rounded-full bg-[#0071e3] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer"
+                        onClick={() => handleCopyBibtex(featuredPaper.id, featuredPaper.bibtex)}
+                        className="rounded-full bg-white px-5 py-2 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition cursor-pointer"
                       >
-                        {lang === "en" ? "Read Paper" : "阅读论文"}
+                        {copiedBibtexId === featuredPaper.id
+                          ? (lang === "en" ? "BibTeX Copied!" : "已复制 BibTeX!")
+                          : (lang === "en" ? "Copy BibTeX" : "复制 BibTeX")}
                       </button>
                     </div>
                   </div>
 
-                  <p className="text-[14px] text-[#515154] leading-relaxed line-clamp-2">
-                    {lang === "en" ? paper.abstract : paper.abstractZh}
-                  </p>
-                </article>
-              ))}
-
-              {filteredPapers.length === 0 && (
-                <div className="rounded-[24px] bg-[#f5f5f7] p-12 text-center text-[#515154] space-y-3">
-                  <div className="text-[16px] font-semibold text-[#1d1d1f]">
-                    {lang === "en" ? "No matching papers found." : "未找到匹配的世界模型学术论文。"}
+                  <div className="lg:col-span-5">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[24px] bg-white">
+                      <Image
+                        src="/images/beijing-pulse/hero-beijing.jpg"
+                        alt={featuredPaper.titleZh}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 40vw"
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
-                  <p className="text-[14px]">
-                    {lang === "en"
-                      ? "Try searching for keywords like Sora, Oasis, Genie, Cosmos, Gaussian, or Robotics."
-                      : "尝试搜索关键词：Sora、Oasis、Genie、Cosmos、Gaussian 或 Robotics。"}
-                  </p>
                 </div>
-              )}
-            </div>
-          </section>
+              </section>
+            </>
+          )}
         </div>
       </main>
 
-      {/* 6. 全局浅灰底脚 */}
+      {/* 4. 统一 Apple 浅灰底脚 */}
       <AppleFooter />
 
-      {/* 7. 论文沉浸式深度阅读器抽屉 */}
+      {/* 5. 论文轻量快速抽屉 */}
       <PaperReaderDrawer
         paper={readingPaper}
         isOpen={readerOpen}
         onClose={() => setReaderOpen(false)}
         onAskAi={handleAskAiAboutPaper}
+        onOpenBlog={handleOpenBlogFromDrawer}
       />
 
-      {/* 8. AI 知识库智能问答抽屉 */}
+      {/* 6. AI 智能问答侧边抽屉 */}
       <CopilotDrawer
         isOpen={copilotOpen}
         onClose={() => setCopilotOpen(false)}
         initialQuery={copilotQuery}
       />
     </div>
+  );
+}
+
+export default function ResearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[100dvh] bg-white flex items-center justify-center text-[#515154] text-[15px]">
+          Loading Research &amp; Knowledge Base...
+        </div>
+      }
+    >
+      <ResearchContent />
+    </Suspense>
   );
 }

@@ -31,22 +31,19 @@ export function AppleHeader({
           <span>{t.nav.brand}</span>
         </Link>
 
-        {/* 中间核心导航链接：新增 知识图谱 (Knowledge Graph) 一级入口 */}
-        <nav aria-label="Official Navigation" className="hidden md:flex items-center gap-6 text-[#515154]">
+        {/* 中间核心导航链接：Apple 极简 4 栏架构 */}
+        <nav aria-label="Official Navigation" className="hidden md:flex items-center gap-7 text-[#515154]">
           <Link href="/" className="hover:text-[#1d1d1f] transition no-underline">
             {t.nav.overview}
           </Link>
-          <Link href="/#knowledge-graph" className="hover:text-[#1d1d1f] transition no-underline font-medium text-[#0071e3]">
-            {lang === "en" ? "Knowledge Graph" : "知识图谱"}
+          <Link href="/research" className="hover:text-[#1d1d1f] transition no-underline">
+            {lang === "en" ? "Knowledge Graph & Blogs" : "知识图谱与论文博客"}
           </Link>
           <Link href="/#interactive-playground" className="hover:text-[#1d1d1f] transition no-underline">
             {t.nav.sandbox}
           </Link>
           <Link href="/docs" className="hover:text-[#1d1d1f] transition no-underline">
             {t.nav.docs}
-          </Link>
-          <Link href="/research" className="hover:text-[#1d1d1f] transition no-underline">
-            {lang === "en" ? "100+ Papers" : "100+ 论文文献"}
           </Link>
         </nav>
 

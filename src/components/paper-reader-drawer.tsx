@@ -3,12 +3,14 @@
 import React, { useState } from "react";
 import { useLanguage } from "@/lib/language-context";
 import { WorldModelPaper } from "@/lib/world-model-papers-100";
+import { WORLD_MODEL_BLOG_ARTICLES, PaperBlogArticle } from "@/lib/world-model-blogs-rich";
 
 interface PaperReaderDrawerProps {
   paper: WorldModelPaper | null;
   isOpen: boolean;
   onClose: () => void;
   onAskAi: (paperTitle: string) => void;
+  onOpenBlog?: (blogArticle: PaperBlogArticle) => void;
 }
 
 export function PaperReaderDrawer({
@@ -16,11 +18,17 @@ export function PaperReaderDrawer({
   isOpen,
   onClose,
   onAskAi,
+  onOpenBlog,
 }: PaperReaderDrawerProps) {
   const { lang } = useLanguage();
   const [copiedBibtex, setCopiedBibtex] = useState(false);
 
   if (!isOpen || !paper) return null;
+
+  // 检查是否有对应的深度博客长文
+  const matchedBlog = WORLD_MODEL_BLOG_ARTICLES.find(
+    (b) => b.paperId === paper.id || b.title.toLowerCase().includes(paper.title.slice(0, 15).toLowerCase())
+  );
 
   const handleCopyBibtex = async () => {
     try {
@@ -79,6 +87,30 @@ export function PaperReaderDrawer({
 
         {/* 论文正文阅读滚动区 */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8">
+          {/* 精美深度博客快速跳转横幅 */}
+          {matchedBlog && onOpenBlog && (
+            <div className="rounded-[22px] bg-[#0071e3] p-5 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="text-[12px] font-semibold uppercase tracking-wider text-white/80">
+                  {lang === "en" ? "Comprehensive Deep-Dive Blog Available" : "本篇包含图文并茂的深度学术长文博客"}
+                </div>
+                <div className="text-[15px] font-semibold">
+                  {lang === "en" ? matchedBlog.title : matchedBlog.titleZh}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenBlog(matchedBlog);
+                }}
+                className="shrink-0 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-[#0071e3] hover:bg-[#f5f5f7] transition cursor-pointer"
+              >
+                {lang === "en" ? "Read Full Blog ↗" : "阅读深度研读博客 ↗"}
+              </button>
+            </div>
+          )}
+
           {/* 标题与作者机构 */}
           <div className="space-y-3">
             <h1 className="text-[24px] sm:text-[30px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.18]">
@@ -148,39 +180,40 @@ export function PaperReaderDrawer({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="text-[16px] font-semibold text-[#1d1d1f]">
-                {lang === "en" ? "BibTeX Citation" : "学术文献引用 (BibTeX)"}
+                {lang === "en" ? "BibTeX Citation" : "学术引用 (BibTeX)"}
               </h2>
               <button
                 type="button"
                 onClick={handleCopyBibtex}
                 className="rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[12px] font-medium text-[#0071e3] hover:bg-[#e8e8ed] transition cursor-pointer"
               >
-                {copiedBibtex ? (lang === "en" ? "Copied!" : "已复制!") : (lang === "en" ? "Copy BibTeX" : "复制引用")}
+                {copiedBibtex
+                  ? (lang === "en" ? "Copied!" : "已复制!")
+                  : (lang === "en" ? "Copy BibTeX" : "复制引用")}
               </button>
             </div>
-            <pre className="rounded-[16px] bg-[#f5f5f7] p-4 text-[12px] text-[#515154] overflow-x-auto m-0">
-              <code>{paper.bibtex}</code>
-            </pre>
+
+            <div className="overflow-x-auto rounded-[16px] bg-[#1d1d1f] p-4 text-[12px] text-[#f5f5f7] leading-relaxed">
+              <pre className="m-0 whitespace-pre">
+                <code>{paper.bibtex}</code>
+              </pre>
+            </div>
           </div>
         </div>
 
-        {/* 底部行动栏 */}
-        <div className="p-4 bg-[#f5f5f7] flex items-center justify-between gap-3">
-          <a
-            href="https://arxiv.org"
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-full bg-white px-5 py-2 text-[14px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition no-underline"
-          >
-            {lang === "en" ? "Open Full PDF on arXiv ↗" : "在 arXiv 阅读原始论文 PDF ↗"}
-          </a>
-
+        {/* 底部操作底栏 */}
+        <div className="p-5 bg-[#f5f5f7] flex flex-wrap items-center justify-between gap-3 text-[13px]">
+          <div className="text-[#86868b]">
+            {lang === "en"
+              ? "Integrated into TERRA-OASIS World Knowledge Base"
+              : "已收录入 TERRA-OASIS 世界模型学术知识库"}
+          </div>
           <button
             type="button"
             onClick={() => onAskAi(paper.title)}
-            className="rounded-full bg-[#0071e3] px-5 py-2 text-[14px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer"
+            className="rounded-full bg-[#0071e3] px-4 py-1.5 text-white font-medium hover:bg-[#0077ed] transition cursor-pointer"
           >
-            {lang === "en" ? "Ask Copilot AI About Paper" : "向 AI 深度问答此论文"}
+            {lang === "en" ? "Deep Q&A with AI Copilot" : "向 AI 助手深度提问"}
           </button>
         </div>
       </aside>
