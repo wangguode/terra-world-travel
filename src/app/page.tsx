@@ -13,6 +13,7 @@ import { AppleStoryGallery } from "@/components/apple-story-gallery";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
 import { HeroNeuralAmbient } from "@/components/hero-neural-ambient";
+import { AppleArchitectureCompare } from "@/components/apple-architecture-compare";
 import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
 import { WORLD_MODEL_PAPERS_100, WorldModelPaper } from "@/lib/world-model-papers-100";
 
@@ -178,8 +179,14 @@ export default function HomePage() {
             {/* 3 个大型指标徽章 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="rounded-[28px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum">
-                  60 FPS
+                <div className="flex items-center justify-between">
+                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum">
+                    60 FPS
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#34c759]" />
+                    <span>Real-Time</span>
+                  </div>
                 </div>
                 <div className="text-[18px] font-semibold text-[#1d1d1f]">
                   {lang === "en" ? "Continuous Neural Streaming" : "全双工连续神经推流"}
@@ -192,8 +199,14 @@ export default function HomePage() {
               </div>
 
               <div className="rounded-[28px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="text-[40px] sm:text-[48px] font-semibold text-[#1d1d1f] tracking-tight tnum">
-                  &lt; 16 ms
+                <div className="flex items-center justify-between">
+                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#1d1d1f] tracking-tight tnum">
+                    &lt; 16 ms
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#34c759]" />
+                    <span>Ultra-Low</span>
+                  </div>
                 </div>
                 <div className="text-[18px] font-semibold text-[#1d1d1f]">
                   {lang === "en" ? "Action-to-Photon Latency" : "动作到光子极速响应"}
@@ -206,8 +219,14 @@ export default function HomePage() {
               </div>
 
               <div className="rounded-[28px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum">
-                  94.2%
+                <div className="flex items-center justify-between">
+                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum">
+                    94.2%
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#0071e3]" />
+                    <span>Zero-Shot</span>
+                  </div>
                 </div>
                 <div className="text-[18px] font-semibold text-[#1d1d1f]">
                   {lang === "en" ? "Zero-Shot Sim-to-Real" : "真机无微调迁移成功率"}
@@ -363,11 +382,21 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            7. Real-World Deployments (真实物理世界工业实践)
+            7. Architecture Paradigm Comparison (Apple 官方风格交互对比展台)
+           ========================================================================= */}
+        <AppleArchitectureCompare />
+
+        {/* =========================================================================
+            8. Real-World Deployments (Apple 标志性非对称 Bento Grid 工业落地)
            ========================================================================= */}
         <section className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12">
             <div className="max-w-3xl space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
+                <span>{lang === "en" ? "Industrial Deployments" : "实体产业落地"}</span>
+                <span>·</span>
+                <span>{lang === "en" ? "Physical AI in Action" : "具身空间智能"}</span>
+              </div>
               <h2 className="text-[32px] sm:text-[44px] lg:text-[50px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
                 {lang === "en"
                   ? "Bridging Simulation to the Physical World"
@@ -380,48 +409,68 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* 4 大工业级落地场景卡片网格 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="rounded-[28px] bg-white p-8 space-y-5">
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
-                  <Image
-                    src="/images/beijing-pulse/hero-beijing.jpg"
-                    alt="Embodied Robotics Deployment"
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-[13px] font-semibold text-[#0071e3]">
-                    {lang === "en" ? "Embodied Locomotion" : "具身智能四足机器人"}
+            {/* Apple 经典非对称便当盒网格 (Bento Grid) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+              {/* Bento 1: 具身智能旗舰主卡片 (全景 12 列 Hero Bento) */}
+              <div className="lg:col-span-12 rounded-[32px] bg-white p-8 sm:p-12 overflow-hidden relative">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  <div className="lg:col-span-6 space-y-5">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[12px] font-semibold text-[#0071e3]">
+                      <span>{lang === "en" ? "FLAGSHIP DEPLOYMENT" : "旗舰工业级标杆"}</span>
+                    </div>
+                    <h3 className="text-[28px] sm:text-[38px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
+                      {lang === "en" ? "Zero-Shot Hardware Transfer on Quadruped Robotics" : "四足机器人硬件零微调迁移"}
+                    </h3>
+                    <p className="text-[16px] text-[#515154] leading-relaxed">
+                      {lang === "en"
+                        ? "Conditioned directly on continuous motor torques and foot contact sensors, achieving 94.2% policy transfer success on quadruped robots without real-world damage penalties."
+                        : "直接基于四足机器人电机连续扭矩与足端触地压力传感器推演，在野外未见复杂碎石地貌中实现 94.2% 的策略无微调迁移成功率，免受真实物理试错损耗。"}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-6 pt-2">
+                      <div>
+                        <div className="text-[32px] sm:text-[40px] font-semibold text-[#0071e3] tracking-tight tnum">94.2%</div>
+                        <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Sim-to-Real Success" : "实机迁移成功率"}</div>
+                      </div>
+                      <div>
+                        <div className="text-[32px] sm:text-[40px] font-semibold text-[#1d1d1f] tracking-tight tnum">0</div>
+                        <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Hardware Breakage" : "实体硬件损耗"}</div>
+                      </div>
+                      <div>
+                        <div className="text-[32px] sm:text-[40px] font-semibold text-[#1d1d1f] tracking-tight tnum">12-DoF</div>
+                        <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Continuous Torque" : "连续关节扭矩"}</div>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-[22px] font-semibold text-[#1d1d1f]">
-                    {lang === "en" ? "Zero-Shot Hardware Transfer" : "真实物理硬件零微调迁移"}
-                  </h3>
-                  <p className="text-[15px] text-[#515154] leading-relaxed">
-                    {lang === "en"
-                      ? "Conditioned directly on continuous motor torques and foot contact sensors, achieving 94.2% policy transfer success on quadruped robots without real-world damage penalties."
-                      : "直接基于四足机器人电机连续扭矩与足端触地压力传感器推演，实现 94.2% 的策略无微调迁移成功率，免受真实物理试错损耗。"}
-                  </p>
+                  <div className="lg:col-span-6">
+                    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[24px] bg-[#f5f5f7]">
+                      <Image
+                        src="/images/beijing-pulse/hero-beijing.jpg"
+                        alt="Embodied Robotics Deployment"
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                        className="object-cover"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-[28px] bg-white p-8 space-y-5">
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
-                  <Image
-                    src="/images/beijing-pulse/futuristic.jpg"
-                    alt="Autonomous Driving Closed-Loop Simulation"
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-[13px] font-semibold text-[#0071e3]">
+              {/* Bento 2: 自动驾驶极限工况 (6 列) */}
+              <div className="lg:col-span-6 rounded-[32px] bg-white p-8 sm:p-10 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px] bg-[#f5f5f7]">
+                    <Image
+                      src="/images/beijing-pulse/futuristic.jpg"
+                      alt="Autonomous Driving Closed-Loop Simulation"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="text-[12px] font-semibold text-[#0071e3]">
                     {lang === "en" ? "Autonomous Mobility" : "自动驾驶反事实仿真"}
                   </div>
-                  <h3 className="text-[22px] font-semibold text-[#1d1d1f]">
+                  <h3 className="text-[24px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
                     {lang === "en" ? "Counterfactual Road Exploration" : "极限工况与反事实决策推演"}
                   </h3>
                   <p className="text-[15px] text-[#515154] leading-relaxed">
@@ -430,23 +479,27 @@ export default function HomePage() {
                       : "依据转向与制动控制向量生成连续动态交通分支，为自动驾驶系统提供零事故风险的极端 corner-case 闭环压力测试环境。"}
                   </p>
                 </div>
+                <div className="text-[12px] text-[#86868b] font-medium">
+                  {lang === "en" ? "Continuous multi-agent trajectory prediction" : "多智能体高保真时序轨迹因果推演"}
+                </div>
               </div>
 
-              <div className="rounded-[28px] bg-white p-8 space-y-5">
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
-                  <Image
-                    src="/images/beijing-pulse/forbidden-city.jpg"
-                    alt="Cultural Heritage Digital Preservation"
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-[13px] font-semibold text-[#0071e3]">
+              {/* Bento 3: 毫米级 3DGS 古建空间孪生 (6 列) */}
+              <div className="lg:col-span-6 rounded-[32px] bg-white p-8 sm:p-10 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px] bg-[#f5f5f7]">
+                    <Image
+                      src="/images/beijing-pulse/forbidden-city.jpg"
+                      alt="Cultural Heritage Digital Preservation"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="text-[12px] font-semibold text-[#0071e3]">
                     {lang === "en" ? "Spatial Digital Twins" : "空间高精度数字孪生"}
                   </div>
-                  <h3 className="text-[22px] font-semibold text-[#1d1d1f]">
+                  <h3 className="text-[24px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
                     {lang === "en" ? "Sub-Millimeter 3DGS Heritage" : "古建毫米级 3DGS 保护与漫游"}
                   </h3>
                   <p className="text-[15px] text-[#515154] leading-relaxed">
@@ -455,30 +508,35 @@ export default function HomePage() {
                       : "将数百万空间辐射点云与太阳高度角天光物理模型融合，高保真数字化复刻古建筑历史形态，赋能高精细度空间感知。"}
                   </p>
                 </div>
+                <div className="text-[12px] text-[#86868b] font-medium">
+                  {lang === "en" ? "Sub-millimeter spatial coordinate precision" : "毫米级空间几何定位精度与天光解耦"}
+                </div>
               </div>
 
-              <div className="rounded-[28px] bg-white p-8 space-y-5">
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
-                  <Image
-                    src="/images/beijing-pulse/temple-of-heaven.jpg"
-                    alt="Interactive Spatial Computing"
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-[13px] font-semibold text-[#0071e3]">
+              {/* Bento 4: 边缘端 WebGPU 零安装即用 (全景 12 列横幅微便当盒) */}
+              <div className="lg:col-span-12 rounded-[32px] bg-white p-8 sm:p-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                <div className="space-y-3 max-w-2xl">
+                  <div className="text-[12px] font-semibold text-[#0071e3]">
                     {lang === "en" ? "Edge Spatial Computing" : "边缘端空间计算"}
                   </div>
-                  <h3 className="text-[22px] font-semibold text-[#1d1d1f]">
-                    {lang === "en" ? "Zero-Install WebGPU Streaming" : "全浏览器 WebGPU 零安装即玩"}
+                  <h3 className="text-[24px] sm:text-[28px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
+                    {lang === "en" ? "Zero-Install WebGPU Streaming in Any Browser" : "全浏览器 WebGPU 零安装即开即玩"}
                   </h3>
                   <p className="text-[15px] text-[#515154] leading-relaxed">
                     {lang === "en"
                       ? "Ultra-lightweight WGSL decoders bring full 60 FPS interactive neural world rendering to mobile and desktop browsers instantly."
                       : "通过超轻量化 WGSL 着色器解码，在普通移动端与桌面浏览器上即开即用，实现 60 FPS 无感延迟动作漫游。"}
                   </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 shrink-0">
+                  <div className="rounded-[20px] bg-[#f5f5f7] px-6 py-4 text-center">
+                    <div className="text-[28px] font-semibold text-[#0071e3] tnum">&lt; 16 ms</div>
+                    <div className="text-[11px] text-[#86868b]">{lang === "en" ? "Action Latency" : "动作时延"}</div>
+                  </div>
+                  <div className="rounded-[20px] bg-[#f5f5f7] px-6 py-4 text-center">
+                    <div className="text-[28px] font-semibold text-[#1d1d1f] tnum">60 FPS</div>
+                    <div className="text-[11px] text-[#86868b]">{lang === "en" ? "Client Frame Rate" : "客户端帧率"}</div>
+                  </div>
                 </div>
               </div>
             </div>
