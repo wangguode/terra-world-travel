@@ -14,6 +14,7 @@ import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-gra
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
 import { HeroNeuralAmbient } from "@/components/hero-neural-ambient";
 import { AppleArchitectureCompare } from "@/components/apple-architecture-compare";
+import { AppleNeuralSpecDeepdive } from "@/components/apple-neural-spec-deepdive";
 import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
 import { WORLD_MODEL_PAPERS_100, WorldModelPaper } from "@/lib/world-model-papers-100";
 
@@ -385,7 +386,12 @@ export default function HomePage() {
         <AppleArchitectureCompare />
 
         {/* =========================================================================
-            8. Real-World Deployments (Apple 标志性非对称 Bento Grid 工业落地)
+            8. Neural Architecture Exploded View (Apple 旗舰级分层解剖展台)
+           ========================================================================= */}
+        <AppleNeuralSpecDeepdive />
+
+        {/* =========================================================================
+            9. Real-World Deployments (Apple 标志性非对称 Bento Grid 工业落地)
            ========================================================================= */}
         <section className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12">

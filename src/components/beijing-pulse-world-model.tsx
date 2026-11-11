@@ -548,12 +548,12 @@ export default function WorldModelSimulator({
           </div>
         </div>
 
-        {/* HUD 右上：自回归神经生成监控 */}
+        {/* HUD 右上：自回归神经生成监控 (Apple Vision Pro 空间遥测) */}
         <div className="pointer-events-none absolute top-4 sm:top-6 right-4 sm:right-6 z-30 hidden sm:block">
-          <div className="rounded-[18px] bg-[#0c0c0e]/95 p-3.5 sm:p-4 text-right text-[16px] text-white/80 space-y-1 tnum">
+          <div className="rounded-[20px] bg-[#1d1d1f]/90 p-3.5 sm:p-4 text-right text-[12px] text-white/80 space-y-1.5 tnum" data-ui="true">
             <div className="flex items-center justify-end gap-2">
-              <span className="text-[#00f2fe] text-[16px] tnum">Causal DiT 60FPS</span>
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="text-[#2997ff] text-[13px] font-medium tnum">Causal DiT 60FPS</span>
+              <span className="h-2 w-2 rounded-full bg-[#34c759]" />
             </div>
             <div>
               <span className="text-white/40">降噪步数：</span>
@@ -564,16 +564,16 @@ export default function WorldModelSimulator({
               <span className="text-white font-medium">{currentWorld.diffusionConfig.causalWindow} Frames</span>
             </div>
             <div>
-              <span className="text-white/40">潜空间张量：</span>
-              <span className="text-white/80 text-[16px] tnum">{currentWorld.diffusionConfig.latentDim}</span>
+              <span className="text-white/40">潜空间流形：</span>
+              <span className="text-white/80 text-[12px] tnum">{currentWorld.diffusionConfig.latentDim}</span>
             </div>
           </div>
         </div>
 
-        {/* HUD 左下：按键驱动反馈与虚拟触控 */}
+        {/* HUD 左下：Apple 妙控键盘触控反馈与实时动作流 */}
         <div className="absolute bottom-24 sm:bottom-28 left-4 sm:left-10 z-30 flex items-center gap-3">
-          <div className="rounded-[20px] bg-[#0c0c0e] p-3.5 text-white">
-            <div className="text-[16px] text-white/50 mb-2 font-medium hidden sm:block">
+          <div className="rounded-[20px] bg-[#1d1d1f]/90 p-3 text-white" data-ui="true">
+            <div className="text-[11px] text-white/50 mb-2 font-medium hidden sm:block tracking-wide">
               WASD 移动 · Space 跳跃 · E 破拆扰动 · R 重置
             </div>
             <div className="flex flex-col items-center gap-1.5">
@@ -583,9 +583,9 @@ export default function WorldModelSimulator({
                   velRef.current.y += 0.03;
                   recordAction("W", "Forward Thrust", [0, 0, 1]);
                 }}
-                className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
+                className={`terra-btn h-8 w-11 rounded-[8px] text-[13px] font-semibold transition active:scale-[0.96] ${
                   activeKeys["w"] || activeKeys["arrowup"]
-                    ? "bg-[#00f2fe] text-black"
+                    ? "bg-[#2997ff] text-white"
                     : "bg-white/10 text-white/70 hover:bg-white/20"
                 }`}
               >
@@ -598,9 +598,9 @@ export default function WorldModelSimulator({
                     velRef.current.x -= 0.03;
                     recordAction("A", "Strafe Left", [-1, 0, 0]);
                   }}
-                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  className={`terra-btn h-8 w-11 rounded-[8px] text-[13px] font-semibold transition active:scale-[0.96] ${
                     activeKeys["a"] || activeKeys["arrowleft"]
-                      ? "bg-[#00f2fe] text-black"
+                      ? "bg-[#2997ff] text-white"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
                   }`}
                 >
@@ -612,9 +612,9 @@ export default function WorldModelSimulator({
                     velRef.current.y -= 0.03;
                     recordAction("S", "Backward Thrust", [0, 0, -1]);
                   }}
-                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  className={`terra-btn h-8 w-11 rounded-[8px] text-[13px] font-semibold transition active:scale-[0.96] ${
                     activeKeys["s"] || activeKeys["arrowdown"]
-                      ? "bg-[#00f2fe] text-black"
+                      ? "bg-[#2997ff] text-white"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
                   }`}
                 >
@@ -626,9 +626,9 @@ export default function WorldModelSimulator({
                     velRef.current.x += 0.03;
                     recordAction("D", "Strafe Right", [1, 0, 0]);
                   }}
-                  className={`terra-btn h-9 w-12 rounded-[8px] text-[16px] font-bold transition ${
+                  className={`terra-btn h-8 w-11 rounded-[8px] text-[13px] font-semibold transition active:scale-[0.96] ${
                     activeKeys["d"] || activeKeys["arrowright"]
-                      ? "bg-[#00f2fe] text-black"
+                      ? "bg-[#2997ff] text-white"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
                   }`}
                 >
@@ -639,15 +639,15 @@ export default function WorldModelSimulator({
           </div>
 
           {/* 实时动作流抓取 (Action Stream Log) */}
-          <div className="hidden md:flex flex-col gap-1 rounded-[20px] bg-[#0c0c0e] p-3 text-[16px] text-white/70 min-w-[240px]">
-            <div className="text-white/40 text-[16px] mb-1 font-sans">实时动作潜变量流 (Action Log)</div>
+          <div className="hidden md:flex flex-col gap-1 rounded-[20px] bg-[#1d1d1f]/90 p-3 text-[12px] text-white/70 min-w-[220px]" data-ui="true">
+            <div className="text-white/40 text-[11px] mb-1 font-sans">实时动作潜变量流 (Action Log)</div>
             {actionLog.length === 0 ? (
-              <div className="text-white/30 text-[16px]">按下 WASD / E / Space 注入动作...</div>
+              <div className="text-white/30 text-[12px]">按下 WASD / E 注入动作...</div>
             ) : (
               actionLog.slice(0, 3).map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-[16px] tnum">
-                  <span className="text-[#00f2fe]">[{item.key}]</span>
-                  <span className="text-white/80 truncate max-w-[120px]">{item.action}</span>
+                <div key={item.id} className="flex items-center justify-between text-[12px] tnum">
+                  <span className="text-[#2997ff]">[{item.key}]</span>
+                  <span className="text-white/80 truncate max-w-[110px]">{item.action}</span>
                   <span className="text-white/40">{item.latentDelta[0]}</span>
                 </div>
               ))
@@ -656,7 +656,7 @@ export default function WorldModelSimulator({
         </div>
 
         {/* 底部一体化应用控制器 */}
-        <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-10 right-4 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-[24px] bg-[#0c0c0e] px-4 sm:px-6 py-3">
+        <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-10 right-4 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-full bg-[#1d1d1f]/90 px-4 sm:px-6 py-2.5" data-ui="true">
           {/* 左侧：世界维度选择器 */}
           <div className="flex items-center gap-3 overflow-x-auto max-w-full pb-1 sm:pb-0 scrollbar-none whitespace-nowrap">
             {WORLD_DIMENSIONS.map((w) => {
@@ -666,25 +666,25 @@ export default function WorldModelSimulator({
                   key={w.id}
                   type="button"
                   onClick={() => onSelectWorld(w.id)}
-                  className={`terra-btn flex items-center gap-2 text-[16px] transition shrink-0 ${
-                    isSel ? "text-white font-semibold" : "text-white/40 hover:text-white/80"
+                  className={`terra-btn flex items-center gap-1.5 text-[13px] transition shrink-0 cursor-pointer ${
+                    isSel ? "text-white font-semibold" : "text-white/50 hover:text-white/90"
                   }`}
                 >
                   <span>{w.name}</span>
-                  {isSel && <span className="h-1.5 w-1.5 rounded-full bg-[#00f2fe]" />}
+                  {isSel && <span className="h-1.5 w-1.5 rounded-full bg-[#2997ff]" />}
                 </button>
               );
             })}
           </div>
 
           {/* 右侧：神经渲染通道 + 扰动步数 + 太阳时间 */}
-          <div className="flex items-center gap-3 sm:gap-4 text-[16px] shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 text-[12px] shrink-0">
             {/* 渲染通道 */}
-            <div className="flex items-center gap-1 bg-white/5 rounded-full p-1">
+            <div className="flex items-center gap-1 bg-white/5 rounded-full p-0.5">
               <button
                 type="button"
                 onClick={() => setRenderMode(0)}
-                className={`terra-btn rounded-full px-3 py-1 text-[16px] transition ${
+                className={`terra-btn rounded-full px-2.5 py-1 text-[12px] transition cursor-pointer ${
                   renderMode === 0
                     ? "bg-white text-black font-semibold"
                     : "text-white/60 hover:text-white"
@@ -695,9 +695,9 @@ export default function WorldModelSimulator({
               <button
                 type="button"
                 onClick={() => setRenderMode(1)}
-                className={`terra-btn rounded-full px-3 py-1 text-[16px] transition ${
+                className={`terra-btn rounded-full px-2.5 py-1 text-[12px] transition cursor-pointer ${
                   renderMode === 1
-                    ? "bg-[#00f2fe] text-black font-semibold"
+                    ? "bg-[#2997ff] text-white font-semibold"
                     : "text-white/60 hover:text-white"
                 }`}
               >
@@ -706,7 +706,7 @@ export default function WorldModelSimulator({
               <button
                 type="button"
                 onClick={() => setRenderMode(2)}
-                className={`terra-btn rounded-full px-3 py-1 text-[16px] transition hidden lg:inline-block ${
+                className={`terra-btn rounded-full px-2.5 py-1 text-[12px] transition hidden lg:inline-block cursor-pointer ${
                   renderMode === 2
                     ? "bg-white text-black font-semibold"
                     : "text-white/60 hover:text-white"
@@ -717,7 +717,7 @@ export default function WorldModelSimulator({
               <button
                 type="button"
                 onClick={() => setDiffusionSteps((s) => (s >= 50 ? 10 : s + 10))}
-                className="terra-btn rounded-full px-3 py-1 text-[16px] text-[#00f2fe] hover:bg-white/10 transition hidden md:inline-block tnum"
+                className="terra-btn rounded-full px-2.5 py-1 text-[12px] text-[#2997ff] hover:bg-white/10 transition hidden md:inline-block tnum cursor-pointer"
                 title="调整时空扩散降噪步数"
               >
                 {diffusionSteps} Steps
@@ -725,7 +725,7 @@ export default function WorldModelSimulator({
             </div>
 
             {/* 时钟演化 */}
-            <div className="hidden sm:flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
+            <div className="hidden sm:flex items-center gap-2 bg-white/5 rounded-full px-3 py-1">
               <input
                 type="range"
                 min="0"
@@ -737,10 +737,10 @@ export default function WorldModelSimulator({
                   setCurrentHour(val);
                   onChangeHour(val);
                 }}
-                className="w-24 accent-[#00f2fe] cursor-pointer"
+                className="w-20 accent-[#2997ff] cursor-pointer"
               />
               {/* taste-skill-ignore */}
-              <span className="text-[16px] text-white/80 tnum">
+              <span className="text-[12px] text-white/80 tnum">
                 {Math.floor(currentHour).toString().padStart(2, "0") /* taste-skill-ignore */}:
                 {Math.floor((currentHour % 1) * 60)
                   .toString()
@@ -749,7 +749,7 @@ export default function WorldModelSimulator({
               <button
                 type="button"
                 onClick={() => setIsPlayingTime(!isPlayingTime)}
-                className="terra-btn text-[16px] text-[#00f2fe] hover:underline ml-1"
+                className="terra-btn text-[12px] text-[#2997ff] hover:underline ml-1 cursor-pointer"
               >
                 {isPlayingTime ? "暂停" : "流转"}
               </button>
@@ -758,7 +758,7 @@ export default function WorldModelSimulator({
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="terra-btn rounded-full bg-white/10 px-3 py-1.5 text-[16px] text-white hover:bg-white/20 transition hidden sm:inline-block"
+              className="terra-btn rounded-full bg-white/10 px-3 py-1 text-[12px] text-white hover:bg-white/20 transition hidden sm:inline-block cursor-pointer"
               title="切换全屏沉浸视界"
             >
               {isFullscreen ? "退出全屏" : "全屏视界"}
