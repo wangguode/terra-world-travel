@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/language-context";
 
 export const metadata: Metadata = {
-  title: "TERRA-OASIS · 可交互神经世界模型应用 (Playable Neural World Simulator)",
+  title: "TERRA-OASIS · Playable Neural World Simulator",
   description:
-    "开源动作驱动交互式世界模型 Web 客户端应用。支持 WASD 实时漫游探索、物理微积分反馈、体素破拆扰动与多重沙盒世界维度推演。",
+    "Open source action-conditioned neural world model web application. Real-time WASD roaming, emergent intuitive physics, and multi-dimensional sandbox simulation.",
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.png",
@@ -21,7 +22,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#070707",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -30,8 +31,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
-      <body>{children}</body>
+    <html lang="en">
+      <body className="bg-black text-[#f5f5f7]">
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }
