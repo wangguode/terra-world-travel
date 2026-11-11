@@ -55,16 +55,16 @@ export default function ResearchPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#000000] text-[#f5f5f7] flex flex-col justify-between">
+    <div className="min-h-[100dvh] bg-[#000000] text-[#f5f5f7] flex flex-col justify-between overflow-x-hidden selection:bg-[#0071e3] selection:text-white">
       <AppleHeader onOpenCopilot={() => setCopilotOpen(true)} />
 
       {/* 顶层 Apple ML Research 风格副导航 */}
-      <div className="bg-[#0c0c0e] px-6 sm:px-8 py-3 text-[13px] text-[#86868b]">
-        <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#0a0a0c] px-6 sm:px-8 py-3.5 text-[14px] text-[#86868b] w-full">
+        <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-white">Apple-Grade Research</span>
-            <span>/</span>
-            <span className="text-[#a1a1a6]">Machine Learning & Physical World Models</span>
+            <span className="font-semibold text-white">Apple-Grade ML Research</span>
+            <span className="text-[#515154]">/</span>
+            <span className="text-[#a1a1a6]">Physical Causal World Models</span>
           </div>
           <div className="text-[13px] text-[#86868b]">
             Open Science · Reproducible Benchmarks · Apache 2.0
@@ -72,10 +72,10 @@ export default function ResearchPage() {
         </div>
       </div>
 
-      <main className="flex-1 py-10 sm:py-16">
-        <div className="mx-auto max-w-7xl px-6 sm:px-8 space-y-16">
-          {/* 1. 精选封面重磅论文 (Featured Research Banner, 无 eyebrow，图片主导) */}
-          <section className="rounded-[32px] bg-[#121214] p-8 sm:p-12 terra-reveal">
+      <main className="flex-1 py-10 sm:py-16 w-full">
+        <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-16 w-full box-border">
+          {/* 1. 精选封面重磅论文 (Featured Research Banner, 电影感大画幅展台) */}
+          <section className="rounded-[32px] bg-[#121214] p-8 sm:p-12 terra-reveal w-full box-border">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               <div className="lg:col-span-7 space-y-4">
                 <h1 className="text-[32px] sm:text-[46px] lg:text-[54px] font-semibold text-white tracking-tight leading-[1.08]">
@@ -84,11 +84,11 @@ export default function ResearchPage() {
 
                 <div className="text-[14px] text-[#2997ff] font-medium flex flex-wrap items-center gap-2">
                   <span>Featured Paper</span>
-                  <span>·</span>
+                  <span className="text-[#515154]">·</span>
                   <span>{featuredPaper.badge}</span>
-                  <span>·</span>
+                  <span className="text-[#515154]">·</span>
                   <span className="text-[#86868b]">{featuredPaper.arxiv}</span>
-                  <span className="text-[#86868b]">·</span>
+                  <span className="text-[#515154]">·</span>
                   <span className="text-[#86868b]">{featuredPaper.date}</span>
                 </div>
 
@@ -126,7 +126,7 @@ export default function ResearchPage() {
                   <button
                     type="button"
                     onClick={() => handleCopyBibtex(featuredPaper.id, featuredPaper.bibtex)}
-                    className="rounded-full bg-white/10 px-5 py-2.5 text-white font-medium hover:bg-white/20 transition"
+                    className="rounded-full bg-white/10 px-5 py-2.5 text-white font-medium hover:bg-white/20 transition cursor-pointer"
                   >
                     {copiedBibtexId === featuredPaper.id ? "BibTeX Copied!" : "Cite (BibTeX)"}
                   </button>
@@ -139,9 +139,9 @@ export default function ResearchPage() {
                 </div>
               </div>
 
-              {/* 封面学术大图 (占满视觉重心) */}
-              <div className="lg:col-span-5">
-                <div className="relative aspect-[16/10] overflow-hidden rounded-[24px]">
+              {/* 封面学术大图 */}
+              <div className="lg:col-span-5 w-full">
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[24px] bg-[#0c0c0e]">
                   <Image
                     src={featuredPaper.image}
                     alt={featuredPaper.titleEn}
@@ -156,29 +156,29 @@ export default function ResearchPage() {
           </section>
 
           {/* 2. 主题分类过滤标签条 (Topic Filter Pills) */}
-          <div className="flex flex-wrap items-center justify-between gap-4 terra-reveal">
+          <div className="flex flex-wrap items-center justify-between gap-4 terra-reveal w-full box-border">
             <div>
               <h2 className="text-[24px] sm:text-[32px] font-semibold text-white tracking-tight">
                 {lang === "en" ? "Publications & Preprints" : "全部学术论文与预印本"}
               </h2>
-              <p className="mt-1 text-[16px] text-[#86868b]">
+              <p className="mt-1 text-[15px] sm:text-[16px] text-[#86868b]">
                 {lang === "en"
                   ? "Peer-reviewed research and system papers from TERRA World Model Lab."
                   : "来自 TERRA 世界模型实验室的同行评议顶会成果与开源系统论文。"}
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-full bg-[#161617] p-1.5">
               {(["All", "Causal Diffusion", "World Models", "Embodied AI"] as const).map(
                 (cat) => (
                   <button
                     key={cat}
                     type="button"
                     onClick={() => setSelectedCategory(cat)}
-                    className={`rounded-full px-4 py-1.5 text-[14px] font-medium transition ${
+                    className={`rounded-full px-4 py-1.5 text-[14px] font-medium transition cursor-pointer ${
                       selectedCategory === cat
                         ? "bg-white text-black"
-                        : "bg-[#161617] text-[#d1d1d6] hover:bg-white/10 hover:text-white"
+                        : "text-[#a1a1a6] hover:text-white"
                     }`}
                   >
                     {cat}
@@ -188,19 +188,19 @@ export default function ResearchPage() {
             </div>
           </div>
 
-          {/* 3. 论文列表与深度解读卡片 (每张卡片含配图，标题在前，无 eyebrow) */}
-          <div className="space-y-12">
+          {/* 3. 论文列表与深度解读卡片 */}
+          <div className="space-y-12 w-full box-border">
             {filteredPapers.map((paper: ResearchPaper) => {
               const isExpanded = expandedPaperId === paper.id;
               return (
                 <article
                   key={paper.id}
                   id={paper.id}
-                  className="rounded-[32px] bg-[#121214] p-8 sm:p-12 space-y-6 transition hover:bg-[#141417] terra-reveal"
+                  className="rounded-[32px] bg-[#121214] p-8 sm:p-12 space-y-6 transition hover:bg-[#141417] terra-reveal w-full box-border"
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     <div className="lg:col-span-8 space-y-4">
-                      <h3 className="text-[24px] sm:text-[30px] font-semibold text-white tracking-tight leading-snug">
+                      <h3 className="text-[24px] sm:text-[28px] lg:text-[30px] font-semibold text-white tracking-tight leading-snug">
                         {lang === "en" ? paper.titleEn : paper.titleZh}
                       </h3>
 
@@ -208,9 +208,9 @@ export default function ResearchPage() {
                         <span className="text-[#2997ff] font-medium">
                           {paper.badge}
                         </span>
-                        <span>·</span>
+                        <span className="text-[#515154]">·</span>
                         <span className="text-[#86868b]">{paper.arxiv}</span>
-                        <span>·</span>
+                        <span className="text-[#515154]">·</span>
                         <span className="text-[#86868b]">{paper.date}</span>
                       </div>
 
@@ -223,8 +223,8 @@ export default function ResearchPage() {
                       </p>
                     </div>
 
-                    <div className="lg:col-span-4">
-                      <div className="relative aspect-[16/10] overflow-hidden rounded-[20px]">
+                    <div className="lg:col-span-4 w-full">
+                      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[20px] bg-[#0c0c0e]">
                         <Image
                           src={paper.image}
                           alt={paper.titleEn}
@@ -237,7 +237,7 @@ export default function ResearchPage() {
                   </div>
 
                   {/* 消融实验对比数据卡 (Ablation Benchmark Table) */}
-                  <div className="rounded-[22px] bg-[#070707] p-6 space-y-3">
+                  <div className="rounded-[22px] bg-[#070709] p-6 space-y-3 w-full box-border">
                     <div className="text-[14px] font-semibold text-white/95">
                       Empirical Benchmarks and Ablation Comparison
                     </div>
@@ -256,9 +256,9 @@ export default function ResearchPage() {
 
                   {/* 展开的深度正文切片 */}
                   {isExpanded && (
-                    <div className="pt-4 space-y-6">
+                    <div className="pt-4 space-y-6 w-full box-border">
                       {paper.sections.map((sec, idx) => (
-                        <div key={idx} className="space-y-2 rounded-[20px] bg-[#161617] p-6">
+                        <div key={idx} className="space-y-2 rounded-[20px] bg-[#161619] p-6 w-full box-border">
                           <h4 className="text-[18px] font-semibold text-white">
                             {lang === "en" ? sec.headingEn : sec.headingZh}
                           </h4>
@@ -269,18 +269,18 @@ export default function ResearchPage() {
                       ))}
 
                       {/* BibTeX 引用块 */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full box-border">
                         <div className="flex items-center justify-between text-[13px] text-[#86868b]">
                           <span>BibTeX Citation</span>
                           <button
                             type="button"
                             onClick={() => handleCopyBibtex(paper.id, paper.bibtex)}
-                            className="text-[#2997ff] hover:underline"
+                            className="text-[#2997ff] hover:underline cursor-pointer"
                           >
                             {copiedBibtexId === paper.id ? "Copied" : "Copy BibTeX"}
                           </button>
                         </div>
-                        <pre className="rounded-[18px] bg-[#070707] p-5 text-[14px] text-white/90 overflow-x-auto">
+                        <pre className="rounded-[18px] bg-[#070709] p-5 text-[14px] text-white/90 overflow-x-auto leading-relaxed max-w-full">
                           <code>{paper.bibtex}</code>
                         </pre>
                       </div>
@@ -294,7 +294,7 @@ export default function ResearchPage() {
                       onClick={() =>
                         setExpandedPaperId(isExpanded ? null : paper.id)
                       }
-                      className="text-[14px] text-[#2997ff] font-medium hover:underline flex items-center gap-1.5"
+                      className="text-[14px] text-[#2997ff] font-medium hover:underline flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>
                         {isExpanded
@@ -320,7 +320,7 @@ export default function ResearchPage() {
                       <button
                         type="button"
                         onClick={() => setCopilotOpen(true)}
-                        className="text-[#2997ff] hover:underline"
+                        className="text-[#2997ff] hover:underline cursor-pointer"
                       >
                         Ask Copilot About This Paper &gt;
                       </button>
