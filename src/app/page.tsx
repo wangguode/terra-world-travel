@@ -12,7 +12,6 @@ import { CopilotDrawer } from "@/components/copilot-drawer";
 import { AppleStoryGallery } from "@/components/apple-story-gallery";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
-import { PaperMarkdownView } from "@/components/paper-markdown-view";
 import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
 import { WORLD_MODEL_PAPERS_100, WorldModelPaper } from "@/lib/world-model-papers-100";
 
@@ -248,14 +247,47 @@ export default function HomePage() {
               selectedPaperId={selectedPaper.id}
             />
 
-            {/* 核心联动：点击图谱节点即刻在此区域沉浸式阅读对应文献全文 */}
-            <div className="pt-8">
-              <PaperMarkdownView
-                paper={selectedPaper}
-                onAskAi={handleAskAiAboutPaper}
-                onSelectOtherPaper={(other) => setSelectedPaper(other)}
-                allPapers={WORLD_MODEL_PAPERS_100}
-              />
+            {/* 选中文献精炼卡片 (Apple 官方发布风格，点击一键跳转至专属学术长文页面) */}
+            <div className="pt-6">
+              <div className="rounded-[28px] bg-[#f5f5f7] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 transition">
+                <div className="space-y-3 max-w-3xl">
+                  <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                    <span className="rounded-full bg-white px-3 py-0.5 font-semibold text-[#0071e3]">
+                      {lang === "en" ? selectedPaper.categoryNameEn : selectedPaper.categoryNameZh}
+                    </span>
+                    <span className="text-[#86868b]">{selectedPaper.venue} · {selectedPaper.year}</span>
+                    <span className="text-[#86868b]">·</span>
+                    <span className="text-[#515154] font-medium">{selectedPaper.org}</span>
+                  </div>
+
+                  <h3 className="text-[20px] sm:text-[24px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
+                    {lang === "en" ? selectedPaper.title : selectedPaper.titleZh}
+                  </h3>
+
+                  <p className="text-[14px] text-[#515154] leading-relaxed line-clamp-2 font-normal">
+                    {selectedPaper.highlight}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/research?paper=${selectedPaper.id}`)}
+                    className="rounded-full bg-[#0071e3] px-5 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>{lang === "en" ? "Read Publication Article" : "研读学术长文"}</span>
+                    <span>→</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAskAiAboutPaper(selectedPaper.title)}
+                    className="rounded-full bg-white px-4 py-2 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition cursor-pointer"
+                  >
+                    {lang === "en" ? "Ask AI" : "咨询 AI"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>

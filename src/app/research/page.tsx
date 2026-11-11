@@ -13,6 +13,7 @@ import {
 import {
   WORLD_MODEL_BLOG_ARTICLES,
   PaperBlogArticle,
+  getPaperBlog,
 } from "@/lib/world-model-blogs-rich";
 import { AppleHeader } from "@/components/apple-header";
 import { AppleFooter } from "@/components/apple-footer";
@@ -20,12 +21,12 @@ import { CopilotDrawer } from "@/components/copilot-drawer";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
 import { PaperBlogViewer } from "@/components/paper-blog-viewer";
-import { PaperMarkdownView } from "@/components/paper-markdown-view";
 
 function ResearchContent() {
   const { lang } = useLanguage();
   const searchParams = useSearchParams();
   const initialBlogParam = searchParams.get("blog");
+  const initialPaperParam = searchParams.get("paper");
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -33,6 +34,10 @@ function ResearchContent() {
 
   // 深度论文博客全屏研读状态
   const [activeBlog, setActiveBlog] = useState<PaperBlogArticle | null>(() => {
+    if (initialPaperParam) {
+      const p = WORLD_MODEL_PAPERS_100.find((item) => item.id === initialPaperParam);
+      if (p) return getPaperBlog(p);
+    }
     if (initialBlogParam) {
       return WORLD_MODEL_BLOG_ARTICLES.find((b) => b.id === initialBlogParam) || null;
     }
@@ -55,6 +60,15 @@ function ResearchContent() {
   const [copiedBibtexId, setCopiedBibtexId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialPaperParam) {
+      const p = WORLD_MODEL_PAPERS_100.find((item) => item.id === initialPaperParam);
+      if (p) {
+        const timer = setTimeout(() => {
+          setActiveBlog(getPaperBlog(p));
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    }
     if (initialBlogParam) {
       const target = WORLD_MODEL_BLOG_ARTICLES.find((b) => b.id === initialBlogParam);
       if (target) {
@@ -64,7 +78,7 @@ function ResearchContent() {
         return () => clearTimeout(timer);
       }
     }
-  }, [initialBlogParam]);
+  }, [initialPaperParam, initialBlogParam]);
 
   useEffect(() => {
     const nodes = document.querySelectorAll(".terra-reveal");
@@ -116,16 +130,9 @@ function ResearchContent() {
   };
 
   const handleOpenPaper = (paper: WorldModelPaper) => {
-    // 检查是否有对应的深度博客，如果有且在 blogs 模式下直接打开博客，否则打开抽屉
-    const matchedBlog = WORLD_MODEL_BLOG_ARTICLES.find(
-      (b) => b.paperId === paper.id || b.title.toLowerCase().includes(paper.title.slice(0, 15).toLowerCase())
-    );
-    if (matchedBlog && viewMode === "blogs") {
-      setActiveBlog(matchedBlog);
-      return;
-    }
     setReadingPaper(paper);
-    setReaderOpen(true);
+    setActiveBlog(getPaperBlog(paper));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleOpenBlogFromDrawer = (blog: PaperBlogArticle) => {
@@ -281,10 +288,10 @@ function ResearchContent() {
           ) : (
             <>
               {/* =====================================================================
-                  B. 模式二：知识图谱视图 (Knowledge Graph + Markdown Reading Area)
+                  B. 模式二：知识图谱视图 (Knowledge Graph)
                  ===================================================================== */}
               {viewMode === "graph" && (
-                <section className="space-y-10 terra-reveal">
+                <section className="space-y-8 terra-reveal">
                   <div className="max-w-3xl space-y-2">
                     <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
                       <span>Interactive Academic Universe</span>
@@ -298,8 +305,8 @@ function ResearchContent() {
                     </h1>
                     <p className="text-[16px] text-[#515154] leading-relaxed">
                       {lang === "en"
-                        ? "Explore citation networks across 100+ top publications. Click any node in the graph, and read the full paper below in clean Markdown style."
-                        : "可拖拽探索 100+ 篇全球前沿世界模型文献脉络。点击图谱中任意节点，选中的学术成果将直接在下方以 Markdown 风格展开研读，零弹窗阻隔。"}
+                        ? "Explore citation networks and thematic clusters across 100+ top publications (2024–2026). Click any node to open the full dedicated research article."
+                        : "自由拖拽探索全球 100+ 篇顶尖世界模型文献脉络。点击图谱中任意学术节点即可无缝打开该成果的专属深度研读长文。"}
                     </p>
                   </div>
 
@@ -307,20 +314,52 @@ function ResearchContent() {
                   <WorldModelKnowledgeGraph
                     onSelectPaper={(paper) => {
                       setSelectedGraphPaper(paper);
-                      const el = document.getElementById("paper-markdown-reader");
-                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
                     selectedPaperId={selectedGraphPaper.id}
                   />
 
-                  {/* 核心联动：点击图谱节点即刻直接在下方以专业出版物级排版研读全文 */}
-                  <div className="pt-6">
-                    <PaperMarkdownView
-                      paper={selectedGraphPaper}
-                      onAskAi={handleAskAiAboutPaper}
-                      onSelectOtherPaper={(p) => setSelectedGraphPaper(p)}
-                      allPapers={WORLD_MODEL_PAPERS_100}
-                    />
+                  {/* 图谱选中文献精炼卡片 (Apple 官方风格，点击直接全屏沉浸研读) */}
+                  <div className="rounded-[28px] bg-[#f5f5f7] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 transition">
+                    <div className="space-y-3 max-w-3xl">
+                      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                        <span className="rounded-full bg-white px-3 py-0.5 font-semibold text-[#0071e3]">
+                          {lang === "en" ? selectedGraphPaper.categoryNameEn : selectedGraphPaper.categoryNameZh}
+                        </span>
+                        <span className="text-[#86868b]">{selectedGraphPaper.venue} · {selectedGraphPaper.year}</span>
+                        <span className="text-[#86868b]">·</span>
+                        <span className="text-[#515154] font-medium">{selectedGraphPaper.org}</span>
+                      </div>
+
+                      <h3 className="text-[20px] sm:text-[24px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
+                        {lang === "en" ? selectedGraphPaper.title : selectedGraphPaper.titleZh}
+                      </h3>
+
+                      <p className="text-[14px] text-[#515154] leading-relaxed line-clamp-2 font-normal">
+                        {selectedGraphPaper.highlight}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveBlog(getPaperBlog(selectedGraphPaper));
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="rounded-full bg-[#0071e3] px-5 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <span>{lang === "en" ? "Read Full Article" : "研读学术深度长文"}</span>
+                        <span>→</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAskAiAboutPaper(selectedGraphPaper.title)}
+                        className="rounded-full bg-white px-4 py-2 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition cursor-pointer"
+                      >
+                        {lang === "en" ? "Ask AI" : "咨询 AI"}
+                      </button>
+                    </div>
                   </div>
                 </section>
               )}
