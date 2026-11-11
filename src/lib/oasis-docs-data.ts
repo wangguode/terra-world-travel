@@ -1,138 +1,358 @@
+export interface DocParameter {
+  name: string;
+  type: string;
+  descEn: string;
+  descZh: string;
+}
+
+export interface DocTopic {
+  title: string;
+  type: "Protocol" | "Class" | "Method" | "Structure";
+  descEn: string;
+  descZh: string;
+}
+
 export interface DocSection {
   id: string;
+  category: "Guides" | "Protocols" | "Architecture" | "Deployment";
   title: string;
   badge: string;
-  summary: string;
+  framework: string;
+  platforms: string[];
+  declaration: string;
+  summary?: string;
+  summaryEn: string;
+  summaryZh: string;
+  parameters: DocParameter[];
+  codeTabs: {
+    python?: string;
+    typescript?: string;
+    bash?: string;
+  };
+  topics: DocTopic[];
   contentMarkdown: string;
 }
 
 export const OFFICIAL_DOCS: DocSection[] = [
   {
     id: "getting-started",
-    title: "快速上手与架构概览 (Getting Started)",
-    badge: "基础入门",
-    summary: "了解 TERRA-OASIS 的核心运行逻辑，从零在本地环境或现代浏览器中启动交互沙盒。",
-    contentMarkdown: `### 1. 系统核心原理
-
-TERRA-OASIS 是一个由神经网络直接驱动的时空仿真引擎。它颠覆了传统 3D 渲染图形管线：
-- **0 几何多边形网格**：无需手工雕刻 OBJ/FBX 顶点模型；
-- **动作驱动自回归推演**：输入键盘 WASD 速度矢量与扰动操作，端到端生成下一帧连续时空与物理反馈；
-- **全平台 WebGL 原生支持**：无需安装客户端，直接在现代浏览器中实现 60 FPS 流式渲染。
-
-### 2. 极速环境启动
-
-可以通过标准 Node.js 环境在 30 秒内启动本地交互端：
-
-\`\`\`bash
-# 克隆代码仓库
+    category: "Guides",
+    title: "Getting Started with TERRA-OASIS",
+    badge: "Foundation",
+    framework: "TERRA-OASIS SDK 2.0",
+    platforms: ["WebGL 2.0", "Node.js 18+", "Python 3.10+"],
+    declaration: `class TerraWorldSimulator(world_dim="voxel", resolution=(720, 1280), fps=60):
+    """Initializes end-to-end neural world simulator client instance."""
+    def start_streaming(self, on_frame: Callable[[Image], None]) -> None: ...`,
+    summaryEn:
+      "A complete guide to configuring, connecting, and roaming the neural world model on local machines or inside modern browsers without external graphic dependencies.",
+    summaryZh:
+      "了解 TERRA-OASIS 的核心运行逻辑，从零在本地环境或现代浏览器中启动并交互漫游自回归神经世界模型。",
+    parameters: [
+      {
+        name: "world_dim",
+        type: "str (enum)",
+        descEn: "Target virtual universe dimension: 'voxel' | 'neon' | 'ocean' | 'vacuum' | 'ice'",
+        descZh: "目标虚拟维度环境：体素绿洲、赛博霓虹、深海沉没巨构、引力真空孤岛或极夜冰原",
+      },
+      {
+        name: "resolution",
+        type: "tuple[int, int]",
+        descEn: "Neural streaming resolution in pixels (default 720p at 1280x720)",
+        descZh: "神经推流物理分辨率（默认 720p 即 1280x720）",
+      },
+      {
+        name: "fps",
+        type: "int",
+        descEn: "Client presentation frame rate cap (default 60)",
+        descZh: "客户端呈现帧率上限（默认 60 FPS）",
+      },
+    ],
+    codeTabs: {
+      bash: `# Clone official open source repo
 git clone https://github.com/wangguode/terra-world-travel.git
 cd terra-world-travel
 
-# 安装轻量依赖项
+# Install dependencies and boot simulator
 npm install
+npm run dev # Open http://localhost:3200`,
+      python: `import terra_oasis as oasis
 
-# 启动本地交互开发服务器
-npm run dev
-\`\`\`
+# Connect to cloud or local world inference pipeline
+sim = oasis.TerraWorldSimulator(world_dim="voxel", fps=60)
+sim.connect("wss://api.terra.ai/v2/stream")
 
-启动完成后访问 \`http://localhost:3200\` 即可通过键盘直接漫游五大多重虚拟世界。`,
+# Send discrete WASD actions and receive continuous neural video frames
+sim.send_action(key="W", velocity=1.0)
+frame = sim.read_frame()`,
+      typescript: `import { createWorldClient } from "@terra/world-sdk";
+
+const client = createWorldClient({
+  endpoint: "wss://api.terra.ai/v2/stream",
+  dimension: "voxel-oasis",
+});
+
+client.on("frame", ({ rgbData, depthMap }) => {
+  renderToCanvas(rgbData, depthMap);
+});
+client.sendAction({ move: [0, 0, 1], perturbation: false });`,
+    },
+    topics: [
+      {
+        title: "Architecture Topology",
+        type: "Structure",
+        descEn: "Hybrid cloud-inference and edge WebGL lightweight rasterization pipeline.",
+        descZh: "云端因果扩散推理管线与边缘 WebGL 轻量光栅化的混合拓扑。",
+      },
+      {
+        title: "Action Conditioning Latents",
+        type: "Protocol",
+        descEn: "Translating human keyboard inputs into continuous manifold conditions.",
+        descZh: "将键盘 WASD 输入连续映射为高维物理流形潜变量。",
+      },
+    ],
+    contentMarkdown: `### 1. System Overview
+
+TERRA-OASIS completely eliminates manual polygon authoring, skeletal rigs, and hardcoded physics solvers. Every rendered pixel is predicted on-the-fly by an autoregressive Causal DiT:
+- **Zero Polygonal Meshes**: No OBJ/FBX vertex buffers or UV unwraps.
+- **Action-Conditioned Generation**: Keyboard WASD keystrokes act as continuous conditions steering latent state transitions.
+- **Universal Browser Compatibility**: 60 FPS WebGL streaming without discrete GPUs.`,
   },
   {
     id: "action-protocol",
-    title: "动作条件注入协议 (Action Streaming Protocol)",
-    badge: "核心协议",
-    summary: "详解客户端与模型服务端之间的低延迟 WebSocket 动作通信格式与张量映射规则。",
-    contentMarkdown: `### 1. 动作帧数据结构
-
-客户端通过全双工 WebSocket 向模型推理端持续发送高频连续动作矢量（60Hz 采样）：
-
-\`\`\`typescript
-interface ActionFramePayload {
+    category: "Protocols",
+    title: "Action Streaming Protocol Specification",
+    badge: "Core API",
+    framework: "RFC-2603 ActionStream",
+    platforms: ["WebSocket", "WebRTC DataChannel", "gRPC-Web"],
+    declaration: `interface ActionFramePayload {
   sessionToken: string;
-  timestamp: number;       // 毫秒级时间戳
-  sequenceId: number;      // 动作帧自增序号
+  sequenceId: number;
   action: {
-    moveVector: [number, number, number]; // [x, y, z] 归一化移动速度
-    lookDelta: [number, number];          // [yaw, pitch] 镜头旋转增量
-    perturbation: boolean;                // E 键体素破拆扰动状态
-    reseed: boolean;                      // R 键量子重采样请求
+    moveVector: [number, number, number];
+    lookDelta: [number, number];
+    perturbation: boolean;
+    reseed: boolean;
   };
-  cameraContract: "first-person" | "free-drone" | "third-person";
-}
-\`\`\`
+}`,
+    summaryEn:
+      "Defines the low-latency bidirectional binary frame structure between interactive clients and world model inference servers.",
+    summaryZh:
+      "详解客户端与模型服务端之间的低延迟全双工 WebSocket 动作通信格式与高维张量映射规范。",
+    parameters: [
+      {
+        name: "moveVector",
+        type: "float32[3]",
+        descEn: "Normalized 3D displacement vector [dx, dy, dz] within range [-1.0, 1.0]",
+        descZh: "归一化 3D 位移矢量 [dx, dy, dz]，取值区间为 [-1.0, 1.0]",
+      },
+      {
+        name: "lookDelta",
+        type: "float32[2]",
+        descEn: "Euler rotation delta [delta_yaw, delta_pitch] in radians",
+        descZh: "摄像机欧拉角增量 [偏航角, 俯仰角]，以弧度为单位",
+      },
+      {
+        name: "perturbation",
+        type: "boolean",
+        descEn: "E-key trigger flag for injecting local Gaussian shockwaves into latent voxel space",
+        descZh: "E 键破拆触发标识，用于在潜空间局部注入高斯冲击波",
+      },
+      {
+        name: "reseed",
+        type: "boolean",
+        descEn: "R-key request for sampling a new random seed vector",
+        descZh: "R 键量子重采样请求，用于在保持宏观世界拓扑的前提下更换随机种子",
+      },
+    ],
+    codeTabs: {
+      python: `import json, websockets
 
-### 2. 隐空间注入延迟
+async def send_action_packet(ws, seq_id, move_vec, perturb=False):
+    payload = {
+        "sequenceId": seq_id,
+        "action": {
+            "moveVector": move_vec,
+            "lookDelta": [0.0, 0.0],
+            "perturbation": perturb,
+            "reseed": False
+        }
+    }
+    await ws.send(json.dumps(payload))`,
+      typescript: `const socket = new WebSocket("wss://api.terra.ai/v2/stream");
 
-从客户端按键触发到服务器完成因果 Transformer 推理并返回下一帧潜变量，整条链路耗时控制在 **16ms** 以内，满足 60 FPS 强交互体验需求。`,
+function pushAction(move: [number, number, number], perturb = false) {
+  socket.send(JSON.stringify({
+    sequenceId: performance.now(),
+    action: {
+      moveVector: move,
+      lookDelta: [0, 0],
+      perturbation: perturb,
+      reseed: false
+    }
+  }));
+}`,
+      bash: `curl -N -H "Upgrade: websocket" \\
+     -H "Connection: Upgrade" \\
+     https://api.terra.ai/v2/stream`,
+    },
+    topics: [
+      {
+        title: "Latency Optimization",
+        type: "Method",
+        descEn: "Techniques for achieving sub-16ms end-to-end action injection pipeline.",
+        descZh: "实现 16ms 以内端到端动作条件注入延迟的优化方法。",
+      },
+      {
+        title: "Frame Acknowledgement",
+        type: "Protocol",
+        descEn: "Server-side feedback tokens and drift compensation timestamps.",
+        descZh: "服务端应答回执与时空漂移补偿机制。",
+      },
+    ],
+    contentMarkdown: `### 1. Packet Frequency & Time Budget
+
+Actions must be dispatched at 60Hz. The model maintains a ring-buffer of the latest 32 frames of actions, ensuring smooth acceleration curves and realistic inertia without manual easing scripts.`,
   },
   {
-    id: "causal-dit",
-    title: "14B 因果扩散主干与时序视界 (Causal DiT)",
-    badge: "网络架构",
-    summary: "解构 14B Causal DiT 模型的自回归注意力机制、滑动 KV 缓存窗口与防坍塌算法。",
-    contentMarkdown: `### 1. 滑动因果注意力机制 (Sliding Causal Attention)
+    id: "dit-backbone",
+    category: "Architecture",
+    title: "14B Causal DiT Horizon Architecture",
+    badge: "Core Model",
+    framework: "PyTorch 2.4+ / CUDA 12.4",
+    platforms: ["NVIDIA H100", "A100 SXM", "Blackwell B200"],
+    declaration: `class CausalDiffusionTransformer(nn.Module):
+    def __init__(self, d_model=4096, n_heads=32, n_layers=48, causal_window=32):
+        super().__init__()
+        self.temporal_sliding_attn = SlidingCausalAttention(causal_window)
+        self.spatial_cross_attn = ActionCrossAttention(d_model)`,
+    summaryEn:
+      "Deep dive into temporal sliding attention, KV-cache sliding horizons, and structural drift prevention across infinite autoregressive roaming.",
+    summaryZh:
+      "深入解构因果扩散 Transformer 骨干、时序滑动注意力机制与无限长程漫游抗画面崩塌策略。",
+    parameters: [
+      {
+        name: "d_model",
+        type: "int",
+        descEn: "Hidden latent representation dimension (4096 for 14B model)",
+        descZh: "隐空间特征维度大小（14B 旗舰模型为 4096）",
+      },
+      {
+        name: "n_layers",
+        type: "int",
+        descEn: "Total number of causal Transformer blocks (48 blocks)",
+        descZh: "因果 Transformer 堆叠层数（48 层）",
+      },
+      {
+        name: "causal_window",
+        type: "int",
+        descEn: "Sliding context window length for temporal attention key-value cache (32 frames)",
+        descZh: "时序滑动注意力 Key-Value 缓存窗口长度（32 帧）",
+      },
+    ],
+    codeTabs: {
+      python: `import torch
+from terra_model import CausalDiT
 
-传统视频生成模型在进行长时间推演时，往往因时间步误差累积导致画面迅速模糊崩溃。TERRA-OASIS 采用双层滑动时序视界（Sliding Horizon）：
-- **局部近景因果窗 (Local Window)**：保留最近 32 帧高频动作细节，确保动作瞬时因果强响应；
-- **全局拓扑锚点窗 (Global Anchors)**：每隔 128 帧提取稀疏关键隐特征，锁定场景的宏观空间结构不发生漂移。
+model = CausalDiT.from_pretrained("terra-oasis/14b-causal").cuda().bfloat16()
 
-### 2. 双智能体调度 (Pilot-Director Architecture)
+# Forward single step with action conditioning
+action_latent = torch.randn(1, 16, device="cuda", dtype=torch.bfloat16)
+past_kv = model.init_cache(batch_size=1)
 
-系统内部运行两个微型协作智能体：
-- **Pilot Agent**：专注于微观物理动力学，实时将按键矢量积分映射到相机惯性位移；
-- **Director Agent**：负责宏观环境光照演化、天光色温迁移与多光源菲涅尔反射一致性。`,
+with torch.inference_mode():
+    next_latents, past_kv = model(action_latent, past_kv=past_kv)`,
+      typescript: `// Client-side inference interface via WebGPU
+import { runWebGPUDiT } from "@terra/webgpu-runtime";
+
+const nextFrame = await runWebGPUDiT({
+  actionVector: [0, 0, 1],
+  contextId: activeSession.id
+});`,
+      bash: `# Download weights from HuggingFace
+git lfs install
+git clone https://huggingface.co/terra-world-lab/terra-oasis-14b`,
+    },
+    topics: [
+      {
+        title: "KV-Cache Management",
+        type: "Method",
+        descEn: "Maintaining temporal continuity with constant memory footprints.",
+        descZh: "通过常量显存占用维持无限时间跨度的因果连贯性。",
+      },
+      {
+        title: "Energy Renormalization",
+        type: "Class",
+        descEn: "Preventing latent white-out and spatial geometry collapse.",
+        descZh: "抑制自回归长期累积误差引起的潜空间泛白与拓扑坍塌。",
+      },
+    ],
+    contentMarkdown: `### 1. Dual-Agent Director Architecture
+
+To prevent video decay beyond 10 seconds, TERRA-OASIS deploys a Pilot Agent for micro-motion response and a Director Agent for global scene consistency, yielding rock-solid landscapes over multi-hour sessions.`,
   },
   {
-    id: "physics-tuning",
-    title: "物理规则与潜空间微调 (Physics & Latent Tuning)",
-    badge: "动力学配置",
-    summary: "如何根据具体仿真需求调整重力常数、空气阻尼系数以及体素破坏冲击波参数。",
-    contentMarkdown: `### 1. 物理参数矩阵定义
+    id: "cluster-deploy",
+    category: "Deployment",
+    title: "Enterprise Multi-Node Cluster Deployment",
+    badge: "Operations",
+    framework: "Docker / Kubernetes / vLLM-World",
+    platforms: ["Ubuntu 22.04 LTS", "Kubernetes 1.28+", "vLLM-World"],
+    declaration: `docker run --gpus all -d -p 8080:8080 \\
+  --ipc=host \\
+  ghcr.io/terra-world-lab/terra-oasis-server:2.0 \\
+  --model terra-oasis/14b-causal \\
+  --tensor-parallel-size 8 \\
+  --enable-causal-cache`,
+    summaryEn:
+      "Enterprise manual for serving high-throughput 60 FPS world simulation on 8×H100/H800 clusters with Tensor Parallelism.",
+    summaryZh:
+      "面向大规模高并发生产环境的 8×H100/H800 集群张量并行分布式私有化部署手册。",
+    parameters: [
+      {
+        name: "--tensor-parallel-size",
+        type: "int",
+        descEn: "Number of GPUs over which to shard model weights (usually 8)",
+        descZh: "模型权重张量并行切分的 GPU 数量（标准集群推荐为 8）",
+      },
+      {
+        name: "--max-concurrency",
+        type: "int",
+        descEn: "Maximum number of simultaneous WebGL client action streams",
+        descZh: "单节点同时支持的最大并发 WebGL 动作推流会话数",
+      },
+    ],
+    codeTabs: {
+      bash: `# Launch distributed container cluster
+docker compose -f deploy/docker-compose.cluster.yml up -d
 
-每个沙盒世界维度均包含一套确定性物理配置：
+# Verify cluster GPU communication
+curl http://localhost:8080/v2/health`,
+      python: `from terra_cluster import ClusterManager
 
-\`\`\`typescript
-interface PhysicsProfile {
-  gravity: number;   // 重力加速度 (如地球常数 9.8，微重力 2.1，反重力 -1.5)
-  drag: number;      // 空气阻尼系数 (0.05 ~ 0.65)
-  bounce: number;    // 弹性碰撞系数 (0.02 ~ 0.8)
-  entropy: number;   // 场景熵增扰动率 (控制光影随机探索度)
-}
-\`\`\`
+cluster = ClusterManager(nodes=["node-01:8080", "node-02:8080"])
+print("Active inference streams:", cluster.get_active_sessions())`,
+      typescript: `import { HealthCheck } from "@terra/admin-client";
 
-### 2. 体素破拆扰动波算法
+const status = await HealthCheck("https://cluster.internal.terra.ai");
+console.log("Cluster health:", status.gpuUtilization);`,
+    },
+    topics: [
+      {
+        title: "Load Balancing",
+        type: "Method",
+        descEn: "Dynamic session handoff and sticky socket connections.",
+        descZh: "长连接会话动态亲和性分发与故障平滑迁移。",
+      },
+      {
+        title: "Cold-Start Warmup",
+        type: "Class",
+        descEn: "Pre-compiling CUDA kernels for zero-latency initial frame delivery.",
+        descZh: "提前编译 CUDA 核函数实现首帧零等待投递。",
+      },
+    ],
+    contentMarkdown: `### 1. Hardware Requirements
 
-当用户触发 \`E\` 键时，系统通过 GLSL 片元着色器实时计算局部潜空间形变波：
-$$\\Delta uv = \\frac{uv - c}{\\|uv - c\\|} \\cdot \\sin(35 \\cdot d - 12 \\cdot t) \\cdot e^{-4d}$$
-该扰动波引导扩散降噪器重构破损边界，实现无需 3D 网格的物理破坏自愈效果。`,
-  },
-  {
-    id: "enterprise-cluster",
-    title: "企业级多卡集群私有部署 (Enterprise Cluster)",
-    badge: "工程部署",
-    summary: "使用 SGLang 与 Docker 在 8×GPU 集群上实现张量并行推理与高并发动作推流。",
-    contentMarkdown: `### 1. 分布式张量并行启动
-
-生产环境推荐使用 8 卡 A100/H100 配置，执行如下命令启动分布式推理引擎：
-
-\`\`\`bash
-python3 -m sglang.launch_server \\
-  --model-path wangguode/terra-oasis-14b \\
-  --port 3200 \\
-  --tp 8 \\
-  --enable-causal-attention \\
-  --mem-fraction-static 0.85
-\`\`\`
-
-### 2. Docker 一键容器化部署
-
-\`\`\`bash
-docker run --gpus all -d \\
-  -p 3200:3200 \\
-  --name terra-oasis-engine \\
-  ghcr.io/wangguode/terra-oasis:latest
-\`\`\`
-
-支持 Kubernetes 弹性扩缩容与动态流媒体转发。`,
+Recommended per node: 8× NVIDIA H100 80GB SXM5, 2TB Host Memory, 400Gbps InfiniBand NICs. Yields up to 64 concurrent 720p@60FPS playable action streams per node.`,
   },
 ];
