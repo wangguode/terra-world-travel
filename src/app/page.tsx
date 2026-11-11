@@ -9,7 +9,10 @@ import { AppleHeader } from "@/components/apple-header";
 import { AppleFooter } from "@/components/apple-footer";
 import { CopilotDrawer } from "@/components/copilot-drawer";
 import { AppleStoryGallery } from "@/components/apple-story-gallery";
+import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
+import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
 import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
+import { WorldModelPaper } from "@/lib/world-model-papers-100";
 
 export default function HomePage() {
   const { lang } = useLanguage();
@@ -18,7 +21,14 @@ export default function HomePage() {
   const [activeWorldId, setActiveWorldId] = useState<string>("voxel-oasis");
   const [activeHour, setActiveHour] = useState<number>(17.5);
   const [snowMode, setSnowMode] = useState<boolean>(false);
+
+  // AI 助手抽屉与知识库联动状态
   const [copilotOpen, setCopilotOpen] = useState<boolean>(false);
+  const [copilotQuery, setCopilotQuery] = useState<string>("");
+
+  // 论文深度阅读器状态
+  const [readingPaper, setReadingPaper] = useState<WorldModelPaper | null>(null);
+  const [readerOpen, setReaderOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const nodes = document.querySelectorAll(".terra-reveal");
@@ -40,11 +50,29 @@ export default function HomePage() {
     return () => io.disconnect();
   }, [lang]);
 
+  const handleSelectPaperFromGraph = (paper: WorldModelPaper) => {
+    setReadingPaper(paper);
+    setReaderOpen(true);
+  };
+
+  const handleAskAiAboutPaper = (paperTitle: string) => {
+    setReaderOpen(false);
+    setCopilotQuery(
+      lang === "en"
+        ? `Explain the core architecture, mathematical breakthrough, and impact of "${paperTitle}"`
+        : `深度解析论文《${paperTitle}》的核心架构机制、数学突破与技术价值`
+    );
+    setCopilotOpen(true);
+  };
+
   return (
     <div className="min-h-[100dvh] bg-white text-[#1d1d1f] overflow-x-hidden selection:bg-[#0071e3] selection:text-white">
-      {/* 1. 单层规范 Apple 旗舰全局导航 (白昼磨砂玻璃) */}
+      {/* 1. 单层规范 Apple 旗舰全局导航 (白昼磨砂玻璃，带知识图谱一级链接) */}
       <AppleHeader
-        onOpenCopilot={() => setCopilotOpen(true)}
+        onOpenCopilot={() => {
+          setCopilotQuery("");
+          setCopilotOpen(true);
+        }}
         snowMode={snowMode}
         onToggleSnow={() => setSnowMode(!snowMode)}
       />
@@ -79,6 +107,12 @@ export default function HomePage() {
               >
                 {lang === "en" ? "Explore Live Simulation" : "在线体验世界模型"}
               </a>
+              <a
+                href="#knowledge-graph"
+                className="rounded-full bg-[#f5f5f7] px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition no-underline"
+              >
+                {lang === "en" ? "Interactive Knowledge Graph" : "交互式知识图谱"}
+              </a>
               <Link
                 href="/docs"
                 className="text-[#0071e3] hover:underline flex items-center gap-1 font-medium transition no-underline"
@@ -89,7 +123,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Hero 底部实机画面展示及专业注脚（无个人姓名与头衔） */}
+          {/* Hero 底部实机画面展示及专业注脚 */}
           <div className="mt-14 mx-auto max-w-6xl px-6 sm:px-8">
             <div className="relative aspect-[16/9] w-full min-h-[360px] sm:min-h-[460px] overflow-hidden rounded-[28px] sm:rounded-[36px] bg-[#f5f5f7]">
               <Image
@@ -172,44 +206,41 @@ export default function HomePage() {
                 </p>
               </div>
             </div>
-
-            {/* 实景走廊照片切片网格 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="relative aspect-[16/10] overflow-hidden rounded-[24px]">
-                <Image
-                  src="/images/beijing-pulse/forbidden-city.jpg"
-                  alt="4D Heritage Reconstruction"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover"
-                />
-                <div className="absolute inset-x-0 bottom-0 bg-black/60 p-5 text-white">
-                  <div className="text-[14px] font-semibold">4D Heritage Conservation · 3DGS</div>
-                  <div className="text-[13px] text-white/80">Forbidden City Spatiotemporal Field</div>
-                </div>
-              </div>
-
-              <div className="relative aspect-[16/10] overflow-hidden rounded-[24px]">
-                <Image
-                  src="/images/beijing-pulse/temple-of-heaven.jpg"
-                  alt="Celestial Dynamics"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover"
-                />
-                <div className="absolute inset-x-0 bottom-0 bg-black/60 p-5 text-white">
-                  <div className="text-[14px] font-semibold">Daylight Sun Path Dynamics</div>
-                  <div className="text-[13px] text-white/80">Temple of Heaven Celestial Sync</div>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
         {/* =========================================================================
-            4. World Economy & Story Gallery (生态故事画廊)
+            4. Interactive World Model Knowledge Graph (核心新增：100+ 篇文献可交互知识图谱)
            ========================================================================= */}
-        <section id="ecosystem-pillars" className="bg-white py-20 sm:py-28 terra-reveal w-full box-border">
+        <section id="knowledge-graph" className="bg-white py-20 sm:py-28 terra-reveal w-full box-border">
+          <div className="mx-auto max-w-7xl px-6 sm:px-8 space-y-10">
+            <div className="max-w-3xl space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
+                <span>100+ Papers Indexed</span>
+                <span>·</span>
+                <span>Interactive Force-Directed Graph</span>
+              </div>
+              <h2 className="text-[32px] sm:text-[44px] lg:text-[52px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
+                {lang === "en"
+                  ? "Explore the World Model Universe"
+                  : "探索世界模型前沿学术星空与知识图谱。"}
+              </h2>
+              <p className="text-[16px] sm:text-[18px] text-[#515154] leading-relaxed">
+                {lang === "en"
+                  ? "Explore the interconnected citation and concept universe of 100+ milestone world model papers (2024–2026). Drag nodes, zoom in, click any node to read the full paper, or ask Copilot AI for technical breakdowns."
+                  : "探索 2024 至 2026 年间由 Google DeepMind、OpenAI、NVIDIA、Wayve 及顶尖名校构建的世界模型学术演进图谱。自由拖拽节点、缩放画布，点击任意节点直接阅读论文全文，并可一键呼起 AI 智能问答。"}
+              </p>
+            </div>
+
+            {/* 知识图谱画布视窗 */}
+            <WorldModelKnowledgeGraph onSelectPaper={handleSelectPaperFromGraph} />
+          </div>
+        </section>
+
+        {/* =========================================================================
+            5. Ecosystem Stories (生态落地故事轮播画廊)
+           ========================================================================= */}
+        <section id="ecosystem-pillars" className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12">
             <div className="max-w-3xl space-y-3">
               <h2 className="text-[32px] sm:text-[44px] lg:text-[50px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
@@ -233,15 +264,15 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            5. Interactive 3D Simulator (Apple 剧场级工作台，嵌入浅色展台)
+            6. Interactive 3D Simulator (感受我们的世界模型：剧场级实机沙盒)
            ========================================================================= */}
-        <section id="interactive-playground" className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
+        <section id="interactive-playground" className="bg-white py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-7xl px-6 sm:px-8 space-y-10">
             <div className="max-w-3xl space-y-3">
               <h2 className="text-[32px] sm:text-[44px] lg:text-[52px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
                 {lang === "en"
                   ? "Intuitive Physics Playground"
-                  : "在浏览器中，亲历自发涌现的直觉物理世界。"}
+                  : "亲历自发涌现的直觉物理世界模型。"}
               </h2>
 
               <div className="flex items-center gap-2 text-[14px] text-[#0062c4] font-medium">
@@ -273,9 +304,9 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            6. Real-World Deployments (替换“广纳人才”，展示真实的具身落地与工业应用)
+            7. Real-World Deployments (真实物理世界工业实践)
            ========================================================================= */}
-        <section className="bg-white py-20 sm:py-28 terra-reveal w-full box-border">
+        <section className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12">
             <div className="max-w-3xl space-y-3">
               <h2 className="text-[32px] sm:text-[44px] lg:text-[50px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
@@ -292,8 +323,7 @@ export default function HomePage() {
 
             {/* 4 大工业级落地场景卡片网格 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* 卡片 1: 具身机器人 */}
-              <div className="rounded-[28px] bg-[#f5f5f7] p-8 space-y-5">
+              <div className="rounded-[28px] bg-white p-8 space-y-5">
                 <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
                   <Image
                     src="/images/beijing-pulse/hero-beijing.jpg"
@@ -318,8 +348,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* 卡片 2: 自动驾驶 */}
-              <div className="rounded-[28px] bg-[#f5f5f7] p-8 space-y-5">
+              <div className="rounded-[28px] bg-white p-8 space-y-5">
                 <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
                   <Image
                     src="/images/beijing-pulse/futuristic.jpg"
@@ -344,8 +373,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* 卡片 3: 文化遗产数字孪生 */}
-              <div className="rounded-[28px] bg-[#f5f5f7] p-8 space-y-5">
+              <div className="rounded-[28px] bg-white p-8 space-y-5">
                 <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
                   <Image
                     src="/images/beijing-pulse/forbidden-city.jpg"
@@ -370,8 +398,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* 卡片 4: 空间计算与交互娱乐 */}
-              <div className="rounded-[28px] bg-[#f5f5f7] p-8 space-y-5">
+              <div className="rounded-[28px] bg-white p-8 space-y-5">
                 <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
                   <Image
                     src="/images/beijing-pulse/temple-of-heaven.jpg"
@@ -400,17 +427,17 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            7. Router & Action Call (Apple 经典的浅灰行动跳转路由)
+            8. Router & Action Call (Apple 经典的纯白行动跳转路由)
            ========================================================================= */}
-        <section className="bg-[#f5f5f7] py-20 sm:py-24 text-center terra-reveal w-full box-border">
+        <section className="bg-white py-20 sm:py-24 text-center terra-reveal w-full box-border">
           <div className="mx-auto max-w-4xl px-6 sm:px-8 space-y-6">
             <h2 className="text-[32px] sm:text-[44px] font-semibold text-[#1d1d1f] tracking-tight">
               {lang === "en" ? "Ready to build inside the world model?" : "准备好在世界模型中开始构建了吗？"}
             </h2>
             <p className="text-[17px] sm:text-[19px] text-[#515154] max-w-2xl mx-auto leading-relaxed">
               {lang === "en"
-                ? "Dive into our comprehensive developer API specifications or inspect peer-reviewed evaluation papers from leading research labs."
-                : "查阅详尽的开发者 API 接口规范与代码范例，或深入阅读来自全球顶尖实验室的同行评议学术论文。"}
+                ? "Dive into our comprehensive developer API specifications, roam the 100+ paper knowledge graph, or consult Copilot AI."
+                : "查阅详尽的开发者 API 接口规范与代码范例，漫游 100+ 篇世界模型前沿文献星空，或与 AI 助手实时推演。"}
             </p>
             <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-[15px]">
               <Link
@@ -421,13 +448,16 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/research"
-                className="rounded-full bg-white px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#f5f5f7] transition no-underline"
+                className="rounded-full bg-[#f5f5f7] px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition no-underline"
               >
-                {lang === "en" ? "Research Publications" : "前沿科研专栏"}
+                {lang === "en" ? "100+ Papers Library" : "100+ 篇文献专栏"}
               </Link>
               <button
                 type="button"
-                onClick={() => setCopilotOpen(true)}
+                onClick={() => {
+                  setCopilotQuery("");
+                  setCopilotOpen(true);
+                }}
                 className="text-[#0071e3] hover:underline flex items-center gap-1 font-medium transition cursor-pointer"
               >
                 <span>{lang === "en" ? "Ask AI Assistant" : "咨询 AI 智能助手"}</span>
@@ -438,11 +468,11 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            8. Footnotes (Apple 官方注脚风格)
+            9. Footnotes (Apple 官方注脚风格)
            ========================================================================= */}
-        <section className="bg-white py-12 px-6 sm:px-8 text-[13px] sm:text-[14px] text-[#515154] leading-relaxed w-full box-border">
+        <section className="bg-[#f5f5f7] py-12 px-6 sm:px-8 text-[13px] sm:text-[14px] text-[#515154] leading-relaxed w-full box-border">
           <div className="mx-auto max-w-6xl space-y-2">
-            <p>1. 140 亿参数自回归因果扩散模型结构及消融实验对比数据详见 arXiv 预印本学术论文。</p>
+            <p>1. 知识图谱收录 2024 至 2026 年间由全球顶尖机构发表在 CVPR、NeurIPS、ICLR 等顶级会议的 100+ 篇世界模型同行评议文献。</p>
             <p>2. 60 FPS 连续流式神经推流需现代支持 WebGPU 或 WebGL 2.0 硬件加速环境之浏览器支持。</p>
             <p>3. 具身智能 Sim-to-Real 迁移基准数据基于 Unitree Go2 四足机器人与 Fourier GR-1 人形机器人 100+ 次实测统计。</p>
             <p>4. 演示沙盘中全部三维时空画面均由动作因果自回归模型实时预测生成。</p>
@@ -450,11 +480,23 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* 9. 全局单层页脚 */}
+      {/* 10. 全局单层页脚 */}
       <AppleFooter />
 
-      {/* 10. AI 侧边小抽屉 */}
-      <CopilotDrawer isOpen={copilotOpen} onClose={() => setCopilotOpen(false)} />
+      {/* 11. 论文沉浸式深度阅读器抽屉 */}
+      <PaperReaderDrawer
+        paper={readingPaper}
+        isOpen={readerOpen}
+        onClose={() => setReaderOpen(false)}
+        onAskAi={handleAskAiAboutPaper}
+      />
+
+      {/* 12. AI 知识库智能问答抽屉 */}
+      <CopilotDrawer
+        isOpen={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        initialQuery={copilotQuery}
+      />
     </div>
   );
 }

@@ -31,22 +31,22 @@ export function AppleHeader({
           <span>{t.nav.brand}</span>
         </Link>
 
-        {/* 中间核心导航链接 (Apple 经典浅色风格，灰字 hover 变深黑) */}
+        {/* 中间核心导航链接：新增 知识图谱 (Knowledge Graph) 一级入口 */}
         <nav aria-label="Official Navigation" className="hidden md:flex items-center gap-6 text-[#515154]">
           <Link href="/" className="hover:text-[#1d1d1f] transition no-underline">
             {t.nav.overview}
           </Link>
+          <Link href="/#knowledge-graph" className="hover:text-[#1d1d1f] transition no-underline font-medium text-[#0071e3]">
+            {lang === "en" ? "Knowledge Graph" : "知识图谱"}
+          </Link>
           <Link href="/#interactive-playground" className="hover:text-[#1d1d1f] transition no-underline">
             {t.nav.sandbox}
-          </Link>
-          <Link href="/#ecosystem-pillars" className="hover:text-[#1d1d1f] transition no-underline">
-            {t.nav.pillars}
           </Link>
           <Link href="/docs" className="hover:text-[#1d1d1f] transition no-underline">
             {t.nav.docs}
           </Link>
           <Link href="/research" className="hover:text-[#1d1d1f] transition no-underline">
-            {t.nav.research}
+            {lang === "en" ? "100+ Papers" : "100+ 论文文献"}
           </Link>
         </nav>
 
@@ -56,7 +56,7 @@ export function AppleHeader({
           <button
             type="button"
             onClick={toggleLang}
-            className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition flex items-center gap-1"
+            className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition flex items-center gap-1 cursor-pointer"
             title="Toggle Language (English / 中文)"
           >
             <span>{t.nav.langSwitch}</span>
@@ -66,7 +66,7 @@ export function AppleHeader({
           <button
             type="button"
             onClick={onOpenCopilot}
-            className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition"
+            className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition cursor-pointer"
           >
             <span>{t.nav.copilot}</span>
             <span className="h-1.5 w-1.5 rounded-full bg-[#0071e3]" />
@@ -77,7 +77,7 @@ export function AppleHeader({
             <button
               type="button"
               onClick={onToggleSnow}
-              className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[13px] text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f] transition hidden lg:inline-block"
+              className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[13px] text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f] transition hidden lg:inline-block cursor-pointer"
             >
               {snowMode ? t.nav.snowInjected : t.nav.snowInject}
             </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
 import { WORLD_MODEL_PAPERS_100, WorldModelPaper } from "@/lib/world-model-papers-100";
@@ -9,6 +9,7 @@ import { OFFICIAL_DOCS, DocSection } from "@/lib/oasis-docs-data";
 interface CopilotDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  initialQuery?: string;
 }
 
 interface ChatMessage {
@@ -18,7 +19,7 @@ interface ChatMessage {
   matchedDoc?: DocSection;
 }
 
-export function CopilotDrawer({ isOpen, onClose }: CopilotDrawerProps) {
+export function CopilotDrawer({ isOpen, onClose, initialQuery }: CopilotDrawerProps) {
   const { lang } = useLanguage();
 
   const initialGreeting =
@@ -34,6 +35,99 @@ export function CopilotDrawer({ isOpen, onClose }: CopilotDrawerProps) {
   ]);
   const [inputQuery, setInputQuery] = useState("");
   const [isAiTyping, setIsAiTyping] = useState(false);
+
+  const handleSendQuery = useCallback(
+    (queryText?: string) => {
+      const q = (queryText || inputQuery).trim();
+      if (!q) return;
+
+      setChatMessages((prev) => [...prev, { sender: "user", text: q }]);
+      setInputQuery("");
+      setIsAiTyping(true);
+
+      setTimeout(() => {
+        const lowerQ = q.toLowerCase();
+
+        // 1. 在 100 篇论文中检索匹配
+        const scoredPapers = WORLD_MODEL_PAPERS_100.map((p) => {
+          let score = 0;
+          const fullText = `${p.title} ${p.titleZh} ${p.org} ${p.category} ${p.abstract} ${p.abstractZh}`.toLowerCase();
+          const keywords = lowerQ.split(/\s+/);
+          keywords.forEach((kw) => {
+            if (kw.length >= 2 && fullText.includes(kw)) {
+              score += 3;
+            }
+          });
+          if (lowerQ.includes(p.title.toLowerCase().slice(0, 10))) score += 10;
+          if (p.titleZh && lowerQ.includes(p.titleZh.slice(0, 4))) score += 10;
+          if (lowerQ.includes("oasis") && p.id.includes("oasis")) score += 15;
+          if (lowerQ.includes("gamengen") && p.id.includes("gamengen")) score += 15;
+          if (lowerQ.includes("genie") && p.id.includes("genie")) score += 15;
+          if (lowerQ.includes("sora") && p.id.includes("sora")) score += 15;
+          if (lowerQ.includes("gaia") && p.id.includes("gaia")) score += 15;
+          if (lowerQ.includes("cosmos") && p.id.includes("cosmos")) score += 15;
+          if (lowerQ.includes("diamond") && p.id.includes("diamond")) score += 15;
+          if ((lowerQ.includes("collapse") || lowerQ.includes("坍塌") || lowerQ.includes("崩溃")) && (p.abstract.includes("collapse") || p.abstractZh.includes("坍塌"))) score += 12;
+          if ((lowerQ.includes("robot") || lowerQ.includes("机器人") || lowerQ.includes("具身")) && p.category === "embodied-robotics") score += 8;
+          if ((lowerQ.includes("drive") || lowerQ.includes("驾驶") || lowerQ.includes("自动驾驶")) && p.category === "autonomous-driving") score += 8;
+          return { paper: p, score };
+        });
+
+        scoredPapers.sort((a, b) => b.score - a.score);
+        const matchedPapers = scoredPapers.filter((s) => s.score > 0).slice(0, 3).map((s) => s.paper);
+
+        // 2. 在技术文档中检索匹配
+        const matchedDoc = OFFICIAL_DOCS.find((d) => {
+          const docText = `${d.title} ${d.category} ${d.summaryEn} ${d.summaryZh}`.toLowerCase();
+          return lowerQ.split(/\s+/).some((kw) => kw.length >= 2 && docText.includes(kw));
+        });
+
+        // 3. 构建智能学术回答
+        let responseText = "";
+        if (matchedPapers.length > 0) {
+          const topP = matchedPapers[0];
+          if (lang === "en") {
+            responseText = `Based on the World Model Paper Knowledge Base, the most relevant breakthrough is "${topP.title}" (${topP.org}, ${topP.year}).\n\n${topP.abstract}\n\nKey Contribution: ${topP.highlight}`;
+          } else {
+            responseText = `根据前沿世界模型文献知识库，最贴切的核心学术成果为《${topP.titleZh}》（${topP.org}，收录于 ${topP.venue}）。\n\n【核心机制与创新】\n${topP.abstractZh}\n\n【关键定量突破】\n${topP.highlight}`;
+          }
+        } else if (matchedDoc) {
+          if (lang === "en") {
+            responseText = `According to our developer documentation regarding "${matchedDoc.title}":\n\n${matchedDoc.summaryEn}\n\nTarget Runtime: ${matchedDoc.framework}\nPlatforms: ${matchedDoc.platforms.join(", ")}`;
+          } else {
+            responseText = `根据技术文档【${matchedDoc.title}】技术规范：\n\n${matchedDoc.summaryZh}\n\n【运行时环境】\n${matchedDoc.framework}，支持 ${matchedDoc.platforms.join("、")}。可通过顶部文档中心查阅完整接口签名与代码调用用例。`;
+          }
+        } else {
+          if (lang === "en") {
+            responseText = `The 14B Causal DiT world model relies on action-conditioned autoregressive spatio-temporal diffusion. By coupling continuous kinematics with sliding temporal attention windows and dual-agent anchors, the model maintains high-fidelity physics and eliminates structural collapse over infinite horizons.`;
+          } else {
+            responseText = `TERRA-OASIS 14B 因果扩散世界模型基于动作条件自回归推演范式。通过将连续 6-DoF 运动学向量输入投影至潜流形空间，结合时序滑动注意力窗口与全局记忆锚点，能够彻底消除累积误差，在普通浏览器中即时实现 60 FPS 无坍塌连续交互漫游。`;
+          }
+        }
+
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: responseText,
+            matchedPapers: matchedPapers.length > 0 ? matchedPapers : undefined,
+            matchedDoc: matchedDoc || undefined,
+          },
+        ]);
+        setIsAiTyping(false);
+      }, 380);
+    },
+    [inputQuery, lang]
+  );
+
+  useEffect(() => {
+    if (isOpen && initialQuery) {
+      const timer = setTimeout(() => {
+        handleSendQuery(initialQuery);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, initialQuery, handleSendQuery]);
 
   if (!isOpen) return null;
 
@@ -54,87 +148,6 @@ export function CopilotDrawer({ isOpen, onClose }: CopilotDrawerProps) {
       ? "What papers solve the 10-second autoregressive collapse problem?"
       : "2024-2026年有哪些论文彻底解决了自回归时空长程坍塌魔咒？",
   ];
-
-  const handleSendQuery = (queryText?: string) => {
-    const q = (queryText || inputQuery).trim();
-    if (!q) return;
-
-    setChatMessages((prev) => [...prev, { sender: "user", text: q }]);
-    setInputQuery("");
-    setIsAiTyping(true);
-
-    setTimeout(() => {
-      const lowerQ = q.toLowerCase();
-
-      // 1. 在 100 篇论文中检索匹配
-      const scoredPapers = WORLD_MODEL_PAPERS_100.map((p) => {
-        let score = 0;
-        const fullText = `${p.title} ${p.titleZh} ${p.org} ${p.category} ${p.abstract} ${p.abstractZh}`.toLowerCase();
-        const keywords = lowerQ.split(/\s+/);
-        keywords.forEach((kw) => {
-          if (kw.length >= 2 && fullText.includes(kw)) {
-            score += 3;
-          }
-        });
-        if (lowerQ.includes(p.title.toLowerCase().slice(0, 10))) score += 10;
-        if (p.titleZh && lowerQ.includes(p.titleZh.slice(0, 4))) score += 10;
-        if (lowerQ.includes("oasis") && p.id.includes("oasis")) score += 15;
-        if (lowerQ.includes("gamengen") && p.id.includes("gamengen")) score += 15;
-        if (lowerQ.includes("genie") && p.id.includes("genie")) score += 15;
-        if (lowerQ.includes("sora") && p.id.includes("sora")) score += 15;
-        if (lowerQ.includes("gaia") && p.id.includes("gaia")) score += 15;
-        if (lowerQ.includes("cosmos") && p.id.includes("cosmos")) score += 15;
-        if (lowerQ.includes("diamond") && p.id.includes("diamond")) score += 15;
-        if ((lowerQ.includes("collapse") || lowerQ.includes("坍塌") || lowerQ.includes("崩溃")) && (p.abstract.includes("collapse") || p.abstractZh.includes("坍塌"))) score += 12;
-        if ((lowerQ.includes("robot") || lowerQ.includes("机器人") || lowerQ.includes("具身")) && p.category === "embodied-robotics") score += 8;
-        if ((lowerQ.includes("drive") || lowerQ.includes("驾驶") || lowerQ.includes("自动驾驶")) && p.category === "autonomous-driving") score += 8;
-        return { paper: p, score };
-      });
-
-      scoredPapers.sort((a, b) => b.score - a.score);
-      const matchedPapers = scoredPapers.filter((s) => s.score > 0).slice(0, 3).map((s) => s.paper);
-
-      // 2. 在技术文档中检索匹配
-      const matchedDoc = OFFICIAL_DOCS.find((d) => {
-        const docText = `${d.title} ${d.category} ${d.summaryEn} ${d.summaryZh}`.toLowerCase();
-        return lowerQ.split(/\s+/).some((kw) => kw.length >= 2 && docText.includes(kw));
-      });
-
-      // 3. 构建智能学术回答
-      let responseText = "";
-      if (matchedPapers.length > 0) {
-        const topP = matchedPapers[0];
-        if (lang === "en") {
-          responseText = `Based on the World Model Paper Knowledge Base, the most relevant breakthrough is "${topP.title}" (${topP.org}, ${topP.year}).\n\n${topP.abstract}\n\nKey Contribution: ${topP.highlight}`;
-        } else {
-          responseText = `根据前沿世界模型文献知识库，最贴切的核心学术成果为《${topP.titleZh}》（${topP.org}，收录于 ${topP.venue}）。\n\n【核心机制与创新】\n${topP.abstractZh}\n\n【关键定量突破】\n${topP.highlight}`;
-        }
-      } else if (matchedDoc) {
-        if (lang === "en") {
-          responseText = `According to our developer documentation regarding "${matchedDoc.title}":\n\n${matchedDoc.summaryEn}\n\nTarget Runtime: ${matchedDoc.framework}\nPlatforms: ${matchedDoc.platforms.join(", ")}`;
-        } else {
-          responseText = `根据技术文档【${matchedDoc.title}】技术规范：\n\n${matchedDoc.summaryZh}\n\n【运行时环境】\n${matchedDoc.framework}，支持 ${matchedDoc.platforms.join("、")}。可通过顶部文档中心查阅完整接口签名与代码调用用例。`;
-        }
-      } else {
-        if (lang === "en") {
-          responseText = `The 14B Causal DiT world model relies on action-conditioned autoregressive spatio-temporal diffusion. By coupling continuous kinematics with sliding temporal attention windows and dual-agent anchors, the model maintains high-fidelity physics and eliminates structural collapse over infinite horizons.`;
-        } else {
-          responseText = `TERRA-OASIS 14B 因果扩散世界模型基于动作条件自回归推演范式。通过将连续 6-DoF 运动学向量输入投影至潜流形空间，结合时序滑动注意力窗口与全局记忆锚点，能够彻底消除累积误差，在普通浏览器中即时实现 60 FPS 无坍塌连续交互漫游。`;
-        }
-      }
-
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          sender: "ai",
-          text: responseText,
-          matchedPapers: matchedPapers.length > 0 ? matchedPapers : undefined,
-          matchedDoc: matchedDoc || undefined,
-        },
-      ]);
-      setIsAiTyping(false);
-    }, 380);
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
