@@ -43,6 +43,8 @@ function DocsContent() {
   const currentDoc: DocSection =
     OFFICIAL_DOCS.find((d) => d.id === activeDocId) || OFFICIAL_DOCS[0];
 
+  const categories = ["Guides", "Architecture", "Protocols", "Deployment"] as const;
+
   const filteredDocs = OFFICIAL_DOCS.filter((doc) => {
     if (!filterQuery) return true;
     const q = filterQuery.toLowerCase();
@@ -74,123 +76,120 @@ function DocsContent() {
 
   return (
     <div className="min-h-[100dvh] bg-white text-[#1d1d1f] flex flex-col justify-between overflow-x-hidden selection:bg-[#0071e3] selection:text-white">
-      {/* 1. 统一 Apple 白昼磨砂玻璃导航 */}
+      {/* 1. 统一 Apple 白昼磨砂玻璃全局导航 */}
       <AppleHeader onOpenCopilot={() => setCopilotOpen(true)} />
 
-      {/* 2. Apple Developer 浅色专属浮动副导航栏 (Sub-header) */}
-      <div className="bg-[#f5f5f7] px-6 sm:px-8 py-3 text-[14px] text-[#515154] w-full">
+      {/* 2. Apple 极简干净副导航（彻底移除了用户截图中的机械技术名词与长串标签） */}
+      <div className="bg-[#f5f5f7] px-6 sm:px-8 py-3.5 text-[14px] text-[#515154] w-full">
         <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-3">
-          <nav aria-label="Breadcrumbs" className="flex items-center gap-2 flex-wrap">
+          <nav aria-label="Breadcrumbs" className="flex items-center gap-2">
             <Link href="/" className="hover:text-[#0071e3] transition no-underline text-[#515154]">
               TERRA-OASIS
             </Link>
             <span className="text-[#86868b]">/</span>
-            <span className="text-[#86868b]">Developer Documentation</span>
+            <span className="text-[#1d1d1f] font-semibold">
+              {lang === "en" ? "Developer Documentation" : "开发者技术文档"}
+            </span>
             <span className="text-[#86868b]">/</span>
-            <span className="text-[#86868b]">{currentDoc.category}</span>
-            <span className="text-[#86868b]">/</span>
-            <span className="text-[#1d1d1f] font-semibold">{currentDoc.title}</span>
+            <span className="text-[#0071e3] font-medium">{currentDoc.title}</span>
           </nav>
 
-          <div className="flex items-center gap-3 text-[13px]">
-            <span className="rounded-full bg-[#0071e3]/10 px-3 py-1 text-[#0071e3] font-medium">
-              {currentDoc.framework}
-            </span>
-            <span className="hidden sm:inline text-[#86868b]">
-              Platforms: {currentDoc.platforms.join(" · ")}
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setCopilotOpen(true)}
+            className="rounded-full bg-white px-3.5 py-1 text-[13px] font-medium text-[#0071e3] hover:bg-[#e8e8ed] transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span className="h-2 w-2 rounded-full bg-[#0071e3]" />
+            <span>{lang === "en" ? "Ask AI Assistant" : "文档智能问答"}</span>
+          </button>
         </div>
       </div>
 
-      {/* 3. 主体工作区：浅色分栏架构 (对标 Apple Developer Docs) */}
+      {/* 3. 开源高 Star 知识库级别三栏文档阅读体系 (Mintlify / Fumadocs + Apple 经典美学) */}
       <main className="flex-1 py-10 sm:py-14 w-full">
         <div className="mx-auto max-w-7xl px-6 sm:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12">
-            {/* 左侧：文档导航与目录 (浅灰温润底座) */}
-            <aside className="lg:col-span-4 space-y-6">
-              {/* 搜索与过滤框 */}
-              <div className="rounded-[20px] bg-[#f5f5f7] p-4 space-y-3">
-                <div className="text-[13px] font-semibold tracking-wider text-[#86868b]">
-                  {lang === "en" ? "SEARCH DOCUMENTATION" : "检索官方技术规范"}
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+            {/* 左侧：专业分组树形目录 (3 列) */}
+            <aside className="lg:col-span-3 space-y-6">
+              {/* 文档搜索框 */}
+              <div className="rounded-[20px] bg-[#f5f5f7] p-3.5">
                 <input
                   type="text"
                   value={filterQuery}
                   onChange={(e) => setFilterQuery(e.target.value)}
-                  placeholder={lang === "en" ? "Filter APIs, topics, weights..." : "搜索模块、算子或参数..."}
+                  placeholder={lang === "en" ? "Search documentation..." : "检索文档与接口..."}
                   className="w-full rounded-full bg-white px-4 py-2 text-[14px] text-[#1d1d1f] placeholder-[#86868b] outline-none transition"
                 />
               </div>
 
-              {/* 文档目录列表 */}
-              <div className="rounded-[24px] bg-[#f5f5f7] p-3 space-y-1">
-                <div className="px-3 py-2 text-[13px] font-semibold text-[#86868b] tracking-wider">
-                  {lang === "en" ? "TABLE OF CONTENTS" : "技术章节目录"}
-                </div>
-                <div className="space-y-1">
-                  {filteredDocs.map((doc) => {
-                    const isActive = doc.id === currentDoc.id;
-                    return (
-                      <button
-                        key={doc.id}
-                        type="button"
-                        onClick={() => setActiveDocId(doc.id)}
-                        className={`w-full text-left rounded-[16px] px-3.5 py-3 text-[14px] transition flex items-center justify-between cursor-pointer ${
-                          isActive
-                            ? "bg-white text-[#0071e3] font-semibold"
-                            : "text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
-                        }`}
-                      >
-                        <div className="space-y-0.5">
-                          <div className="text-[13px] font-normal text-[#86868b]">{doc.category}</div>
-                          <div className="leading-snug">{doc.title}</div>
-                        </div>
-                        {isActive && (
-                          <span className="h-2 w-2 rounded-full bg-[#0071e3] shrink-0 ml-2" />
-                        )}
-                      </button>
-                    );
-                  })}
-                  {filteredDocs.length === 0 && (
-                    <div className="p-4 text-center text-[13px] text-[#86868b]">
-                      {lang === "en" ? "No matching topics found." : "未找到匹配的技术文档条目。"}
+              {/* 分组目录树 */}
+              <nav aria-label="Documentation Sidebar" className="space-y-6">
+                {categories.map((cat) => {
+                  const docsInCat = filteredDocs.filter((d) => d.category === cat);
+                  if (docsInCat.length === 0) return null;
+                  return (
+                    <div key={cat} className="space-y-1.5">
+                      <div className="px-3 text-[12px] font-semibold text-[#86868b] uppercase tracking-wider">
+                        {cat}
+                      </div>
+                      <div className="space-y-1">
+                        {docsInCat.map((doc) => {
+                          const isActive = doc.id === currentDoc.id;
+                          return (
+                            <button
+                              key={doc.id}
+                              type="button"
+                              onClick={() => setActiveDocId(doc.id)}
+                              className={`w-full text-left rounded-[14px] px-3.5 py-2.5 text-[14px] transition flex items-center justify-between cursor-pointer ${
+                                isActive
+                                  ? "bg-[#0071e3] text-white font-medium"
+                                  : "text-[#515154] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]"
+                              }`}
+                            >
+                              <span className="leading-snug">{doc.title}</span>
+                              {isActive && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-white shrink-0 ml-2" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
+                  );
+                })}
+              </nav>
 
-              {/* 开发者支持卡片 (浅灰高级卡片) */}
-              <div className="rounded-[24px] bg-[#f5f5f7] p-6 space-y-3">
+              {/* 知识库问答快捷入口 */}
+              <div className="rounded-[22px] bg-[#f5f5f7] p-5 space-y-3">
                 <div className="text-[14px] font-semibold text-[#1d1d1f]">
-                  {lang === "en" ? "Enterprise Architecture Team" : "企业级世界模型技术支持"}
+                  {lang === "en" ? "Need Technical Assistance?" : "遇到技术疑问？"}
                 </div>
                 <p className="text-[13px] text-[#515154] leading-relaxed">
                   {lang === "en"
-                    ? "Need dedicated inference cluster design or robotics hardware sensor calibration?"
-                    : "需要大规模推理集群定制规划、具身硬件传感器标定或私有化部署支持？"}
+                    ? "Our AI assistant is trained on these specifications and 100 milestone research papers."
+                    : "内置 AI 助手已学习全部开发规范与 100 篇前沿世界模型文献，可随时提供技术解答。"}
                 </p>
                 <button
                   type="button"
                   onClick={() => setCopilotOpen(true)}
-                  className="rounded-full bg-[#0071e3] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition w-full text-center"
+                  className="rounded-full bg-[#0071e3] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition w-full text-center cursor-pointer"
                 >
-                  {lang === "en" ? "Ask AI Assistant" : "与架构助手在线对话"}
+                  {lang === "en" ? "Ask AI Assistant" : "与架构助手对话"}
                 </button>
               </div>
             </aside>
 
-            {/* 右侧：文档主展台 (纯白背景 + Apple 经典排版) */}
-            <article className="lg:col-span-8 space-y-10 terra-reveal">
+            {/* 中间：文档主体阅读区 (7 列) */}
+            <article className="lg:col-span-7 space-y-10 terra-reveal">
               {/* 文档头部 */}
-              <div className="space-y-4">
+              <div id="overview" className="space-y-4">
                 <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
                   <span>{currentDoc.category}</span>
                   <span>·</span>
-                  <span>{currentDoc.framework}</span>
+                  <span>{currentDoc.badge}</span>
                 </div>
 
-                <h1 className="text-[32px] sm:text-[44px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
+                <h1 className="text-[34px] sm:text-[44px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
                   {currentDoc.title}
                 </h1>
 
@@ -199,30 +198,41 @@ function DocsContent() {
                 </p>
               </div>
 
-              {/* 规格属性展示条 (浅灰四栏网格) */}
+              {/* 核心概念 Callout 提示框 */}
+              <div className="rounded-[20px] bg-[#f5f5f7] p-6 space-y-2 border-l-4 border-[#0071e3]">
+                <div className="text-[14px] font-semibold text-[#1d1d1f]">
+                  {lang === "en" ? "Key Architectural Principle" : "核心设计准则"}
+                </div>
+                <p className="text-[14px] text-[#515154] leading-relaxed">
+                  {lang === "en"
+                    ? "TERRA-OASIS eliminates rigid polygonal assets, generating dynamic physics and daylight paths continuously through action-conditioned causal latent diffusion."
+                    : "TERRA-OASIS 彻底摒弃传统游戏引擎中繁复的多边形网格资产绑定，所有刚体物理碰撞与天光太阳高度角演变均由自回归扩散 Transformer 直接基于连续动作向量生成。"}
+                </p>
+              </div>
+
+              {/* 关键属性 Bento 盒 */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                 <div className="rounded-[18px] bg-[#f5f5f7] p-4 space-y-1">
-                  <div className="text-[13px] text-[#86868b]">{lang === "en" ? "Target Runtime" : "目标运行时"}</div>
-                  <div className="text-[15px] font-semibold text-[#1d1d1f]">{currentDoc.framework}</div>
+                  <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Category" : "模块分类"}</div>
+                  <div className="text-[15px] font-semibold text-[#1d1d1f]">{currentDoc.category}</div>
                 </div>
                 <div className="rounded-[18px] bg-[#f5f5f7] p-4 space-y-1">
-                  <div className="text-[13px] text-[#86868b]">{lang === "en" ? "Precision" : "量化精度"}</div>
-                  <div className="text-[15px] font-semibold text-[#1d1d1f]">FP16 / INT4</div>
+                  <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Execution Mode" : "执行模式"}</div>
+                  <div className="text-[15px] font-semibold text-[#1d1d1f]">Autoregressive</div>
                 </div>
                 <div className="rounded-[18px] bg-[#f5f5f7] p-4 space-y-1">
-                  <div className="text-[13px] text-[#86868b]">{lang === "en" ? "Latency Budget" : "延迟预算"}</div>
+                  <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Latency Target" : "响应延迟"}</div>
                   <div className="text-[15px] font-semibold text-[#0071e3]">&lt; 16 ms</div>
                 </div>
                 <div className="rounded-[18px] bg-[#f5f5f7] p-4 space-y-1">
-                  <div className="text-[13px] text-[#86868b]">{lang === "en" ? "License" : "开源协议"}</div>
-                  <div className="text-[15px] font-semibold text-[#1d1d1f]">Apache 2.0</div>
+                  <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Framerate Cap" : "流式帧率"}</div>
+                  <div className="text-[15px] font-semibold text-[#1d1d1f]">60 FPS</div>
                 </div>
               </div>
 
-              {/* 核心代码实现展台 (Apple Developer 经典高对比度代码窗，外壳浅灰) */}
-              <div className="rounded-[28px] bg-[#f5f5f7] p-5 sm:p-7 space-y-4">
+              {/* 核心代码实现展示窗 */}
+              <div id="code-implementation" className="rounded-[28px] bg-[#f5f5f7] p-5 sm:p-7 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  {/* 代码语言切换 Tab */}
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-white p-1">
                     {(["python", "typescript", "bash"] as const).map((tab) => {
                       const isTabActive = activeCodeTab === tab;
@@ -243,7 +253,6 @@ function DocsContent() {
                     })}
                   </div>
 
-                  {/* 复制按钮 */}
                   <button
                     type="button"
                     onClick={handleCopySnippet}
@@ -253,7 +262,6 @@ function DocsContent() {
                   </button>
                 </div>
 
-                {/* 代码高亮块 (Apple 开发者高对比度深色晶体容器，保证极客代码最佳易读性) */}
                 <div className="relative rounded-[20px] bg-[#1d1d1f] p-5 sm:p-6 overflow-x-auto text-[13px] sm:text-[14px] leading-relaxed text-[#f5f5f7]">
                   <pre className="m-0 whitespace-pre">
                     <code>{activeSnippet}</code>
@@ -261,8 +269,8 @@ function DocsContent() {
                 </div>
               </div>
 
-              {/* 接口参数规范详细说明 (浅灰表格) */}
-              <div className="space-y-4" data-ui="true">
+              {/* 参数详细规范说明 */}
+              <div id="parameters" className="space-y-4" data-ui="true">
                 <h2 className="text-[22px] sm:text-[26px] font-semibold text-[#1d1d1f] tracking-tight">
                   {lang === "en" ? "Parameters & Signature" : "接口签名与参数规范"}
                 </h2>
@@ -273,57 +281,64 @@ function DocsContent() {
                       <tr>
                         <th className="p-4">Parameter</th>
                         <th className="p-4">Type</th>
-                        <th className="p-4">Default</th>
                         <th className="p-4">Description</th>
                       </tr>
                     </thead>
                     <tbody className="text-[#1d1d1f]">
-                      <tr className="bg-white/40">
-                        <td className="p-4 text-[13px] font-semibold text-[#0071e3]"><code>action_vector</code></td>
-                        <td className="p-4 text-[13px] text-[#515154]">Float[6]</td>
-                        <td className="p-4 text-[13px] text-[#86868b]">[0,0,0,0,0,0]</td>
-                        <td className="p-4 text-[#515154]">6-DoF continuous camera or robot actuator input.</td>
-                      </tr>
-                      <tr>
-                        <td className="p-4 text-[13px] font-semibold text-[#0071e3]"><code>temporal_window</code></td>
-                        <td className="p-4 text-[13px] text-[#515154]">Integer</td>
-                        <td className="p-4 text-[13px] text-[#86868b]">32</td>
-                        <td className="p-4 text-[#515154]">Sliding causal attention window size across frames.</td>
-                      </tr>
-                      <tr className="bg-white/40">
-                        <td className="p-4 text-[13px] font-semibold text-[#0071e3]"><code>latent_guidance_scale</code></td>
-                        <td className="p-4 text-[13px] text-[#515154]">Float</td>
-                        <td className="p-4 text-[13px] text-[#86868b]">4.5</td>
-                        <td className="p-4 text-[#515154]">Classifier-free causal guidance strength for physics.</td>
-                      </tr>
-                      <tr>
-                        <td className="p-4 text-[13px] font-semibold text-[#0071e3]"><code>webrtc_stream_url</code></td>
-                        <td className="p-4 text-[13px] text-[#515154]">String</td>
-                        <td className="p-4 text-[13px] text-[#86868b]">ws://localhost:3200</td>
-                        <td className="p-4 text-[#515154]">H.265 / AV1 low-latency streaming endpoint.</td>
-                      </tr>
+                      {currentDoc.parameters.map((param, pIdx) => (
+                        <tr key={pIdx} className={pIdx % 2 === 0 ? "bg-white/50" : ""}>
+                          <td className="p-4 text-[13px] font-semibold text-[#0071e3]">
+                            <code>{param.name}</code>
+                          </td>
+                          <td className="p-4 text-[13px] text-[#515154]">{param.type}</td>
+                          <td className="p-4 text-[13px] text-[#515154]">
+                            {lang === "en" ? param.descEn : param.descZh}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {/* 关联技术议题与下一篇推荐 (浅灰卡片网格) */}
-              <div className="space-y-4 pt-4">
+              {/* 深度阅读正文与架构解析 */}
+              <div id="architecture-details" className="space-y-4">
+                <h2 className="text-[22px] sm:text-[26px] font-semibold text-[#1d1d1f] tracking-tight">
+                  {lang === "en" ? "Technical Deep Dive" : "深度原理解析"}
+                </h2>
+                <div className="rounded-[22px] bg-[#f5f5f7] p-6 space-y-3 text-[15px] text-[#515154] leading-relaxed">
+                  <p>
+                    {lang === "en"
+                      ? "The core transformer blocks alternate between spatial self-attention and causal temporal attention. When user control inputs arrive via WebSocket or WebRTC data channels, the action conditioning vector is mapped into the continuous latent manifold via MLP projections."
+                      : "核心 Transformer 模块在空间自注意力与因果时序注意力之间交替执行。当用户按键与位姿控制向量通过 WebSocket 或 WebRTC 数据通道传入时，动作张量通过多层感知机（MLP）无损投影至连续潜流形空间。"}
+                  </p>
+                  <p>
+                    {lang === "en"
+                      ? "By enforcing temporal sliding attention windows of 32 frames and caching key-value memory states, the pipeline achieves constant memory usage regardless of roaming session duration."
+                      : "通过强制施加 32 帧的时序滑动注意力窗口与缓存键值（KV）记忆状态，推流管线可在任意时长的连续漫游中维持恒定的显存占用，彻底规避长程时空坍塌。"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 关联技术进阶推荐 */}
+              <div id="related-topics" className="space-y-4 pt-4">
                 <h3 className="text-[20px] font-semibold text-[#1d1d1f]">
-                  {lang === "en" ? "Related Topics" : "推荐进阶议题"}
+                  {lang === "en" ? "Related Resources" : "推荐进阶资源"}
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Link
-                    href="/research#infinite-causal-dit"
+                    href="/research"
                     className="rounded-[20px] bg-[#f5f5f7] p-5 space-y-2 hover:bg-[#e8e8ed] transition no-underline block"
                   >
-                    <div className="text-[13px] font-semibold text-[#0071e3]">Academic Preprint</div>
+                    <div className="text-[13px] font-semibold text-[#0071e3]">
+                      {lang === "en" ? "100 Milestone Papers" : "100 篇前沿文献库"}
+                    </div>
                     <div className="text-[16px] font-semibold text-[#1d1d1f]">
-                      Infinite-Horizon Causal DiT (CVPR 2026) ↗
+                      World Model Research Index ↗
                     </div>
                     <p className="text-[13px] text-[#515154] leading-relaxed">
-                      Deep mathematical derivation of non-collapsing autoregressive video diffusion transformers.
+                      Explore peer-reviewed publications from Google DeepMind, OpenAI, NVIDIA, and Wayve.
                     </p>
                   </Link>
 
@@ -331,9 +346,11 @@ function DocsContent() {
                     href="/#interactive-playground"
                     className="rounded-[20px] bg-[#f5f5f7] p-5 space-y-2 hover:bg-[#e8e8ed] transition no-underline block"
                   >
-                    <div className="text-[13px] font-semibold text-[#0071e3]">Live Interactive Sandpit</div>
+                    <div className="text-[13px] font-semibold text-[#0071e3]">
+                      {lang === "en" ? "Live Interactive Sandpit" : "实机 3D 沙盒视窗"}
+                    </div>
                     <div className="text-[16px] font-semibold text-[#1d1d1f]">
-                      Interactive 3D WebGL / WebGPU Sandbox ↗
+                      WebGL / WebGPU Sandbox ↗
                     </div>
                     <p className="text-[13px] text-[#515154] leading-relaxed">
                       Experience real-time neural latent shockwaves and daylight path simulation in browser.
@@ -342,6 +359,57 @@ function DocsContent() {
                 </div>
               </div>
             </article>
+
+            {/* 右侧：On this page 悬浮大纲目录 (2 列) */}
+            <aside className="hidden lg:block lg:col-span-2 space-y-4">
+              <div className="sticky top-20 space-y-3">
+                <div className="text-[12px] font-semibold text-[#86868b] uppercase tracking-wider">
+                  {lang === "en" ? "ON THIS PAGE" : "本页大纲"}
+                </div>
+                <ul className="space-y-2 text-[13px] p-0 list-none text-[#515154]">
+                  <li>
+                    <a href="#overview" className="hover:text-[#0071e3] transition no-underline block">
+                      {lang === "en" ? "Overview" : "概述与导读"}
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#code-implementation" className="hover:text-[#0071e3] transition no-underline block">
+                      {lang === "en" ? "Code Example" : "代码实现范例"}
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#parameters" className="hover:text-[#0071e3] transition no-underline block">
+                      {lang === "en" ? "API Parameters" : "参数与规格"}
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#architecture-details" className="hover:text-[#0071e3] transition no-underline block">
+                      {lang === "en" ? "Deep Dive" : "深度原理解析"}
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#related-topics" className="hover:text-[#0071e3] transition no-underline block">
+                      {lang === "en" ? "Related Resources" : "推荐进阶"}
+                    </a>
+                  </li>
+                </ul>
+
+                <div className="pt-6">
+                  <button
+                    type="button"
+                    onClick={() => setCopilotOpen(true)}
+                    className="w-full rounded-[16px] bg-[#f5f5f7] p-3 text-left space-y-1 hover:bg-[#e8e8ed] transition cursor-pointer"
+                  >
+                    <div className="text-[12px] font-semibold text-[#0071e3]">
+                      {lang === "en" ? "Have questions?" : "有疑问？"}
+                    </div>
+                    <div className="text-[13px] text-[#1d1d1f]">
+                      {lang === "en" ? "Ask Copilot AI &gt;" : "咨询 AI 助手 &gt;"}
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </main>

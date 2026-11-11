@@ -4,15 +4,20 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
-import { OFFICIAL_RESEARCH_PAPERS, ResearchPaper } from "@/lib/oasis-blog-data";
+import {
+  WORLD_MODEL_PAPERS_100,
+  WORLD_MODEL_CATEGORIES,
+  WorldModelPaper,
+} from "@/lib/world-model-papers-100";
 import { AppleHeader } from "@/components/apple-header";
 import { AppleFooter } from "@/components/apple-footer";
 import { CopilotDrawer } from "@/components/copilot-drawer";
 
 export default function ResearchPage() {
   const { lang } = useLanguage();
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [expandedPaperId, setExpandedPaperId] = useState<string | null>("oasis-neural-universe");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [expandedPaperId, setExpandedPaperId] = useState<string | null>("oasis-a-universe-in-a-neural-network-1");
   const [copiedBibtexId, setCopiedBibtexId] = useState<string | null>(null);
   const [copilotOpen, setCopilotOpen] = useState(false);
 
@@ -34,14 +39,25 @@ export default function ResearchPage() {
     );
     nodes.forEach((n) => io.observe(n));
     return () => io.disconnect();
-  }, [selectedCategory, lang]);
+  }, [selectedCategory, searchQuery, lang]);
 
-  const filteredPapers = OFFICIAL_RESEARCH_PAPERS.filter((paper) => {
-    if (selectedCategory === "All") return true;
-    return paper.category === selectedCategory;
+  const filteredPapers = WORLD_MODEL_PAPERS_100.filter((paper) => {
+    const matchCategory = selectedCategory === "all" || paper.category === selectedCategory;
+    if (!matchCategory) return false;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      paper.title.toLowerCase().includes(q) ||
+      paper.titleZh.toLowerCase().includes(q) ||
+      paper.org.toLowerCase().includes(q) ||
+      paper.venue.toLowerCase().includes(q) ||
+      paper.arxiv.toLowerCase().includes(q) ||
+      paper.abstract.toLowerCase().includes(q) ||
+      paper.abstractZh.toLowerCase().includes(q)
+    );
   });
 
-  const featuredPaper = OFFICIAL_RESEARCH_PAPERS[0];
+  const featuredPaper = WORLD_MODEL_PAPERS_100[0];
 
   const handleCopyBibtex = async (paperId: string, bibtex: string) => {
     try {
@@ -59,54 +75,60 @@ export default function ResearchPage() {
       {/* 1. 统一 Apple 白昼磨砂玻璃导航 */}
       <AppleHeader onOpenCopilot={() => setCopilotOpen(true)} />
 
-      {/* 2. 顶层学术专栏面包屑导航 (简洁专业，绝无无意义标语) */}
-      <div className="bg-[#f5f5f7] px-6 sm:px-8 py-3 text-[14px] text-[#515154] w-full">
+      {/* 2. Apple 极简纯净副导航（彻底移除了技术堆砌与口号） */}
+      <div className="bg-[#f5f5f7] px-6 sm:px-8 py-3.5 text-[14px] text-[#515154] w-full">
         <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-3">
-          <nav aria-label="Breadcrumbs" className="flex items-center gap-2 flex-wrap">
+          <nav aria-label="Breadcrumbs" className="flex items-center gap-2">
             <Link href="/" className="hover:text-[#0071e3] transition no-underline text-[#515154]">
               TERRA-OASIS
             </Link>
             <span className="text-[#86868b]">/</span>
-            <span className="text-[#86868b]">Research Publications</span>
-            <span className="text-[#86868b]">/</span>
-            <span className="text-[#1d1d1f] font-semibold">Milestone Papers</span>
+            <span className="text-[#1d1d1f] font-semibold">
+              {lang === "en" ? "Research Publications" : "前沿文献专栏"}
+            </span>
           </nav>
-          <div className="text-[13px] text-[#515154]">
-            {filteredPapers.length} Publications Indexed
+
+          <div className="flex items-center gap-2 text-[13px] text-[#515154]">
+            <span className="h-2 w-2 rounded-full bg-[#0071e3]" />
+            <span>
+              {lang === "en"
+                ? `${filteredPapers.length} / 100 Papers Filtered`
+                : `已检索到 ${filteredPapers.length} / 100 篇前沿文献`}
+            </span>
           </div>
         </div>
       </div>
 
       <main className="flex-1 py-10 sm:py-16 w-full">
         <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-16 w-full box-border">
-          {/* 3. 精选封面重磅论文 (Featured Research Banner, 浅灰大画幅展台) */}
+          {/* 3. 精选封面论文展台 (Apple 风格大画幅浅灰展台) */}
           <section className="rounded-[32px] bg-[#f5f5f7] p-8 sm:p-12 terra-reveal w-full box-border">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               <div className="lg:col-span-7 space-y-4">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
                   <span>Featured Publication</span>
                   <span>·</span>
-                  <span>{featuredPaper.badge}</span>
+                  <span>{featuredPaper.venue}</span>
                 </div>
 
                 <h1 className="text-[30px] sm:text-[42px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">
-                  {lang === "en" ? featuredPaper.titleEn : featuredPaper.titleZh}
+                  {lang === "en" ? featuredPaper.title : featuredPaper.titleZh}
                 </h1>
 
                 <p className="text-[15px] sm:text-[17px] text-[#515154] leading-relaxed">
-                  {lang === "en" ? featuredPaper.abstractEn : featuredPaper.abstractZh}
+                  {lang === "en" ? featuredPaper.abstract : featuredPaper.abstractZh}
                 </p>
 
                 <div className="text-[13px] text-[#86868b]">
                   <span className="font-medium text-[#1d1d1f]">Organizations: </span>
-                  {featuredPaper.authors.join(", ")}
+                  {featuredPaper.org}
                 </div>
 
                 <div className="pt-2 flex flex-wrap items-center gap-3 text-[14px]">
                   <button
                     type="button"
                     onClick={() => handleCopyBibtex(featuredPaper.id, featuredPaper.bibtex)}
-                    className="rounded-full bg-[#0071e3] px-5 py-2 text-white font-medium hover:bg-[#0077ed] transition"
+                    className="rounded-full bg-[#0071e3] px-5 py-2 text-white font-medium hover:bg-[#0077ed] transition cursor-pointer"
                   >
                     {copiedBibtexId === featuredPaper.id
                       ? (lang === "en" ? "BibTeX Copied!" : "已复制 BibTeX!")
@@ -123,13 +145,14 @@ export default function ResearchPage() {
                     <span className="ml-1 text-[#0071e3]">↗</span>
                   </a>
 
-                  <Link
-                    href="/docs"
-                    className="text-[#0071e3] hover:underline flex items-center gap-1 font-medium px-2"
+                  <button
+                    type="button"
+                    onClick={() => setCopilotOpen(true)}
+                    className="text-[#0071e3] hover:underline flex items-center gap-1 font-medium px-2 cursor-pointer"
                   >
-                    <span>{lang === "en" ? "SDK Integration Guide" : "查看代码落地指南"}</span>
+                    <span>{lang === "en" ? "Ask AI About This Paper" : "向 AI 询问此论文"}</span>
                     <span>&gt;</span>
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -137,14 +160,14 @@ export default function ResearchPage() {
               <div className="lg:col-span-5">
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[24px] bg-white">
                   <Image
-                    src={featuredPaper.image}
+                    src="/images/beijing-pulse/hero-beijing.jpg"
                     alt={featuredPaper.titleZh}
                     fill
                     sizes="(max-width: 1024px) 100vw, 40vw"
                     className="object-cover"
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-white/95 p-3 text-[13px] text-[#515154] flex items-center justify-between">
-                    <span className="font-semibold text-[#1d1d1f]">{featuredPaper.badge}</span>
+                    <span className="font-semibold text-[#1d1d1f]">{featuredPaper.venue}</span>
                     <span className="text-[#0071e3]">{featuredPaper.arxiv}</span>
                   </div>
                 </div>
@@ -152,77 +175,100 @@ export default function ResearchPage() {
             </div>
           </section>
 
-          {/* 4. 分类过滤药丸导航 (Apple 经典白昼胶囊) */}
+          {/* 4. 100 篇前沿文献库探索工具栏 (搜索框 + 6 大前沿分类 Pills) */}
           <section className="space-y-6 terra-reveal">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
                 <h2 className="text-[28px] sm:text-[34px] font-semibold text-[#1d1d1f] tracking-tight">
-                  {lang === "en" ? "Peer-Reviewed World Model Publications" : "业界顶级世界模型文献专栏"}
+                  {lang === "en" ? "World Model Research Library" : "前沿世界模型 100 篇文献专栏"}
                 </h2>
                 <p className="text-[15px] text-[#515154]">
                   {lang === "en"
-                    ? "Curated milestone research papers across causal diffusion, game engine synthesis, and embodied foundation intelligence."
-                    : "系统收录 Google DeepMind、OpenAI、Decart、Wayve 等顶尖机构在因果扩散、神经引擎与具身时空领域的里程碑成果。"}
+                    ? "Curated milestone publications (2024–2026) spanning Google DeepMind, OpenAI, NVIDIA, Wayve, and Decart."
+                    : "收录 2024 至 2026 年间来自全球顶尖实验室与名校的 100 篇世界模型同行评议重磅成果，支持实时检索与 AI 智能问答。"}
                 </p>
               </div>
 
-              {/* 筛选按钮 */}
-              <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] p-1.5 flex-wrap">
-                {(["All", "World Models", "Causal Diffusion", "Embodied AI", "Game Engines"] as const).map(
-                  (cat) => {
-                    const isSelected = selectedCategory === cat;
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition cursor-pointer ${
-                          isSelected
-                            ? "bg-[#0071e3] text-white"
-                            : "text-[#515154] hover:text-[#1d1d1f]"
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    );
-                  }
-                )}
+              {/* 实时搜索框 */}
+              <div className="w-full md:w-72">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={lang === "en" ? "Filter by title, org, or arXiv..." : "检索论文、机构或主题..."}
+                  className="w-full rounded-full bg-[#f5f5f7] px-4 py-2.5 text-[14px] text-[#1d1d1f] placeholder-[#86868b] outline-none transition"
+                />
               </div>
             </div>
 
-            {/* 5. 论文列表卡片 */}
-            <div className="space-y-8">
-              {filteredPapers.map((paper: ResearchPaper) => {
+            {/* 6 大前沿分类切换 Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("all")}
+                className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition shrink-0 cursor-pointer ${
+                  selectedCategory === "all"
+                    ? "bg-[#0071e3] text-white"
+                    : "bg-[#f5f5f7] text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                }`}
+              >
+                {lang === "en" ? "All Papers (100)" : "全部文献 (100)"}
+              </button>
+
+              {WORLD_MODEL_CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                const count = WORLD_MODEL_PAPERS_100.filter((p) => p.category === cat.id).length;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition shrink-0 cursor-pointer ${
+                      isSelected
+                        ? "bg-[#0071e3] text-white"
+                        : "bg-[#f5f5f7] text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                    }`}
+                  >
+                    <span>{lang === "en" ? cat.name : cat.nameZh}</span>
+                    <span className="ml-1.5 opacity-75">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 5. 论文卡片流式展示列表 */}
+            <div className="space-y-6">
+              {filteredPapers.map((paper: WorldModelPaper) => {
                 const isExpanded = expandedPaperId === paper.id;
                 return (
                   <article
                     key={paper.id}
                     id={paper.id}
-                    className="rounded-[28px] bg-[#f5f5f7] p-6 sm:p-10 space-y-6 transition hover:bg-[#eef0f3]"
+                    className="rounded-[24px] bg-[#f5f5f7] p-6 sm:p-8 space-y-5 transition hover:bg-[#eef0f3]"
                   >
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                       <div className="space-y-2 max-w-3xl">
-                        <div className="flex items-center gap-2.5 text-[13px]">
+                        <div className="flex items-center gap-2.5 text-[13px] flex-wrap">
                           <span className="rounded-full bg-white px-3 py-0.5 font-medium text-[#0071e3]">
-                            {paper.category}
+                            {lang === "en" ? paper.categoryNameEn : paper.categoryNameZh}
                           </span>
-                          <span className="text-[#86868b]">{paper.badge}</span>
+                          <span className="text-[#86868b]">{paper.venue}</span>
                           <span className="text-[#86868b]">·</span>
-                          <span className="text-[#86868b]">{paper.date}</span>
+                          <span className="text-[#86868b]">{paper.arxiv}</span>
                         </div>
 
-                        <h3 className="text-[22px] sm:text-[28px] font-semibold text-[#1d1d1f] tracking-tight">
-                          {lang === "en" ? paper.titleEn : paper.titleZh}
+                        <h3 className="text-[20px] sm:text-[24px] font-semibold text-[#1d1d1f] tracking-tight">
+                          {lang === "en" ? paper.title : paper.titleZh}
                         </h3>
 
                         <p className="text-[14px] text-[#515154]">
-                          <span className="font-medium text-[#1d1d1f]">Organizations: </span>
-                          {paper.authors.join(", ")}
+                          <span className="font-medium text-[#1d1d1f]">Authors / Orgs: </span>
+                          {paper.org}
                         </p>
                       </div>
 
                       {/* 动作区 */}
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => handleCopyBibtex(paper.id, paper.bibtex)}
@@ -238,90 +284,77 @@ export default function ResearchPage() {
                           className="rounded-full bg-[#0071e3] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer"
                         >
                           {isExpanded
-                            ? (lang === "en" ? "Collapse Data" : "收起消融数据")
-                            : (lang === "en" ? "Inspect Ablation" : "展开消融数据")}
+                            ? (lang === "en" ? "Collapse Details" : "收起摘要")
+                            : (lang === "en" ? "Inspect Details" : "阅读详情")}
                         </button>
                       </div>
                     </div>
 
                     <p className="text-[15px] sm:text-[16px] text-[#515154] leading-relaxed">
-                      {lang === "en" ? paper.abstractEn : paper.abstractZh}
+                      {lang === "en" ? paper.abstract : paper.abstractZh}
                     </p>
 
-                    {/* 消融实验展开数据表 (浅色白板对比表格) */}
+                    {/* 展开的核心贡献与 BibTeX */}
                     {isExpanded && (
                       <div className="rounded-[20px] bg-white p-6 space-y-4" data-ui="true">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-[15px] font-semibold text-[#1d1d1f]">
-                            {lang === "en" ? "Key Quantitative Benchmarks" : "核心实验评测指标对比"}
-                          </h4>
-                          <span className="text-[13px] text-[#86868b]">
-                            {paper.arxiv}
-                          </span>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left text-[13px]">
-                            <thead className="text-[#86868b] text-[13px] tracking-wider">
-                              <tr className="bg-[#f5f5f7]">
-                                <th className="p-3">Evaluation Metric</th>
-                                <th className="p-3">Baseline Architecture</th>
-                                <th className="p-3">Neural World Model (SOTA)</th>
-                                <th className="p-3">Improvement Delta</th>
-                              </tr>
-                            </thead>
-                            <tbody className="text-[#1d1d1f]">
-                              {paper.benchmarks.map((bench, idx) => (
-                                <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f7]/50"}>
-                                  <td className="p-3 font-medium text-[#1d1d1f]">{bench.metric}</td>
-                                  <td className="p-3 text-[#515154]">{bench.baseline}</td>
-                                  <td className="p-3 font-semibold text-[#0071e3]">{bench.terraOasis}</td>
-                                  <td className="p-3 font-semibold text-[#0062c4]">{bench.improvement}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* 深度理论章节 */}
-                        {paper.sections.length > 0 && (
-                          <div className="pt-2 space-y-3">
-                            <h5 className="text-[14px] font-semibold text-[#1d1d1f]">
-                              {lang === "en" ? "Core Technical Breakthroughs" : "核心技术突破要点"}
-                            </h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {paper.sections.map((sec, secIdx) => (
-                                <div key={secIdx} className="rounded-[16px] bg-[#f5f5f7] p-4 space-y-1.5">
-                                  <div className="text-[13px] font-semibold text-[#1d1d1f]">
-                                    {lang === "en" ? sec.headingEn : sec.headingZh}
-                                  </div>
-                                  <p className="text-[13px] text-[#515154] leading-relaxed">
-                                    {lang === "en" ? sec.bodyEn : sec.bodyZh}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
+                        <div className="space-y-1">
+                          <div className="text-[13px] font-semibold text-[#0071e3]">
+                            {lang === "en" ? "Key Quantitative Contribution" : "核心学术创新与定量贡献"}
                           </div>
-                        )}
+                          <p className="text-[14px] text-[#1d1d1f] leading-relaxed">
+                            {paper.highlight}
+                          </p>
+                        </div>
 
-                        {/* BibTeX 引用代码框 */}
                         <div className="pt-2">
                           <div className="text-[13px] font-semibold text-[#86868b] mb-1.5">
-                            Standard BibTeX Citation
+                            Standard BibTeX Entry
                           </div>
                           <pre className="rounded-[14px] bg-[#f5f5f7] p-3 text-[13px] text-[#515154] overflow-x-auto m-0">
                             <code>{paper.bibtex}</code>
                           </pre>
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-between flex-wrap gap-2 text-[13px]">
+                          <a
+                            href="https://arxiv.org"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#0071e3] hover:underline font-medium"
+                          >
+                            <span>Download PDF on arXiv ({paper.arxiv}) ↗</span>
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() => setCopilotOpen(true)}
+                            className="text-[#0071e3] hover:underline font-medium cursor-pointer"
+                          >
+                            <span>{lang === "en" ? "Ask AI Copilot about this paper &gt;" : "向 AI 助手提问该论文 &gt;"}</span>
+                          </button>
                         </div>
                       </div>
                     )}
                   </article>
                 );
               })}
+
+              {filteredPapers.length === 0 && (
+                <div className="rounded-[24px] bg-[#f5f5f7] p-12 text-center text-[#515154] space-y-3">
+                  <div className="text-[16px] font-semibold text-[#1d1d1f]">
+                    {lang === "en" ? "No matching papers found." : "未找到匹配的世界模型学术论文。"}
+                  </div>
+                  <p className="text-[14px]">
+                    {lang === "en"
+                      ? "Try searching for keywords like Sora, Oasis, Genie, Cosmos, Gaussian, or Robotics."
+                      : "尝试搜索关键词：Sora、Oasis、Genie、Cosmos、Gaussian 或 Robotics。"}
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 
-          {/* 6. 学术合作与联合实验室 (浅灰大卡片，简洁专业) */}
+          {/* 6. 学术合作与联合实验室 (Apple 浅灰大卡片) */}
           <section className="rounded-[32px] bg-[#f5f5f7] p-8 sm:p-12 text-center terra-reveal space-y-6">
             <h2 className="text-[28px] sm:text-[38px] font-semibold text-[#1d1d1f] tracking-tight">
               {lang === "en"
