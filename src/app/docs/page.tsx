@@ -216,14 +216,10 @@ function DocsContent() {
             <article className="lg:col-span-7 space-y-12 terra-reveal">
               {/* A. 标题与架构导读 */}
               <header id="overview" className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2 text-[12px]">
-                  <span className="rounded-full bg-[#f5f5f7] px-3 py-1 font-semibold text-[#0071e3]">
+                <div className="flex items-center gap-2 text-[12px]">
+                  <span className="rounded-full bg-[#f5f5f7] px-3 py-1 font-medium text-[#0071e3]">
                     {currentDoc.category}
                   </span>
-                  <span className="rounded-full bg-[#f5f5f7] px-3 py-1 font-medium text-[#515154]">
-                    {currentDoc.badge}
-                  </span>
-                  <span className="text-[#86868b]">{currentDoc.framework}</span>
                 </div>
 
                 <h1 className="text-[34px] sm:text-[46px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.12]">

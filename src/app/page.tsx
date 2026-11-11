@@ -12,6 +12,7 @@ import { CopilotDrawer } from "@/components/copilot-drawer";
 import { AppleStoryGallery } from "@/components/apple-story-gallery";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
+import { HeroNeuralAmbient } from "@/components/hero-neural-ambient";
 import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
 import { WORLD_MODEL_PAPERS_100, WorldModelPaper } from "@/lib/world-model-papers-100";
 
@@ -88,10 +89,13 @@ export default function HomePage() {
 
       <main className="w-full">
         {/* =========================================================================
-            2. Hero Section (Apple 官方风格巨幅 Hero，白色纯净背景)
+            2. Hero Section (Apple 官方风格巨幅 Hero，白色纯净背景 + 动态环境光斑)
            ========================================================================= */}
-        <section className="relative bg-white pt-16 sm:pt-24 pb-16 sm:pb-24 terra-reveal w-full box-border">
-          <div className="mx-auto max-w-5xl px-6 sm:px-8 text-center space-y-6">
+        <section className="relative overflow-hidden bg-white pt-16 sm:pt-24 pb-16 sm:pb-24 terra-reveal w-full box-border">
+          {/* Apple 级动态环境流光背景 */}
+          <HeroNeuralAmbient />
+
+          <div className="relative z-10 mx-auto max-w-5xl px-6 sm:px-8 text-center space-y-6">
             <h1 className="text-[30px] sm:text-[60px] lg:text-[76px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08] max-w-4xl mx-auto">
               {lang === "en"
                 ? "14B Parameters. Limitless Potential."

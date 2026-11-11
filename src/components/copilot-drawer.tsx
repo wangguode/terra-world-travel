@@ -93,9 +93,9 @@ export function CopilotDrawer({ isOpen, onClose, initialQuery }: CopilotDrawerPr
           }
         } else if (matchedDoc) {
           if (lang === "en") {
-            responseText = `According to our developer documentation regarding "${matchedDoc.title}":\n\n${matchedDoc.summaryEn}\n\nTarget Runtime: ${matchedDoc.framework}\nPlatforms: ${matchedDoc.platforms.join(", ")}`;
+            responseText = `According to our developer documentation regarding "${matchedDoc.title}":\n\n${matchedDoc.summaryEn}\n\nComplete interface declarations and code samples are available in the documentation center.`;
           } else {
-            responseText = `根据技术文档【${matchedDoc.title}】技术规范：\n\n${matchedDoc.summaryZh}\n\n【运行时环境】\n${matchedDoc.framework}，支持 ${matchedDoc.platforms.join("、")}。可通过顶部文档中心查阅完整接口签名与代码调用用例。`;
+            responseText = `根据技术文档【${matchedDoc.title}】技术规范：\n\n${matchedDoc.summaryZh}\n\n可通过文档中心直接查阅完整接口签名与实际调用代码。`;
           }
         } else {
           if (lang === "en") {

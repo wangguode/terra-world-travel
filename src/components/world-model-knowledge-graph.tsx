@@ -64,7 +64,8 @@ export function WorldModelKnowledgeGraph({
   const draggedNodeRef = useRef<GraphNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const mouseDownRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const alphaRef = useRef<number>(1.0); // 物理衰减系数，达到平衡后自动休眠省电
+  const alphaRef = useRef<number>(1.0); // 物理衰减系数
+  const animTimeRef = useRef<number>(0); // 动态光子时钟计数器
 
   // 1. 初始化图谱拓扑网络 (仅在挂载时运行一次)
   useEffect(() => {
@@ -284,11 +285,15 @@ export function WorldModelKnowledgeGraph({
         ctx.stroke();
       });
 
-      // 绘制拓扑连线
+      // 动态时钟微推进
+      animTimeRef.current += 0.015;
+      const animT = animTimeRef.current;
+
       const nodeMap = new Map<string, GraphNode>();
       nodes.forEach((n) => nodeMap.set(n.id, n));
 
-      links.forEach((link) => {
+      // 绘制拓扑连线与动态流光光子脉冲
+      links.forEach((link, lIdx) => {
         const s = nodeMap.get(link.source);
         const t = nodeMap.get(link.target);
         if (!s || !t) return;
@@ -302,9 +307,21 @@ export function WorldModelKnowledgeGraph({
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
-        ctx.strokeStyle = isMatch ? "rgba(0, 113, 227, 0.15)" : "rgba(0, 0, 0, 0.04)";
+        ctx.strokeStyle = isMatch ? "rgba(0, 113, 227, 0.16)" : "rgba(0, 0, 0, 0.035)";
         ctx.lineWidth = s.type === "root" ? 1.5 : 1;
         ctx.stroke();
+
+        // 仅在主拓扑链路上渲染因果流动光子 (Dynamic Photons)
+        if (isMatch && (s.type === "root" || lIdx % 3 === 0)) {
+          const photonProgress = (animT * 0.4 + lIdx * 0.22) % 1;
+          const px = s.x + (t.x - s.x) * photonProgress;
+          const py = s.y + (t.y - s.y) * photonProgress;
+
+          ctx.beginPath();
+          ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0, 113, 227, 0.75)";
+          ctx.fill();
+        }
       });
 
       // 绘制节点
@@ -318,30 +335,32 @@ export function WorldModelKnowledgeGraph({
         ctx.save();
         ctx.globalAlpha = opacity;
 
-        // 选中外环
+        // 选中外环扩散光波 (Selected Expanding Wave)
         if (isSelected) {
+          const selectWave = 1 + Math.sin(animT * 2.5) * 0.06;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 10, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(0, 113, 227, 0.15)";
+          ctx.arc(node.x, node.y, (node.radius + 12) * selectWave, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0, 113, 227, 0.14)";
           ctx.fill();
 
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 4, 0, Math.PI * 2);
+          ctx.arc(node.x, node.y, node.radius + 4.5, 0, Math.PI * 2);
           ctx.strokeStyle = "#0071e3";
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 2.2;
           ctx.stroke();
         }
 
-        // 节点发光
+        // 节点发光呼吸
         if (node.type === "root") {
+          const rootBreathe = 1 + Math.sin(animT * 1.8) * 0.05;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(0, 113, 227, 0.1)";
+          ctx.arc(node.x, node.y, (node.radius + 8) * rootBreathe, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0, 113, 227, 0.12)";
           ctx.fill();
         } else if (isHovered && !isSelected) {
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 5, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(0, 113, 227, 0.2)";
+          ctx.arc(node.x, node.y, node.radius + 5.5, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0, 113, 227, 0.22)";
           ctx.fill();
         }
 
