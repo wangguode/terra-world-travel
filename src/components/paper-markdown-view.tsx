@@ -85,7 +85,7 @@ export function PaperMarkdownView({
 
         {/* 右侧工具组 */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* 模式切换：预览 / Markdown 纯源码 */}
+          {/* 模式切换：排版阅读 / Markdown 纯源码 */}
           <div className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f7] p-1">
             <button
               type="button"
@@ -96,7 +96,7 @@ export function PaperMarkdownView({
                   : "text-[#515154] hover:text-[#1d1d1f]"
               }`}
             >
-              {lang === "en" ? "Rendered Reading" : "Markdown 渲染阅读"}
+              {lang === "en" ? "Article View" : "论文研读"}
             </button>
             <button
               type="button"
@@ -107,7 +107,7 @@ export function PaperMarkdownView({
                   : "text-[#515154] hover:text-[#1d1d1f]"
               }`}
             >
-              {lang === "en" ? "Raw Markdown" : "Markdown 源码"}
+              {lang === "en" ? "Markdown Source" : "Markdown 源码"}
             </button>
           </div>
 
@@ -154,11 +154,6 @@ export function PaperMarkdownView({
       {/* 2. 源码模式 (Raw Markdown Mode) */}
       {viewSource ? (
         <div className="space-y-4">
-          <div className="text-[13px] text-[#86868b]">
-            {lang === "en"
-              ? "You can copy this raw GitHub/Obsidian flavored Markdown directly into your knowledge vault:"
-              : "您可以将下方符合 GitHub Flavored Markdown 规范的纯文本直接复制到 Obsidian、Logseq 或知识库中："}
-          </div>
           <div className="rounded-[20px] bg-[#1d1d1f] p-6 text-[13px] text-[#f5f5f7] leading-relaxed overflow-x-auto whitespace-pre">
             <code>{`${frontmatter}\n\n${markdownContent}`}</code>
           </div>

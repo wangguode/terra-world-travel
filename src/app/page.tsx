@@ -248,23 +248,8 @@ export default function HomePage() {
               selectedPaperId={selectedPaper.id}
             />
 
-            {/* 核心系统级联动：选中的论文直接在当前平台的该区域以 Markdown 风格沉浸式研读 */}
-            <div className="pt-6 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 px-2">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-[#0071e3]" />
-                  <span className="text-[14px] font-semibold text-[#1d1d1f]">
-                    {lang === "en" ? "Selected Paper · Markdown Deep Dive" : "图谱当前选中成果 · Markdown 风格学术研读"}
-                  </span>
-                  <span className="text-[13px] text-[#86868b] truncate max-w-md">
-                    ({selectedPaper.title})
-                  </span>
-                </div>
-                <div className="text-[13px] text-[#0071e3] font-medium">
-                  {lang === "en" ? "Click any node in graph above to switch" : "点击上方任意图谱节点即刻切换研读 ↓"}
-                </div>
-              </div>
-
+            {/* 核心联动：点击图谱节点即刻在此区域沉浸式阅读对应文献全文 */}
+            <div className="pt-8">
               <PaperMarkdownView
                 paper={selectedPaper}
                 onAskAi={handleAskAiAboutPaper}

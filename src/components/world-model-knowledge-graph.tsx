@@ -59,11 +59,13 @@ export function WorldModelKnowledgeGraph({
   const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState("");
+  const [cursorStyle, setCursorStyle] = useState<"default" | "pointer" | "grab" | "grabbing">("grab");
 
   const nodesRef = useRef<GraphNode[]>([]);
   const linksRef = useRef<GraphLink[]>([]);
   const draggedNodeRef = useRef<GraphNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const mouseDownInfoRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   // 初始化图谱节点与连线
   useEffect(() => {
@@ -83,6 +85,7 @@ export function WorldModelKnowledgeGraph({
       y: 0,
       vx: 0,
       vy: 0,
+      paper: WORLD_MODEL_PAPERS_100[0],
     });
 
     // 2. 6 大领域枢纽节点 (Hub Nodes)
@@ -90,10 +93,13 @@ export function WorldModelKnowledgeGraph({
     WORLD_MODEL_CATEGORIES.forEach((cat, idx) => {
       const angle = hubAngles[idx];
       const dist = 180;
-      const hubNode: GraphNode = {
-        id: `hub-${cat.id}`,
-        label: cat.name,
-        labelZh: cat.nameZh,
+      const hubId = `hub-${cat.id}`;
+      const firstPaperInCat = WORLD_MODEL_PAPERS_100.find((p) => p.category === cat.id) || WORLD_MODEL_PAPERS_100[0];
+
+      nodes.push({
+        id: hubId,
+        label: cat.name.split(" ")[0],
+        labelZh: cat.nameZh.split("与")[0],
         type: "hub",
         category: cat.id,
         color: CATEGORY_COLORS[cat.id] || "#0071e3",
@@ -102,87 +108,109 @@ export function WorldModelKnowledgeGraph({
         y: Math.sin(angle) * dist,
         vx: 0,
         vy: 0,
-      };
-      nodes.push(hubNode);
+        paper: firstPaperInCat,
+      });
 
-      // 连向中心节点
       links.push({
         source: "root-oasis",
-        target: hubNode.id,
-        color: "#d2d2d7",
+        target: hubId,
+        color: "rgba(0, 113, 227, 0.25)",
       });
     });
 
-    // 3. 100 篇前沿论文节点
-    WORLD_MODEL_PAPERS_100.forEach((paper, index) => {
-      const hubIndex = WORLD_MODEL_CATEGORIES.findIndex((c) => c.id === paper.category);
-      const baseAngle = hubIndex >= 0 ? hubAngles[hubIndex] : 0;
-      const spread = (Math.PI / 3) * ((index % 16) / 16 - 0.5) * 1.5;
-      const angle = baseAngle + spread;
-      const dist = 280 + (index % 5) * 55;
+    // 3. 100 篇前沿论文卫星节点
+    WORLD_MODEL_PAPERS_100.forEach((paper, pIdx) => {
+      const hubId = `hub-${paper.category}`;
+      const color = CATEGORY_COLORS[paper.category] || "#86868b";
+      const catIdx = WORLD_MODEL_CATEGORIES.findIndex((c) => c.id === paper.category);
+      const baseAngle = catIdx >= 0 ? hubAngles[catIdx] : 0;
+      const spread = (Math.PI / 3) * 0.9;
+      const angle = baseAngle - spread / 2 + (pIdx % 16) * (spread / 16) + (Math.random() - 0.5) * 0.2;
+      const dist = 240 + (pIdx % 6) * 45 + Math.random() * 30;
 
-      const paperNode: GraphNode = {
-        id: paper.id,
-        label: paper.title.length > 24 ? paper.title.slice(0, 22) + "..." : paper.title,
-        labelZh: paper.titleZh.length > 14 ? paper.titleZh.slice(0, 12) + "..." : paper.titleZh,
+      const nodeId = `paper-${paper.id}`;
+      nodes.push({
+        id: nodeId,
+        label: paper.title.length > 20 ? paper.title.slice(0, 18) + "…" : paper.title,
+        labelZh: paper.titleZh.length > 10 ? paper.titleZh.slice(0, 9) + "…" : paper.titleZh,
         type: "paper",
         category: paper.category,
-        color: CATEGORY_COLORS[paper.category] || "#515154",
-        radius: 8 + (index < 10 ? 4 : 0),
-        x: Math.cos(angle) * dist + (Math.random() - 0.5) * 40,
-        y: Math.sin(angle) * dist + (Math.random() - 0.5) * 40,
-        vx: 0,
-        vy: 0,
+        color: color,
+        radius: pIdx < 12 ? 10 : 7,
+        x: Math.cos(angle) * dist,
+        y: Math.sin(angle) * dist,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
         paper: paper,
-      };
-      nodes.push(paperNode);
-
-      // 连接到对应的领域 Hub
-      links.push({
-        source: `hub-${paper.category}`,
-        target: paperNode.id,
-        color: "#e5e5ea",
       });
 
-      // 代表作之间的交叉连接边
-      if (index > 0 && index % 7 === 0) {
-        links.push({
-          source: WORLD_MODEL_PAPERS_100[index - 1].id,
-          target: paperNode.id,
-          color: "#e8e8ed",
-        });
-      }
+      links.push({
+        source: hubId,
+        target: nodeId,
+        color: "rgba(210, 210, 215, 0.4)",
+      });
     });
 
     nodesRef.current = nodes;
     linksRef.current = links;
   }, []);
 
-  // 物理力导向模拟循环 (Force Simulation Loop)
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  // 坐标转换辅助函数 (保证与高分辨率 Retina 屏幕 100% 绝对一致)
+  const getGraphCoords = useCallback(
+    (clientX: number, clientY: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: 0, y: 0 };
+      const rect = canvas.getBoundingClientRect();
+      const canvasX = clientX - rect.left;
+      const canvasY = clientY - rect.top;
+      // 中心原点为 rect.width / 2 与 rect.height / 2
+      const graphX = (canvasX - rect.width / 2 - panOffset.x) / zoomLevel;
+      const graphY = (canvasY - rect.height / 2 - panOffset.y) / zoomLevel;
+      return { x: graphX, y: graphY };
+    },
+    [panOffset, zoomLevel]
+  );
 
+  // 动画物理力导向与 Canvas 绘制循环
+  useEffect(() => {
     let isRunning = true;
 
     const tick = () => {
       if (!isRunning) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const displayWidth = rect.width;
+      const displayHeight = rect.height;
+
+      // 动态适配物理像素与 CSS 逻辑像素
+      if (
+        canvas.width !== Math.round(displayWidth * dpr) ||
+        canvas.height !== Math.round(displayHeight * dpr)
+      ) {
+        canvas.width = Math.round(displayWidth * dpr);
+        canvas.height = Math.round(displayHeight * dpr);
+      }
+
       const nodes = nodesRef.current;
       const links = linksRef.current;
 
-      // 1. 节点间斥力 (Repulsion)
+      // 物理排斥力
       for (let i = 0; i < nodes.length; i++) {
+        const n1 = nodes[i];
         for (let j = i + 1; j < nodes.length; j++) {
-          const n1 = nodes[i];
           const n2 = nodes[j];
           const dx = n2.x - n1.x;
           const dy = n2.y - n1.y;
           const distSq = dx * dx + dy * dy || 1;
-          const dist = Math.sqrt(distSq);
-          if (dist < 400) {
-            const force = (320 / distSq) * 0.4;
+          if (distSq < 28000) {
+            const force = (n1.radius * n2.radius * 24) / distSq;
+            const dist = Math.sqrt(distSq);
             const fx = (dx / dist) * force;
             const fy = (dy / dist) * force;
             if (n1.type !== "root" && n1 !== draggedNodeRef.current) {
@@ -197,7 +225,7 @@ export function WorldModelKnowledgeGraph({
         }
       }
 
-      // 2. 连线弹簧力 (Spring Attraction)
+      // 连线弹簧力
       const nodeMap = new Map<string, GraphNode>();
       nodes.forEach((n) => nodeMap.set(n.id, n));
 
@@ -222,7 +250,7 @@ export function WorldModelKnowledgeGraph({
         }
       });
 
-      // 3. 向心归位力与阻尼减速
+      // 向心归位力
       nodes.forEach((n) => {
         if (n.type === "root" || n === draggedNodeRef.current) {
           if (n.type === "root") {
@@ -239,41 +267,51 @@ export function WorldModelKnowledgeGraph({
         n.y += n.vy;
       });
 
-      // 4. Canvas 绘制 (Apple 纯白/高光极简风)
-      const width = canvas.width;
-      const height = canvas.height;
-      ctx.clearRect(0, 0, width, height);
-
+      // Canvas 绘制
       ctx.save();
-      ctx.translate(width / 2 + panOffset.x, height / 2 + panOffset.y);
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+      // 中心位移：严格与 CSS 逻辑宽高一致
+      ctx.translate(displayWidth / 2 + panOffset.x, displayHeight / 2 + panOffset.y);
       ctx.scale(zoomLevel, zoomLevel);
 
-      // 绘制背景网格微点 (Apple 极简风格)
-      ctx.fillStyle = "#f0f0f2";
-      const gridSize = 40;
-      const startX = Math.floor((-width / zoomLevel - panOffset.x) / gridSize) * gridSize;
-      const endX = Math.ceil((width / zoomLevel - panOffset.x) / gridSize) * gridSize;
-      const startY = Math.floor((-height / zoomLevel - panOffset.y) / gridSize) * gridSize;
-      const endY = Math.ceil((height / zoomLevel - panOffset.y) / gridSize) * gridSize;
-      for (let x = startX; x <= endX; x += gridSize) {
-        for (let y = startY; y <= endY; y += gridSize) {
-          ctx.beginPath();
-          ctx.arc(x, y, 1, 0, Math.PI * 2);
-          ctx.fill();
-        }
+      // 绘制背景微弱参考网格
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.03)";
+      ctx.lineWidth = 1;
+      const gridSize = 100;
+      const gridExtent = 800;
+      for (let x = -gridExtent; x <= gridExtent; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, -gridExtent);
+        ctx.lineTo(x, gridExtent);
+        ctx.stroke();
+      }
+      for (let y = -gridExtent; y <= gridExtent; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(-gridExtent, y);
+        ctx.lineTo(gridExtent, y);
+        ctx.stroke();
       }
 
-      // 绘制连线 (Edges)
+      // 绘制同心轨道环
+      [180, 300, 420].forEach((r) => {
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(0, 113, 227, 0.05)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 6]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // 绘制拓扑连线
       links.forEach((link) => {
         const s = nodeMap.get(link.source);
         const t = nodeMap.get(link.target);
         if (!s || !t) return;
 
-        const isHighlighted =
-          hoveredNode &&
-          (hoveredNode.id === s.id || hoveredNode.id === t.id);
-
-        const isCatMatch =
+        const isMatch =
           selectedCat === "all" ||
           s.category === selectedCat ||
           t.category === selectedCat ||
@@ -282,23 +320,15 @@ export function WorldModelKnowledgeGraph({
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
-
-        if (isHighlighted) {
-          ctx.strokeStyle = "#0071e3";
-          ctx.lineWidth = 2.2;
-        } else if (isCatMatch) {
-          ctx.strokeStyle = "#e5e5ea";
-          ctx.lineWidth = 1;
-        } else {
-          ctx.strokeStyle = "#f5f5f7";
-          ctx.lineWidth = 0.5;
-        }
+        ctx.strokeStyle = isMatch ? link.color : "rgba(210, 210, 215, 0.1)";
+        ctx.lineWidth = s.type === "root" ? 1.5 : 1;
         ctx.stroke();
       });
 
-      // 绘制节点 (Nodes)
+      // 绘制各节点
       nodes.forEach((node) => {
         const isHovered = hoveredNode?.id === node.id;
+        const isSelected = !!selectedPaperId && node.paper?.id === selectedPaperId;
         const isCatMatch = selectedCat === "all" || node.category === selectedCat || node.type === "root";
         const isSearchMatch =
           !searchQuery ||
@@ -306,13 +336,12 @@ export function WorldModelKnowledgeGraph({
           node.labelZh.includes(searchQuery) ||
           node.paper?.org.toLowerCase().includes(searchQuery.toLowerCase());
 
-        const isSelected = !!selectedPaperId && node.paper?.id === selectedPaperId;
         const opacity = (isCatMatch && isSearchMatch) || isSelected ? 1 : 0.15;
 
         ctx.save();
         ctx.globalAlpha = opacity;
 
-        // 选中高亮光晕 (Selected Glow Ring)
+        // 选中高亮光环
         if (isSelected) {
           ctx.beginPath();
           ctx.arc(node.x, node.y, node.radius + 12, 0, Math.PI * 2);
@@ -320,7 +349,7 @@ export function WorldModelKnowledgeGraph({
           ctx.fill();
 
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
+          ctx.arc(node.x, node.y, node.radius + 5, 0, Math.PI * 2);
           ctx.strokeStyle = "#0071e3";
           ctx.lineWidth = 2.5;
           ctx.stroke();
@@ -332,10 +361,10 @@ export function WorldModelKnowledgeGraph({
           ctx.arc(node.x, node.y, node.radius + 8, 0, Math.PI * 2);
           ctx.fillStyle = "rgba(0, 113, 227, 0.12)";
           ctx.fill();
-        } else if (isHovered) {
+        } else if (isHovered && !isSelected) {
           ctx.beginPath();
           ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(0, 113, 227, 0.2)";
+          ctx.fillStyle = "rgba(0, 113, 227, 0.25)";
           ctx.fill();
         }
 
@@ -366,12 +395,6 @@ export function WorldModelKnowledgeGraph({
           ctx.textAlign = "center";
           const displayLabel = lang === "en" ? node.label : node.labelZh;
           ctx.fillText(displayLabel, node.x, node.y + node.radius + 14);
-
-          if (isSelected) {
-            ctx.font = "600 10px -apple-system, sans-serif";
-            ctx.fillStyle = "#0071e3";
-            ctx.fillText(lang === "en" ? "[Reading Below]" : "[正在下方阅读]", node.x, node.y + node.radius + 28);
-          }
         }
 
         ctx.restore();
@@ -390,51 +413,29 @@ export function WorldModelKnowledgeGraph({
     };
   }, [panOffset, zoomLevel, selectedCat, hoveredNode, searchQuery, selectedPaperId, lang]);
 
-  // 画布重设与响应式缩放
-  useEffect(() => {
-    const handleResize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * (window.devicePixelRatio || 1);
-      canvas.height = rect.height * (window.devicePixelRatio || 1);
-      const ctx = canvas.getContext("2d");
-      if (ctx) ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // 坐标转换辅助函数
-  const getGraphCoords = useCallback(
-    (clientX: number, clientY: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return { x: 0, y: 0 };
-      const rect = canvas.getBoundingClientRect();
-      const canvasX = clientX - rect.left;
-      const canvasY = clientY - rect.top;
-      const graphX = (canvasX - rect.width / 2 - panOffset.x) / zoomLevel;
-      const graphY = (canvasY - rect.height / 2 - panOffset.y) / zoomLevel;
-      return { x: graphX, y: graphY };
-    },
-    [panOffset, zoomLevel]
-  );
+  // 寻找点击或悬停的节点 (灵敏扩大命中范围)
+  const findNodeAtCoords = (x: number, y: number) => {
+    return nodesRef.current.find((n) => {
+      const dx = n.x - x;
+      const dy = n.y - y;
+      const hitRadius = Math.max(n.radius + 14, 24);
+      return Math.sqrt(dx * dx + dy * dy) <= hitRadius;
+    });
+  };
 
   // 鼠标交互事件处理
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    mouseDownInfoRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
     const { x, y } = getGraphCoords(e.clientX, e.clientY);
-    const clickedNode = nodesRef.current.find((n) => {
-      const dx = n.x - x;
-      const dy = n.y - y;
-      return Math.sqrt(dx * dx + dy * dy) <= n.radius + 4;
-    });
+    const clickedNode = findNodeAtCoords(x, y);
 
     if (clickedNode) {
       draggedNodeRef.current = clickedNode;
+      setCursorStyle("grabbing");
     } else {
       setIsDraggingCanvas(true);
       setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+      setCursorStyle("grabbing");
     }
   };
 
@@ -457,41 +458,54 @@ export function WorldModelKnowledgeGraph({
       return;
     }
 
-    // 寻找悬停节点
-    const hover = nodesRef.current.find((n) => {
-      const dx = n.x - x;
-      const dy = n.y - y;
-      return Math.sqrt(dx * dx + dy * dy) <= n.radius + 6;
-    });
+    // 检测悬停
+    const hover = findNodeAtCoords(x, y);
     setHoveredNode(hover || null);
+    setCursorStyle(hover ? "pointer" : "grab");
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const start = mouseDownInfoRef.current;
+    if (start) {
+      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      const elapsed = Date.now() - start.time;
+      // 轻点或微小位移判定为点击
+      if (dist < 6 && elapsed < 400) {
+        const { x, y } = getGraphCoords(e.clientX, e.clientY);
+        const node = findNodeAtCoords(x, y);
+        if (node?.paper) {
+          onSelectPaper(node.paper);
+        } else if (node?.type === "root") {
+          onSelectPaper(WORLD_MODEL_PAPERS_100[0]);
+        } else if (node?.type === "hub") {
+          const firstInCat = WORLD_MODEL_PAPERS_100.find((p) => p.category === node.category);
+          if (firstInCat) onSelectPaper(firstInCat);
+        }
+      }
+    }
+
     draggedNodeRef.current = null;
     setIsDraggingCanvas(false);
+    mouseDownInfoRef.current = null;
+    setCursorStyle(hoveredNode ? "pointer" : "grab");
   };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getGraphCoords(e.clientX, e.clientY);
-    const clickedNode = nodesRef.current.find((n) => {
-      const dx = n.x - x;
-      const dy = n.y - y;
-      return Math.sqrt(dx * dx + dy * dy) <= n.radius + 6;
-    });
-
-    if (clickedNode?.paper) {
-      onSelectPaper(clickedNode.paper);
-    } else if (clickedNode?.type === "root") {
+    const node = findNodeAtCoords(x, y);
+    if (node?.paper) {
+      onSelectPaper(node.paper);
+    } else if (node?.type === "root") {
       onSelectPaper(WORLD_MODEL_PAPERS_100[0]);
-    } else if (clickedNode?.type === "hub") {
-      const firstInCat = WORLD_MODEL_PAPERS_100.find((p) => p.category === clickedNode.category);
+    } else if (node?.type === "hub") {
+      const firstInCat = WORLD_MODEL_PAPERS_100.find((p) => p.category === node.category);
       if (firstInCat) onSelectPaper(firstInCat);
     }
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
     setZoomLevel((prev) => Math.min(Math.max(prev * zoomFactor, 0.4), 3.0));
   };
 
@@ -507,17 +521,17 @@ export function WorldModelKnowledgeGraph({
       {/* 顶部工具栏：分类高亮药丸 + 实时检索 + 视角控制 */}
       <div className="absolute top-4 inset-x-4 z-10 flex flex-wrap items-center justify-between gap-3 pointer-events-none" data-ui="true">
         {/* 分类过滤 Pills */}
-        <div className="flex items-center gap-1.5 p-1.5 rounded-full bg-white border border-[#d2d2d7]/60 pointer-events-auto overflow-x-auto max-w-full">
+        <div className="flex items-center gap-1.5 p-1.5 rounded-full bg-white pointer-events-auto overflow-x-auto max-w-full">
           <button
             type="button"
             onClick={() => setSelectedCat("all")}
             className={`rounded-full px-3.5 py-1 text-[12px] font-medium transition cursor-pointer shrink-0 ${
               selectedCat === "all"
                 ? "bg-[#0071e3] text-white"
-                : "text-[#515154] hover:text-[#1d1d1f]"
+                : "text-[#515154] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]"
             }`}
           >
-            {lang === "en" ? "All Universe (100+)" : "全景星空 (100+)"}
+            {lang === "en" ? "All" : "全部"} (100)
           </button>
           {WORLD_MODEL_CATEGORIES.map((cat) => (
             <button
@@ -527,7 +541,7 @@ export function WorldModelKnowledgeGraph({
               className={`rounded-full px-3 py-1 text-[12px] font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
                 selectedCat === cat.id
                   ? "bg-[#0071e3] text-white"
-                  : "text-[#515154] hover:text-[#1d1d1f]"
+                  : "text-[#515154] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]"
               }`}
             >
               <span
@@ -545,14 +559,14 @@ export function WorldModelKnowledgeGraph({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={lang === "en" ? "Search in graph..." : "在图谱中搜索..."}
-            className="rounded-full bg-white border border-[#d2d2d7]/60 px-3.5 py-1 text-[13px] text-[#1d1d1f] placeholder-[#86868b] outline-none w-36 sm:w-44 transition"
+            placeholder={lang === "en" ? "Search..." : "检索文献..."}
+            className="rounded-full bg-white px-3.5 py-1 text-[13px] text-[#1d1d1f] placeholder-[#86868b] outline-none w-32 sm:w-40 transition"
           />
 
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.min(z * 1.2, 3))}
-            className="rounded-full bg-white border border-[#d2d2d7]/60 px-3 py-1 text-[13px] font-semibold text-[#1d1d1f] hover:bg-[#e8e8ed] cursor-pointer"
+            className="rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-[#1d1d1f] hover:bg-[#e8e8ed] cursor-pointer"
             title="Zoom In"
           >
             +
@@ -560,7 +574,7 @@ export function WorldModelKnowledgeGraph({
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.max(z * 0.8, 0.4))}
-            className="rounded-full bg-white border border-[#d2d2d7]/60 px-3 py-1 text-[13px] font-semibold text-[#1d1d1f] hover:bg-[#e8e8ed] cursor-pointer"
+            className="rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-[#1d1d1f] hover:bg-[#e8e8ed] cursor-pointer"
             title="Zoom Out"
           >
             −
@@ -568,7 +582,7 @@ export function WorldModelKnowledgeGraph({
           <button
             type="button"
             onClick={handleResetView}
-            className="rounded-full bg-white border border-[#d2d2d7]/60 px-3 py-1 text-[12px] font-medium text-[#0071e3] hover:bg-[#e8e8ed] cursor-pointer"
+            className="rounded-full bg-white px-3 py-1 text-[12px] font-medium text-[#0071e3] hover:bg-[#e8e8ed] cursor-pointer"
           >
             {lang === "en" ? "Reset" : "重置"}
           </button>
@@ -583,12 +597,16 @@ export function WorldModelKnowledgeGraph({
         onMouseUp={handleMouseUp}
         onClick={handleClick}
         onWheel={handleWheel}
-        className="w-full h-[520px] sm:h-[620px] cursor-grab active:cursor-grabbing block"
+        style={{ cursor: cursorStyle }}
+        className="w-full h-[520px] sm:h-[620px] block"
       />
 
-      {/* 悬停浮动信息卡片 (Apple 极简浮窗) */}
+      {/* 悬停浮动信息卡片 (Apple 极简纯净浮窗) */}
       {hoveredNode && (
-        <div className="absolute bottom-4 left-4 z-10 max-w-sm rounded-[20px] bg-white p-4 border border-[#d2d2d7]/60 text-[13px] pointer-events-none transition" data-ui="true">
+        <div
+          className="absolute bottom-4 left-4 z-10 max-w-sm rounded-[20px] bg-white p-4 text-[13px] pointer-events-none transition"
+          data-ui="true"
+        >
           <div className="flex items-center gap-2 mb-1">
             <span
               className="h-2.5 w-2.5 rounded-full"
@@ -602,25 +620,17 @@ export function WorldModelKnowledgeGraph({
           {hoveredNode.paper ? (
             <div className="space-y-1 text-[#515154]">
               <div>{hoveredNode.paper.org} · {hoveredNode.paper.venue}</div>
-              <div className="text-[12px] text-[#86868b]">{hoveredNode.paper.arxiv}</div>
-              <div className="text-[12px] text-[#0071e3] font-medium pt-1">
-                {lang === "en" ? "Click to read full Markdown below ↓" : "点击直接在下方以 Markdown 风格阅读 ↓"}
+              <div className="text-[12px] text-[#0071e3] font-medium pt-0.5">
+                {lang === "en" ? "Read Publication ↗" : "查看学术文献 ↗"}
               </div>
             </div>
           ) : (
             <div className="text-[#515154]">
-              {lang === "en" ? "World Model Core Pillar. Click to inspect papers." : "世界模型核心学术支柱。包含多篇关联前沿文献。"}
+              {lang === "en" ? "World Model Backbone Node" : "世界模型核心学术支柱"}
             </div>
           )}
         </div>
       )}
-
-      {/* 底部交互指引小注脚 */}
-      <div className="absolute bottom-4 right-4 z-10 text-[12px] text-[#86868b] bg-[#f5f5f7] px-3.5 py-1 rounded-full pointer-events-none">
-        {lang === "en"
-          ? "Drag nodes · Scroll to zoom · Click node to read Markdown below"
-          : "可自由拖拽节点 · 滚轮缩放 · 点击任意节点直接在下方以 Markdown 风格阅读"}
-      </div>
     </div>
   );
 }

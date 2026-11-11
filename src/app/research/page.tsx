@@ -313,23 +313,8 @@ function ResearchContent() {
                     selectedPaperId={selectedGraphPaper.id}
                   />
 
-                  {/* 核心联动：图谱下方直接呈现 Markdown 风格研读专区 */}
-                  <div className="pt-4 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3 px-2">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-[#0071e3]" />
-                        <span className="text-[15px] font-semibold text-[#1d1d1f]">
-                          {lang === "en" ? "Selected Paper · Markdown Reading Area" : "图谱当前选中成果 · Markdown 风格学术研读专区"}
-                        </span>
-                        <span className="text-[13px] text-[#86868b] truncate max-w-md">
-                          ({selectedGraphPaper.title})
-                        </span>
-                      </div>
-                      <div className="text-[13px] text-[#0071e3] font-medium">
-                        {lang === "en" ? "Click any node in graph above to switch" : "点击上方任意图谱节点即刻切换研读 ↓"}
-                      </div>
-                    </div>
-
+                  {/* 核心联动：点击图谱节点即刻直接在下方以专业出版物级排版研读全文 */}
+                  <div className="pt-6">
                     <PaperMarkdownView
                       paper={selectedGraphPaper}
                       onAskAi={handleAskAiAboutPaper}
