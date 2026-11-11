@@ -97,33 +97,33 @@ export default function HomePage() {
           <HeroNeuralAmbient />
 
           <div className="relative z-10 mx-auto max-w-5xl px-6 sm:px-8 text-center space-y-6">
-            <h1 className="text-[30px] sm:text-[60px] lg:text-[76px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08] max-w-4xl mx-auto">
-              {lang === "en"
-                ? "14B Parameters. Limitless Potential."
-                : "140 亿参数神经因果模型，更多可能的起点。"}
-            </h1>
-
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-4 py-1.5 text-[14px] font-medium text-[#1d1d1f]">
-              <span className="h-2 w-2 rounded-full bg-[#0071e3]" />
-              <span>TERRA-OASIS Spatial Ecosystem</span>
+            <div className="space-y-3 max-w-4xl mx-auto">
+              <div className="text-[13px] sm:text-[15px] font-semibold text-[#0071e3] tracking-widest uppercase">
+                TERRA-OASIS Spatial Ecosystem
+              </div>
+              <h1 className="text-[38px] sm:text-[68px] lg:text-[84px] font-semibold text-[#1d1d1f] tracking-[-0.035em] leading-[1.04]">
+                {lang === "en"
+                  ? "14B Parameters. Limitless Potential."
+                  : "140 亿参数神经因果模型，更多可能的起点。"}
+              </h1>
             </div>
 
-            <p className="text-[17px] sm:text-[20px] text-[#515154] max-w-3xl mx-auto leading-relaxed font-normal">
+            <p className="text-[18px] sm:text-[21px] text-[#6e6e73] max-w-3xl mx-auto leading-relaxed font-normal">
               {lang === "en"
                 ? "Across robotics, spatial computing, and interactive virtual worlds, TERRA contributes fundamentally to the next era of embodied physical intelligence. By uniting 3D Gaussian radiance fields with causal autoregressive diffusion, we provide researchers and creators with a real-time world foundation."
                 : "在具身机器人、空间计算与交互式虚拟时空中，TERRA 从底层推动空间智能的产业落地。通过将 3D 高斯点云辐射场与自回归因果扩散 Transformer 深度融合，我们为全球开发者与科研同行提供即时运行的世界模型底座。"}
             </p>
 
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-4 text-[15px]">
+            <div className="pt-3 flex flex-wrap items-center justify-center gap-4 text-[15px] sm:text-[16px]">
               <a
                 href="#interactive-playground"
-                className="rounded-full bg-[#0071e3] px-7 py-3 text-white font-medium hover:bg-[#0077ed] transition no-underline"
+                className="rounded-full bg-[#0071e3] px-7 py-3 text-white font-medium hover:bg-[#0077ed] active:scale-[0.98] transition no-underline"
               >
                 {lang === "en" ? "Explore Live Simulation" : "在线体验世界模型"}
               </a>
               <a
                 href="#knowledge-graph"
-                className="rounded-full bg-[#f5f5f7] px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition no-underline"
+                className="rounded-full bg-[#f5f5f7] px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] active:scale-[0.98] transition no-underline"
               >
                 {lang === "en" ? "Interactive Knowledge Graph" : "交互式知识图谱"}
               </a>
@@ -149,11 +149,11 @@ export default function HomePage() {
                 className="object-cover"
               />
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between text-[14px] text-[#515154] px-2">
+            <div className="mt-4 flex flex-wrap items-center justify-between text-[13px] sm:text-[14px] text-[#6e6e73] px-2">
               <p className="font-medium text-[#1d1d1f]">
                 4D Spatiotemporal Neural Simulation Field
               </p>
-              <p className="text-[#515154]">
+              <p className="text-[#6e6e73]">
                 Continuous Action-Conditioned Causal Inference Engine
               </p>
             </div>
@@ -166,10 +166,10 @@ export default function HomePage() {
         <section className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-16">
             <div className="text-center space-y-3">
-              <h2 className="text-[56px] sm:text-[84px] lg:text-[104px] font-semibold text-[#1d1d1f] tracking-tight leading-none tnum">
+              <h2 className="text-[64px] sm:text-[96px] lg:text-[116px] font-semibold text-[#1d1d1f] tracking-[-0.035em] leading-none tnum">
                 {lang === "en" ? "14 Billion" : "140 亿"}
               </h2>
-              <p className="text-[19px] sm:text-[23px] text-[#515154] font-medium max-w-xl mx-auto">
+              <p className="text-[19px] sm:text-[23px] text-[#6e6e73] font-medium max-w-xl mx-auto leading-relaxed">
                 {lang === "en"
                   ? "Causal latent parameters powering physical spatial intelligence"
                   : "驱动物理空间因果智能的神经潜空间参数规模"}
@@ -178,9 +178,9 @@ export default function HomePage() {
 
             {/* 3 个大型指标徽章 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="rounded-[28px] bg-white p-8 sm:p-10 space-y-4">
+              <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum">
+                  <div className="text-[44px] sm:text-[52px] font-semibold text-[#0071e3] tracking-[-0.03em] tnum">
                     60 FPS
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
@@ -188,19 +188,19 @@ export default function HomePage() {
                     <span>Real-Time</span>
                   </div>
                 </div>
-                <div className="text-[18px] font-semibold text-[#1d1d1f]">
+                <div className="text-[19px] font-semibold text-[#1d1d1f]">
                   {lang === "en" ? "Continuous Neural Streaming" : "全双工连续神经推流"}
                 </div>
-                <p className="text-[15px] sm:text-[16px] text-[#515154] leading-relaxed">
+                <p className="text-[15px] sm:text-[16px] text-[#6e6e73] leading-relaxed">
                   {lang === "en"
                     ? "Eliminating latent structural collapse through temporal sliding attention windows and dual-agent anchors."
                     : "通过时序滑动注意力窗口与双智能体记忆锚点，彻底突破自回归视频模型长程坍塌魔咒。"}
                 </p>
               </div>
 
-              <div className="rounded-[28px] bg-white p-8 sm:p-10 space-y-4">
+              <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#1d1d1f] tracking-tight tnum">
+                  <div className="text-[44px] sm:text-[52px] font-semibold text-[#1d1d1f] tracking-[-0.03em] tnum">
                     &lt; 16 ms
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
@@ -208,19 +208,19 @@ export default function HomePage() {
                     <span>Ultra-Low</span>
                   </div>
                 </div>
-                <div className="text-[18px] font-semibold text-[#1d1d1f]">
+                <div className="text-[19px] font-semibold text-[#1d1d1f]">
                   {lang === "en" ? "Action-to-Photon Latency" : "动作到光子极速响应"}
                 </div>
-                <p className="text-[15px] sm:text-[16px] text-[#515154] leading-relaxed">
+                <p className="text-[15px] sm:text-[16px] text-[#6e6e73] leading-relaxed">
                   {lang === "en"
                     ? "WebGPU client-side shader decoding delivers instant WASD control response without local high-end hardware."
                     : "轻量化 WebGPU 边缘端着色器解码，赋予用户在普通浏览器中即开即玩的超低延迟响应。"}
                 </p>
               </div>
 
-              <div className="rounded-[28px] bg-white p-8 sm:p-10 space-y-4">
+              <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum">
+                  <div className="text-[44px] sm:text-[52px] font-semibold text-[#0071e3] tracking-[-0.03em] tnum">
                     94.2%
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
@@ -228,10 +228,10 @@ export default function HomePage() {
                     <span>Zero-Shot</span>
                   </div>
                 </div>
-                <div className="text-[18px] font-semibold text-[#1d1d1f]">
+                <div className="text-[19px] font-semibold text-[#1d1d1f]">
                   {lang === "en" ? "Zero-Shot Sim-to-Real" : "真机无微调迁移成功率"}
                 </div>
-                <p className="text-[15px] sm:text-[16px] text-[#515154] leading-relaxed">
+                <p className="text-[15px] sm:text-[16px] text-[#6e6e73] leading-relaxed">
                   {lang === "en"
                     ? "Conditioned directly on continuous robotic actuator commands, closing the visual and physical simulation gap."
                     : "直接基于机器人连续执行器动作向量推演动态环境，消除传统合成渲染与现实的虚实鸿沟。"}
@@ -544,26 +544,26 @@ export default function HomePage() {
         {/* =========================================================================
             8. Router & Action Call (Apple 经典的纯白行动跳转路由)
            ========================================================================= */}
-        <section className="bg-white py-20 sm:py-24 text-center terra-reveal w-full box-border">
+        <section className="bg-white py-24 sm:py-32 text-center terra-reveal w-full box-border">
           <div className="mx-auto max-w-4xl px-6 sm:px-8 space-y-6">
-            <h2 className="text-[32px] sm:text-[44px] font-semibold text-[#1d1d1f] tracking-tight">
+            <h2 className="text-[36px] sm:text-[52px] font-semibold text-[#1d1d1f] tracking-[-0.03em] leading-tight">
               {lang === "en" ? "Ready to build inside the world model?" : "准备好在世界模型中开始构建了吗？"}
             </h2>
-            <p className="text-[17px] sm:text-[19px] text-[#515154] max-w-2xl mx-auto leading-relaxed">
+            <p className="text-[18px] sm:text-[21px] text-[#6e6e73] max-w-2xl mx-auto leading-relaxed">
               {lang === "en"
                 ? "Dive into our comprehensive developer API specifications, roam the 100+ paper knowledge graph, or consult Copilot AI."
                 : "查阅详尽的开发者 API 接口规范与代码范例，漫游 100+ 篇世界模型前沿文献星空，或与 AI 助手实时推演。"}
             </p>
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-[15px]">
+            <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-[15px] sm:text-[16px]">
               <Link
                 href="/docs"
-                className="rounded-full bg-[#0071e3] px-7 py-3 text-white font-medium hover:bg-[#0077ed] transition no-underline"
+                className="rounded-full bg-[#0071e3] px-7 py-3 text-white font-medium hover:bg-[#0077ed] active:scale-[0.98] transition no-underline"
               >
                 {lang === "en" ? "Developer Documentation" : "开发文档中心"}
               </Link>
               <Link
                 href="/research"
-                className="rounded-full bg-[#f5f5f7] px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition no-underline"
+                className="rounded-full bg-[#f5f5f7] px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] active:scale-[0.98] transition no-underline"
               >
                 {lang === "en" ? "100+ Papers Library" : "100+ 篇文献专栏"}
               </Link>

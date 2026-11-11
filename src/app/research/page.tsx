@@ -319,7 +319,7 @@ function ResearchContent() {
                   />
 
                   {/* 图谱选中文献精炼卡片 (Apple 官方风格，点击直接全屏沉浸研读) */}
-                  <div className="rounded-[28px] bg-[#f5f5f7] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 transition">
+                  <div className="rounded-[32px] bg-[#f5f5f7] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 transition">
                     <div className="space-y-3 max-w-3xl">
                       <div className="flex flex-wrap items-center gap-2 text-[12px]">
                         <span className="rounded-full bg-white px-3 py-0.5 font-semibold text-[#0071e3]">
@@ -334,7 +334,7 @@ function ResearchContent() {
                         {lang === "en" ? selectedGraphPaper.title : selectedGraphPaper.titleZh}
                       </h3>
 
-                      <p className="text-[14px] text-[#515154] leading-relaxed line-clamp-2 font-normal">
+                      <p className="text-[14px] sm:text-[15px] text-[#6e6e73] leading-relaxed line-clamp-2 font-normal">
                         {selectedGraphPaper.highlight}
                       </p>
                     </div>
@@ -346,7 +346,7 @@ function ResearchContent() {
                           setActiveBlog(getPaperBlog(selectedGraphPaper));
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
-                        className="rounded-full bg-[#0071e3] px-5 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer flex items-center gap-1.5"
+                        className="rounded-full bg-[#0071e3] px-5 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] active:scale-[0.98] transition cursor-pointer flex items-center gap-1.5"
                       >
                         <span>{lang === "en" ? "Read Full Article" : "研读学术深度长文"}</span>
                         <span>→</span>
@@ -355,7 +355,7 @@ function ResearchContent() {
                       <button
                         type="button"
                         onClick={() => handleAskAiAboutPaper(selectedGraphPaper.title)}
-                        className="rounded-full bg-white px-4 py-2 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition cursor-pointer"
+                        className="rounded-full bg-white px-4 py-2 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] active:scale-[0.98] transition cursor-pointer"
                       >
                         {lang === "en" ? "Ask AI" : "咨询 AI"}
                       </button>
