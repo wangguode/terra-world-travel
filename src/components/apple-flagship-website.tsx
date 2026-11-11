@@ -9,7 +9,7 @@ import { OFFICIAL_DOCS } from "@/lib/oasis-docs-data";
 import { OFFICIAL_BLOGS } from "@/lib/oasis-blog-data";
 import { COPILOT_KNOWLEDGE_BASE, PRESET_PROMPTS } from "@/lib/oasis-copilot-data";
 
-export default function TerraOasisOfficialWebsite() {
+export function AppleFlagshipWebsite() {
   // 顶层导航视图：overview(概览主站) | docs(架构文档) | blog(研究博客) | copilot(问答AI)
   const [currentView, setCurrentView] = useState<"overview" | "docs" | "blog" | "copilot">("overview");
 
@@ -68,23 +68,24 @@ export default function TerraOasisOfficialWebsite() {
         : "https://terra-world-travel.153557421.workers.dev";
 
     QRCode.toDataURL(origin, {
-      width: 400,
+      width: 220,
       margin: 1,
       color: {
-        dark: "#070707",
-        light: "#f5f5f7",
+        dark: "#000000",
+        light: "#ffffff",
       },
     })
-      .then((dataUri) => {
+      .then((url) => {
+        setQrCodeDataUrl(url);
         setCurrentUrl(origin);
-        setQrCodeDataUrl(dataUri);
       })
-      .catch(() => {});
+      .catch((err) => console.error("QR Code Error:", err));
   }, []);
 
   const handleCopyUrl = async () => {
+    const url = currentUrl || "https://terra-world-travel.153557421.workers.dev";
     try {
-      await navigator.clipboard.writeText(currentUrl);
+      await navigator.clipboard.writeText(url);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2400);
     } catch {
@@ -133,7 +134,6 @@ export default function TerraOasisOfficialWebsite() {
     setIsAiTyping(true);
 
     setTimeout(() => {
-      // 简单关键词加权检索匹配
       const lowerQ = q.toLowerCase();
       let bestMatch = COPILOT_KNOWLEDGE_BASE[0];
       let maxScore = -1;
@@ -149,24 +149,25 @@ export default function TerraOasisOfficialWebsite() {
         }
       });
 
-      const responseText =
-        maxScore > 0
-          ? bestMatch.answer
-          : `关于「${q}」：在 TERRA-OASIS 14B Causal DiT 体系中，动作与时空均以高维隐变量表征，通过因果注意力网络实时自回归推演。你可以参考技术文档中的「因果扩散主干」章节或在 GitHub 仓库查看最新实验基准。`;
-
-      setChatMessages((prev) => [...prev, { sender: "ai", text: responseText }]);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: `【${bestMatch.question}】\n\n${bestMatch.answer}`,
+        },
+      ]);
       setIsAiTyping(false);
-    }, 600);
+    }, 500);
   };
 
   const FAQS = [
     {
-      q: "什么是世界模型（World Model）？它和普通 AI 视频生成（如 Sora、Kling）有什么区别？",
-      a: "普通 AI 视频生成是单向、离线的。用户输入一段 Prompt，模型在云端渲染一段数十秒固定不可更改的视频片段。而世界模型是交互式、因果连续的模拟系统。它不仅输入文本，还实时接收用户的连续动作（键盘 WASD、跳跃、手柄摇杆等），根据历史时空记忆与物理因果规律，自回归实时推演下一帧的画面与碰撞反馈，就像一个完全由神经网络构筑的虚拟游戏引擎。",
+      q: "TERRA-OASIS 与传统游戏引擎（Unreal / Unity）的本质区别是什么？",
+      a: "传统游戏引擎依赖人工制作的 3D 几何网格（Meshes）、纹理贴图、光照烘焙和手工物理碰撞体。而 TERRA-OASIS 是纯粹的自回归生成式世界模型。它无需预设三维网格，每帧画面由 14B 因果扩散 Transformer 直接根据前序动作与时空记忆实时预测生成，从底层重构了交互式虚拟世界的呈现方式。",
     },
     {
-      q: "为什么在普通的 Web 浏览器中无需独立显卡也能实时体验？",
-      a: "TERRA-OASIS 结合了因果扩散隐空间压缩技术与现代 WebGL/WebGPU 神经渲染流水线。模型在隐空间（Latent Space）以 16×64×64 高压缩比进行动作因果预测，再通过轻量级神经解码器在客户端以 60 FPS 流式重构高保真光影与深度视差，大幅降低了本地硬件门槛。",
+      q: "为什么在浏览器中无需高端 GPU 就能达到 60 FPS 实时推流？",
+      a: "TERRA-OASIS 采用云端分布式因果扩散推理管线与现代浏览器轻量 WebGL 客户端结合的混合架构。模型将用户按键转化为连续动作潜变量注入骨干，同时在边缘端利用轻量化着色器进行多通道隐式渲染（RGB辐射场、深度潜空间与法线通道），大幅降低了终端运行门槛。",
     },
     {
       q: "世界模型是如何判断障碍物碰撞与重力下坠的？世界里有真实的 3D 网格吗？",
@@ -182,55 +183,42 @@ export default function TerraOasisOfficialWebsite() {
     OFFICIAL_DOCS.find((d) => d.id === activeDocId) || OFFICIAL_DOCS[0];
 
   return (
-    <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[#070707] text-[#f5f5f7]">
-      {/* 1. 官方全局功能顶栏 (Apple 级多板块生态导航) */}
-      <header className="sticky top-0 z-50 bg-[#070707] py-3.5">
-        <div className="mx-auto max-w-7xl flex w-full items-center justify-between gap-4 px-5 sm:px-10">
+    <div className="min-h-[100dvh] w-full overflow-x-hidden bg-[#000000] text-[#f5f5f7]">
+      {/* 1. Apple 正统全局导航条 (Apple Global Nav, 44px) */}
+      <div className="bg-[#000000] sticky top-0 z-50">
+        <div className="mx-auto max-w-7xl flex h-11 items-center justify-between px-5 sm:px-10 text-[13px] sm:text-[14px] text-[#a1a1a6]">
           <button
             type="button"
             onClick={() => setCurrentView("overview")}
-            className="terra-btn flex items-center gap-2.5 text-[18px] font-bold tracking-tight text-white text-left"
+            className="text-[#f5f5f7] hover:text-white transition font-medium flex items-center gap-2"
           >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#00f2fe]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#2997ff]" />
             <span>TERRA OASIS</span>
-            <span className="text-[16px] font-normal text-white/40 tracking-wider hidden lg:inline">
-              官方世界模型平台
-            </span>
           </button>
-
-          <nav
-            aria-label="官方主导航"
-            className="flex items-center gap-3 sm:gap-6 text-[16px]"
-          >
+          <div className="flex items-center gap-5 sm:gap-8">
             <button
               type="button"
               onClick={() => setCurrentView("overview")}
-              className={`terra-btn transition text-[16px] ${
-                currentView === "overview"
-                  ? "text-[#00f2fe] font-semibold"
-                  : "text-white/70 hover:text-white"
+              className={`transition ${
+                currentView === "overview" ? "text-white" : "hover:text-[#f5f5f7]"
               }`}
             >
-              概览主站
+              世界模型
             </button>
             <button
               type="button"
               onClick={() => setCurrentView("docs")}
-              className={`terra-btn transition text-[16px] hidden sm:inline-block ${
-                currentView === "docs"
-                  ? "text-[#00f2fe] font-semibold"
-                  : "text-white/70 hover:text-white"
+              className={`transition hidden sm:inline-block ${
+                currentView === "docs" ? "text-white" : "hover:text-[#f5f5f7]"
               }`}
             >
-              架构文档
+              开发文档
             </button>
             <button
               type="button"
               onClick={() => setCurrentView("blog")}
-              className={`terra-btn transition text-[16px] hidden sm:inline-block ${
-                currentView === "blog"
-                  ? "text-[#00f2fe] font-semibold"
-                  : "text-white/70 hover:text-white"
+              className={`transition hidden sm:inline-block ${
+                currentView === "blog" ? "text-white" : "hover:text-[#f5f5f7]"
               }`}
             >
               研究博客
@@ -241,33 +229,89 @@ export default function TerraOasisOfficialWebsite() {
                 setCurrentView("copilot");
                 setCopilotOpen(true);
               }}
-              className={`terra-btn transition text-[16px] flex items-center gap-1.5 ${
-                currentView === "copilot"
-                  ? "text-[#00f2fe] font-semibold"
-                  : "text-white/70 hover:text-white"
+              className={`transition flex items-center gap-1.5 ${
+                currentView === "copilot" ? "text-white" : "hover:text-[#f5f5f7]"
               }`}
             >
-              <span>问答 AI</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span>AI 问答</span>
+              <span className="h-1 w-1 rounded-full bg-[#2997ff]" />
+            </button>
+          </div>
+          <a
+            href="https://github.com/wangguode/terra-world-travel"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#a1a1a6] hover:text-white transition no-underline"
+          >
+            GitHub
+          </a>
+        </div>
+      </div>
+
+      {/* 2. Apple 产品专页吸顶导航 (Apple Local Subnav, 52px) */}
+      <header className="sticky top-11 z-40 bg-[#000000]">
+        <div className="mx-auto max-w-7xl flex h-13 items-center justify-between px-5 sm:px-10">
+          <button
+            type="button"
+            onClick={() => setCurrentView("overview")}
+            className="text-[19px] sm:text-[21px] font-semibold text-[#f5f5f7] tracking-tight hover:text-white transition"
+          >
+            TERRA-OASIS
+          </button>
+
+          <nav aria-label="产品二级导航" className="flex items-center gap-3 sm:gap-6 text-[14px]">
+            <button
+              type="button"
+              onClick={() => setCurrentView("overview")}
+              className={`transition ${
+                currentView === "overview" ? "text-white font-medium" : "text-[#a1a1a6] hover:text-white"
+              }`}
+            >
+              概览
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentView("docs")}
+              className={`transition hidden md:inline-block ${
+                currentView === "docs" ? "text-white font-medium" : "text-[#a1a1a6] hover:text-white"
+              }`}
+            >
+              文档中心
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentView("blog")}
+              className={`transition hidden md:inline-block ${
+                currentView === "blog" ? "text-white font-medium" : "text-[#a1a1a6] hover:text-white"
+              }`}
+            >
+              前沿论文
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentView("copilot");
+                setCopilotOpen(true);
+              }}
+              className={`transition ${
+                currentView === "copilot" ? "text-[#2997ff] font-medium" : "text-[#a1a1a6] hover:text-white"
+              }`}
+            >
+              智能助手
             </button>
             <button
               type="button"
               onClick={() => setSnowMode(!snowMode)}
-              className={`terra-btn rounded-full px-3.5 py-1.5 text-[16px] font-medium transition hidden md:inline-block ${
-                snowMode
-                  ? "bg-[#00f2fe] text-black"
-                  : "bg-white/10 text-white/80 hover:bg-white/20"
-              }`}
+              className="rounded-full bg-white/10 px-3 py-1 text-[13px] text-[#f5f5f7] hover:bg-white/15 transition hidden sm:inline-block"
             >
-              {snowMode ? "霜雪已覆" : "注入霜雪"}
+              {snowMode ? "冰雪已注入" : "注入霜雪"}
             </button>
             <a
-              href="https://github.com/wangguode/terra-world-travel"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="terra-btn rounded-full bg-white px-4 sm:px-5 py-1.5 text-[16px] font-semibold text-black no-underline hover:bg-white/90"
+              href="#interactive-playground"
+              onClick={() => setCurrentView("overview")}
+              className="rounded-full bg-[#0071e3] px-3.5 sm:px-4 py-1 text-[13px] font-medium text-white hover:bg-[#0077ed] transition no-underline"
             >
-              GitHub 仓库
+              即刻体验
             </a>
           </nav>
         </div>
@@ -276,31 +320,36 @@ export default function TerraOasisOfficialWebsite() {
       {/* ===================== 视图分支 A：概览主站 (Overview) ===================== */}
       {currentView === "overview" && (
         <main>
-          {/* 2. 官方旗舰品牌第一视觉 (Hero Section) */}
-          <section id="hero" className="relative bg-[#070707] pt-20 sm:pt-28 pb-16 sm:pb-24">
-            <div className="mx-auto max-w-7xl px-5 sm:px-10">
-              <div className="max-w-4xl terra-reveal">
-                <h1 className="text-[32px] sm:text-[60px] lg:text-[76px] font-bold text-white tracking-tight leading-[1.06]">
-                  物理世界，由神经网络端到端实时生成
+          {/* 3. Apple 经典居中大片感 Hero Section */}
+          <section id="hero" className="relative bg-[#000000] pt-16 sm:pt-24 pb-20 sm:pb-28 text-center">
+            <div className="mx-auto max-w-5xl px-5 sm:px-10">
+              <div className="terra-reveal space-y-4">
+                <div className="text-[17px] sm:text-[19px] font-semibold text-[#f5f5f7] tracking-tight">
+                  TERRA-OASIS 世界模型
+                </div>
+
+                <h1 className="text-[32px] sm:text-[56px] lg:text-[72px] font-semibold text-[#f5f5f7] tracking-tight leading-[1.06] max-w-4xl mx-auto">
+                  物理世界，由神经网络端到端实时生成。
                 </h1>
 
-                <p className="mt-6 text-[18px] sm:text-[20px] text-white/70 max-w-3xl leading-relaxed tnum">
-                  告别传统 3D 几何建模与手工物理着色器。TERRA-OASIS 是首个面向现代 Web 浏览器的动作驱动因果扩散世界模型，无需高端显卡，轻按键盘 WASD 即可实时漫游探索无限涌现的物理虚拟时空。
+                <p className="mt-4 text-[17px] sm:text-[20px] text-[#d2d2d7] max-w-2xl mx-auto leading-relaxed tnum font-normal">
+                  告别传统 3D 几何建模与手工着色器。首个面向现代 Web 浏览器的动作驱动因果扩散世界模型，无需高端显卡，轻按 WASD 即刻漫游无限涌现的时空。
                 </p>
 
-                <div className="mt-8 flex flex-wrap items-center gap-4">
+                <div className="pt-6 flex flex-wrap items-center justify-center gap-4 text-[16px]">
                   <a
                     href="#interactive-playground"
-                    className="terra-btn rounded-full bg-[#00f2fe] px-8 py-3.5 text-[16px] font-bold text-black no-underline hover:bg-[#00f2fe]/90 transition"
+                    className="rounded-full bg-[#0071e3] px-6 py-2.5 text-white hover:bg-[#0077ed] transition no-underline font-medium"
                   >
-                    进入可玩神经沙盒 ↓
+                    进入交互沙盒
                   </a>
                   <button
                     type="button"
                     onClick={() => setCurrentView("docs")}
-                    className="terra-btn rounded-full bg-white/10 px-7 py-3.5 text-[16px] font-medium text-white hover:bg-white/20 transition"
+                    className="text-[#2997ff] hover:underline flex items-center gap-1 font-medium transition"
                   >
-                    查看架构技术文档
+                    <span>查阅技术架构文档</span>
+                    <span>&gt;</span>
                   </button>
                   <button
                     type="button"
@@ -308,48 +357,48 @@ export default function TerraOasisOfficialWebsite() {
                       setCurrentView("copilot");
                       setCopilotOpen(true);
                     }}
-                    className="terra-btn rounded-full bg-white/10 px-6 py-3.5 text-[16px] font-medium text-[#00f2fe] hover:bg-white/20 transition flex items-center gap-2"
+                    className="text-[#2997ff] hover:underline flex items-center gap-1 font-medium transition"
                   >
                     <span>向智能助手提问</span>
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#00f2fe]" />
+                    <span>&gt;</span>
                   </button>
                 </div>
               </div>
 
-              {/* 核心硬核指标条 (Key Metrics Bar) */}
-              <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 terra-reveal">
-                <div className="rounded-[20px] bg-[#0c0c0e] p-5 sm:p-6">
-                  <div className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight tnum">
+              {/* Apple 芯片级大指标矩阵 (Key Specs Matrix) */}
+              <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 terra-reveal">
+                <div className="rounded-[24px] bg-[#161617] p-6 sm:p-8 text-center">
+                  <div className="text-[36px] sm:text-[48px] font-semibold text-white tracking-tight tnum">
                     14B
                   </div>
-                  <div className="mt-1 text-[16px] text-white/50">
+                  <div className="mt-2 text-[14px] text-[#a1a1a6] font-normal">
                     因果扩散 Transformer 骨干
                   </div>
                 </div>
 
-                <div className="rounded-[20px] bg-[#0c0c0e] p-5 sm:p-6">
-                  <div className="text-[28px] sm:text-[36px] font-bold text-[#00f2fe] tracking-tight tnum">
+                <div className="rounded-[24px] bg-[#161617] p-6 sm:p-8 text-center">
+                  <div className="text-[36px] sm:text-[48px] font-semibold text-[#2997ff] tracking-tight tnum">
                     60 FPS
                   </div>
-                  <div className="mt-1 text-[16px] text-white/50">
+                  <div className="mt-2 text-[14px] text-[#a1a1a6] font-normal">
                     720p 实时神经推流
                   </div>
                 </div>
 
-                <div className="rounded-[20px] bg-[#0c0c0e] p-5 sm:p-6">
-                  <div className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight tnum">
+                <div className="rounded-[24px] bg-[#161617] p-6 sm:p-8 text-center">
+                  <div className="text-[36px] sm:text-[48px] font-semibold text-white tracking-tight tnum">
                     16 ms
                   </div>
-                  <div className="mt-1 text-[16px] text-white/50">
+                  <div className="mt-2 text-[14px] text-[#a1a1a6] font-normal">
                     端到端动作条件注入延迟
                   </div>
                 </div>
 
-                <div className="rounded-[20px] bg-[#0c0c0e] p-5 sm:p-6">
-                  <div className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight tnum">
+                <div className="rounded-[24px] bg-[#161617] p-6 sm:p-8 text-center">
+                  <div className="text-[36px] sm:text-[48px] font-semibold text-white tracking-tight tnum">
                     0 Poly
                   </div>
-                  <div className="mt-1 text-[16px] text-white/50">
+                  <div className="mt-2 text-[14px] text-[#a1a1a6] font-normal">
                     100% 神经自回归，无预设网格
                   </div>
                 </div>
@@ -357,23 +406,20 @@ export default function TerraOasisOfficialWebsite() {
             </div>
           </section>
 
-          {/* 3. 在线交互沙盒官方体验区 (Interactive Playground Showcase) */}
-          <section
-            id="interactive-playground"
-            className="relative bg-[#09090b] py-16 sm:py-24"
-          >
+          {/* 4. 在线交互沙盒官方体验区 (Apple Style Sandbox) */}
+          <section id="interactive-playground" className="relative bg-[#000000] py-16 sm:py-24">
             <div className="mx-auto max-w-7xl px-5 sm:px-10">
               <div className="max-w-3xl terra-reveal">
-                <h2 className="text-[32px] sm:text-[40px] font-bold text-white tracking-tight">
+                <h2 className="text-[28px] sm:text-[40px] font-semibold text-white tracking-tight">
                   在线神经虚拟沙盒体验视窗
                 </h2>
-                <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+                <p className="mt-3 text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed">
                   60 FPS WebGL 实时推流就绪：轻按键盘 WASD 实时漫游，按下 E 键破拆体素扰动，Space 键向上跃迁，体验纯神经网络端到端推演的时空因果。
                 </p>
               </div>
 
               {/* 视窗硬件级外壳容器 */}
-              <div className="mt-8 rounded-[28px] bg-[#121214] p-2 sm:p-3 terra-reveal">
+              <div className="mt-8 rounded-[28px] bg-[#161617] p-2 sm:p-3 terra-reveal">
                 <div className="relative w-full h-[65vh] sm:h-[75vh] min-h-[480px] rounded-[22px] overflow-hidden bg-black">
                   <WorldModelSimulator
                     activeWorldId={activeWorldId}
@@ -385,35 +431,35 @@ export default function TerraOasisOfficialWebsite() {
                 </div>
 
                 {/* 视窗下方快捷操作指南条 */}
-                <div className="mt-3 px-3 py-2 flex flex-wrap items-center justify-between gap-4 text-[16px] text-white/60">
+                <div className="mt-3 px-3 py-2 flex flex-wrap items-center justify-between gap-4 text-[14px] text-[#a1a1a6]">
                   <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                     <div>
-                      <span className="rounded-[6px] bg-white/10 px-2 py-0.5 text-white font-semibold mr-1.5">
+                      <span className="rounded-[6px] bg-white/10 px-2 py-0.5 text-white font-medium mr-1.5">
                         WASD
                       </span>
                       <span>平移移动</span>
                     </div>
                     <div>
-                      <span className="rounded-[6px] bg-white/10 px-2 py-0.5 text-white font-semibold mr-1.5">
+                      <span className="rounded-[6px] bg-white/10 px-2 py-0.5 text-white font-medium mr-1.5">
                         Space
                       </span>
                       <span>反重力跳跃</span>
                     </div>
                     <div>
-                      <span className="rounded-[6px] bg-white/10 px-2 py-0.5 text-[#00f2fe] font-semibold mr-1.5">
+                      <span className="rounded-[6px] bg-white/10 px-2 py-0.5 text-[#2997ff] font-medium mr-1.5">
                         E 键 / 点击
                       </span>
                       <span>世界破拆扰动</span>
                     </div>
                     <div>
-                      <span className="rounded-[6px] bg-white/10 px-2 py-0.5 text-white font-semibold mr-1.5">
+                      <span className="rounded-[6px] bg-white/10 px-2 py-0.5 text-white font-medium mr-1.5">
                         R
                       </span>
                       <span>量子重采样</span>
                     </div>
                   </div>
 
-                  <div className="text-[16px] text-white/40">
+                  <div className="text-[14px] text-[#a1a1a6]">
                     支持鼠标拖拽视角与移动端触控方向键 · 支持一键全屏沉浸视界
                   </div>
                 </div>
@@ -421,67 +467,51 @@ export default function TerraOasisOfficialWebsite() {
             </div>
           </section>
 
-          {/* 4. 突破传统图形学的四大核心技术支柱 (Technological Pillars) */}
-          <section id="technological-pillars" className="bg-[#070707] py-20 sm:py-28">
+          {/* 5. 突破传统图形学的四大核心技术支柱 (Technological Pillars) */}
+          <section id="technological-pillars" className="bg-[#000000] py-20 sm:py-28">
             <div className="mx-auto max-w-7xl px-5 sm:px-10">
               <div className="max-w-2xl terra-reveal">
-                <h2 className="text-[32px] sm:text-[40px] font-bold text-white tracking-tight">
+                <h2 className="text-[28px] sm:text-[40px] font-semibold text-white tracking-tight">
                   突破传统图形学极限的四大技术支柱
                 </h2>
-                <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+                <p className="mt-3 text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed">
                   从显式手工 3D 建模迈向隐式神经世界生成，TERRA-OASIS 重新定义了人机虚拟环境的交互范式。
                 </p>
               </div>
 
               <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                <div className="rounded-[24px] bg-[#0c0c0e] p-8 terra-reveal space-y-3">
-                  <div className="flex items-center gap-2 text-[#00f2fe] text-[16px] font-semibold">
-                    <span className="h-2 w-2 rounded-full bg-[#00f2fe]" />
-                    <span>核心技术一</span>
-                  </div>
-                  <h3 className="text-[22px] sm:text-[24px] font-bold text-white tracking-tight">
-                    动作条件因果注入 (Action Conditioning)
+                <div className="rounded-[28px] bg-[#161617] p-8 sm:p-10 terra-reveal space-y-3">
+                  <h3 className="text-[22px] sm:text-[24px] font-semibold text-white tracking-tight">
+                    1. 动作条件因果注入 (Action Conditioning)
                   </h3>
-                  <p className="text-[16px] text-white/70 leading-relaxed">
+                  <p className="text-[16px] text-[#d2d2d7] leading-relaxed">
                     不再是被动生成一段固定视频。模型将用户的按键输入与物理位移矢量作为条件潜变量，毫秒级注入扩散主干，以自回归方式逐帧推演出符合操作意图的时空走向。
                   </p>
                 </div>
 
-                <div className="rounded-[24px] bg-[#0c0c0e] p-8 terra-reveal space-y-3">
-                  <div className="flex items-center gap-2 text-[#00f2fe] text-[16px] font-semibold">
-                    <span className="h-2 w-2 rounded-full bg-[#00f2fe]" />
-                    <span>核心技术二</span>
-                  </div>
-                  <h3 className="text-[22px] sm:text-[24px] font-bold text-white tracking-tight">
-                    无限长程时空连续性 (Causal DiT Horizon)
+                <div className="rounded-[28px] bg-[#161617] p-8 sm:p-10 terra-reveal space-y-3">
+                  <h3 className="text-[22px] sm:text-[24px] font-semibold text-white tracking-tight">
+                    2. 无限长程时空连续性 (Causal DiT Horizon)
                   </h3>
-                  <p className="text-[16px] text-white/70 leading-relaxed">
+                  <p className="text-[16px] text-[#d2d2d7] leading-relaxed">
                     传统自回归视频生成在数秒后容易发生时空漂移与画面坍缩。TERRA-OASIS 采用双智能体时空记忆调度与因果滑动注意力，保证无论漫游多久，物理结构与场景几何永不崩坏。
                   </p>
                 </div>
 
-                <div className="rounded-[24px] bg-[#0c0c0e] p-8 terra-reveal space-y-3">
-                  <div className="flex items-center gap-2 text-[#00f2fe] text-[16px] font-semibold">
-                    <span className="h-2 w-2 rounded-full bg-[#00f2fe]" />
-                    <span>核心技术三</span>
-                  </div>
-                  <h3 className="text-[22px] sm:text-[24px] font-bold text-white tracking-tight">
-                    自主涌现的内化直觉物理 (Learned Physics)
+                <div className="rounded-[28px] bg-[#161617] p-8 sm:p-10 terra-reveal space-y-3">
+                  <h3 className="text-[22px] sm:text-[24px] font-semibold text-white tracking-tight">
+                    3. 自主涌现的内化直觉物理 (Learned Physics)
                   </h3>
-                  <p className="text-[16px] text-white/70 leading-relaxed">
+                  <p className="text-[16px] text-[#d2d2d7] leading-relaxed">
                     完全无需编写牛顿力学方程或 PhysX 碰撞体代码。神经网络在海量动态数据中自发学到了重力加速度、空气阻尼、碰撞弹射、流体焦散与菲涅尔光斑的客观规律。
                   </p>
                 </div>
 
-                <div className="rounded-[24px] bg-[#0c0c0e] p-8 terra-reveal space-y-3">
-                  <div className="flex items-center gap-2 text-[#00f2fe] text-[16px] font-semibold">
-                    <span className="h-2 w-2 rounded-full bg-[#00f2fe]" />
-                    <span>核心技术四</span>
-                  </div>
-                  <h3 className="text-[22px] sm:text-[24px] font-bold text-white tracking-tight">
-                    体素破拆扰动与因果自愈 (Neural Perturbation)
+                <div className="rounded-[28px] bg-[#161617] p-8 sm:p-10 terra-reveal space-y-3">
+                  <h3 className="text-[22px] sm:text-[24px] font-semibold text-white tracking-tight">
+                    4. 体素破拆扰动与因果自愈 (Neural Perturbation)
                   </h3>
-                  <p className="text-[16px] text-white/70 leading-relaxed">
+                  <p className="text-[16px] text-[#d2d2d7] leading-relaxed">
                     当用户按下 E 键破拆体素或注入局部高斯噪声时，模型能够即时推演出周围几何破裂飞溅与阴影重构，展现出真正世界模型独有的局部物理干预自适应能力。
                   </p>
                 </div>
@@ -489,14 +519,14 @@ export default function TerraOasisOfficialWebsite() {
             </div>
           </section>
 
-          {/* 5. 五大沙盒世界维度画廊 (Dimensions Gallery) */}
-          <section id="world-dimensions" className="bg-[#0c0c0e] py-20 sm:py-28">
+          {/* 6. 五大沙盒世界维度画廊 (Apple Bento Gallery) */}
+          <section id="world-dimensions" className="bg-[#000000] py-20 sm:py-28">
             <div className="mx-auto max-w-7xl px-5 sm:px-10">
               <div className="max-w-2xl terra-reveal">
-                <h2 className="text-[32px] sm:text-[40px] font-bold text-white tracking-tight">
+                <h2 className="text-[28px] sm:text-[40px] font-semibold text-white tracking-tight">
                   五大多重沙盒世界维度矩阵
                 </h2>
-                <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+                <p className="mt-3 text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed">
                   每个维度均搭载独特的动力学重力常数、因果时序视界与光学反射特性，点击即可在上方在线视窗中即时加载体验。
                 </p>
               </div>
@@ -505,10 +535,10 @@ export default function TerraOasisOfficialWebsite() {
                 {WORLD_DIMENSIONS.map((world: WorldDimension) => (
                   <article
                     key={world.id}
-                    className="terra-reveal rounded-[24px] bg-[#141416] p-6 flex flex-col justify-between transition-transform duration-300 hover:scale-[1.01]"
+                    className="terra-reveal rounded-[28px] bg-[#161617] p-6 sm:p-7 flex flex-col justify-between transition-transform duration-300 hover:scale-[1.01]"
                   >
                     <div>
-                      <div className="relative aspect-[16/10] overflow-hidden rounded-[18px]">
+                      <div className="relative aspect-[16/10] overflow-hidden rounded-[20px]">
                         <Image
                           src={world.image}
                           alt={world.name}
@@ -519,43 +549,43 @@ export default function TerraOasisOfficialWebsite() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                        <span className="rounded-full bg-white/5 px-3 py-1 text-[16px] text-[#00f2fe] font-medium">
+                        <span className="rounded-full bg-white/5 px-3 py-1 text-[13px] text-[#2997ff] font-medium">
                           {world.category}
                         </span>
-                        <span className="text-[16px] text-white/40 tnum">
+                        <span className="text-[13px] text-[#a1a1a6] tnum">
                           {world.codename}
                         </span>
                       </div>
 
-                      <h3 className="mt-3 text-[20px] font-bold text-white tracking-tight">
+                      <h3 className="mt-3 text-[20px] font-semibold text-white tracking-tight">
                         {world.name}
                       </h3>
 
-                      <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
+                      <p className="mt-2 text-[15px] text-[#d2d2d7] leading-relaxed">
                         {world.description}
                       </p>
 
-                      <div className="mt-4 bg-white/5 rounded-[16px] p-3.5 space-y-1.5 text-[16px] tnum">
+                      <div className="mt-4 bg-[#1d1d1f] rounded-[18px] p-4 space-y-2 text-[14px] tnum">
                         <div className="flex justify-between">
-                          <span className="text-white/40">动力学重力：</span>
+                          <span className="text-[#a1a1a6]">动力学重力：</span>
                           <span className="text-white font-medium">{world.physics.gravity} m/s²</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-white/40">因果时序窗口：</span>
+                          <span className="text-[#a1a1a6]">因果时序窗口：</span>
                           <span className="text-white font-medium">{world.diffusionConfig.causalWindow} Frames</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-white/40">流式刷新率：</span>
-                          <span className="text-[#00f2fe] font-medium">{world.diffusionConfig.frameRate} FPS (720p)</span>
+                          <span className="text-[#a1a1a6]">流式刷新率：</span>
+                          <span className="text-[#2997ff] font-medium">{world.diffusionConfig.frameRate} FPS (720p)</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-5 pt-3">
+                    <div className="mt-6 pt-2">
                       <button
                         type="button"
                         onClick={() => handleSelectDimension(world.id)}
-                        className="terra-btn w-full rounded-full bg-white/10 py-2.5 text-[16px] font-medium text-white hover:bg-white/20 transition"
+                        className="w-full rounded-full bg-white/10 py-2.5 text-[14px] font-medium text-white hover:bg-white/15 transition"
                       >
                         在视窗中载入此世界 ↑
                       </button>
@@ -566,70 +596,91 @@ export default function TerraOasisOfficialWebsite() {
             </div>
           </section>
 
-          {/* 6. 开发者极速接入与动作流 SDK (Developer Quickstart) */}
-          <section id="quickstart" className="bg-[#070707] py-20 sm:py-28">
+          {/* 7. 开发者极速接入与动作流 SDK (Developer Quickstart) */}
+          <section id="quickstart" className="bg-[#000000] py-20 sm:py-28">
             <div className="mx-auto max-w-7xl px-5 sm:px-10">
               <div className="max-w-2xl terra-reveal">
-                <h2 className="text-[32px] sm:text-[40px] font-bold text-white tracking-tight">
-                  开发者极速接入与动作流 SDK
+                <h2 className="text-[28px] sm:text-[40px] font-semibold text-white tracking-tight">
+                  开发者接入与动作流 SDK
                 </h2>
-                <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+                <p className="mt-3 text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed">
                   面向游戏引擎、机器人控制与研究人员。三行代码即可连接 TERRA-OASIS 动作流服务，注入连续按键与位姿张量。
                 </p>
               </div>
 
               <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 terra-reveal">
-                <div className="rounded-[24px] bg-[#0c0c0e] p-6 space-y-3 flex flex-col justify-between">
+                <div className="rounded-[28px] bg-[#161617] p-8 space-y-4 flex flex-col justify-between">
                   <div>
-                    <div className="text-[18px] font-bold text-white">客户端免配即玩</div>
-                    <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
+                    <div className="text-[18px] font-semibold text-white">客户端免配即玩</div>
+                    <p className="mt-2 text-[15px] text-[#d2d2d7] leading-relaxed">
                       完全无需安装环境与独立显卡。任何支持 WebGL 的现代浏览器打开即可通过键盘 WASD 实时漫游 60 FPS 神经虚拟沙盒。
                     </p>
                   </div>
-                  <div className="pt-2">
-                    <a href="#interactive-playground" className="text-[#00f2fe] text-[16px] font-semibold hover:underline no-underline">
-                      立即在上方体验 →
+                  <div>
+                    <a href="#interactive-playground" className="text-[#2997ff] text-[15px] font-medium hover:underline flex items-center gap-1">
+                      <span>立即在视窗中体验</span>
+                      <span>&gt;</span>
                     </a>
                   </div>
                 </div>
 
-                <div className="rounded-[24px] bg-[#0c0c0e] p-6 space-y-3 flex flex-col justify-between">
+                <div className="rounded-[28px] bg-[#161617] p-8 space-y-4 flex flex-col justify-between">
                   <div>
-                    <div className="text-[18px] font-bold text-white">Python 动作流 SDK</div>
-                    <pre className="mt-2 text-[16px] text-white/80 p-3 bg-black/40 rounded-[12px] overflow-x-auto leading-relaxed">
+                    <div className="text-[18px] font-semibold text-white">Python 动作流 SDK</div>
+                    <pre className="mt-2 text-[13px] text-white/90 p-4 bg-[#1d1d1f] rounded-[16px] overflow-x-auto leading-relaxed">
                       <code>{`import terra_oasis as oasis
 
-client = oasis.connect("wss://api.terra-oasis.org")
-frame = client.step(action="move_forward", speed=1.2)`}</code>
+client = oasis.connect("wss://api.terra.ai")
+stream = client.stream_world(dim="voxel")
+stream.send_action({"key": "W", "pitch": 0.1})`}</code>
                     </pre>
                   </div>
-                  <div className="text-[16px] text-white/40">pip install terra-oasis-sdk</div>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentView("docs");
+                        setActiveDocId("action-protocol");
+                      }}
+                      className="text-[#2997ff] text-[15px] font-medium hover:underline flex items-center gap-1"
+                    >
+                      <span>阅读动作注入协议</span>
+                      <span>&gt;</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="rounded-[24px] bg-[#0c0c0e] p-6 space-y-3 flex flex-col justify-between">
+                <div className="rounded-[28px] bg-[#161617] p-8 space-y-4 flex flex-col justify-between">
                   <div>
-                    <div className="text-[18px] font-bold text-white">Docker 容器私有化部署</div>
-                    <pre className="mt-2 text-[16px] text-white/80 p-3 bg-black/40 rounded-[12px] overflow-x-auto leading-relaxed">
-                      <code>{`docker run --gpus all -p 3200:3200 \\
-  ghcr.io/wangguode/terra-oasis:latest`}</code>
-                    </pre>
+                    <div className="text-[18px] font-semibold text-white">私有化集群部署</div>
+                    <p className="mt-2 text-[15px] text-[#d2d2d7] leading-relaxed">
+                      提供 Docker 一键镜像与 vLLM-World 分布式推理后端，支持 8×H100/H800 算力集群高吞吐私有化部署。
+                    </p>
                   </div>
-                  <div className="text-[16px] text-white/40">支持多卡 GPU 张量并行推理</div>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentView("docs");
+                        setActiveDocId("cluster-deploy");
+                      }}
+                      className="text-[#2997ff] text-[15px] font-medium hover:underline flex items-center gap-1"
+                    >
+                      <span>查阅集群部署手册</span>
+                      <span>&gt;</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
 
-          {/* 7. 学术研究与开发者生态 (Research & Citation) */}
-          <section id="research" className="bg-[#09090b] py-20 sm:py-28">
-            <div className="mx-auto max-w-7xl px-5 sm:px-10">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-                <div className="lg:col-span-6 terra-reveal">
-                  <h2 className="text-[32px] sm:text-[40px] font-bold text-white tracking-tight">
-                    开放研究、学术引用与生态
-                  </h2>
-                  <p className="mt-4 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
-                    TERRA-OASIS 致力于推动下一代世界模型技术的完全开放与普及。无论是学术界开展具身智能仿真研究，还是独立开发者探索次世代神经游戏，均可通过开源代码库与预训练权重自由构建。
+              {/* 开源仓库与学术引用 */}
+              <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div className="lg:col-span-6 rounded-[28px] bg-[#161617] p-8 sm:p-10 terra-reveal">
+                  <h3 className="text-[22px] sm:text-[28px] font-semibold text-white tracking-tight">
+                    完全开源，欢迎社区共建下一代物理世界基座
+                  </h3>
+                  <p className="mt-3 text-[15px] sm:text-[16px] text-[#d2d2d7] leading-relaxed">
+                    遵循 Apache-2.0 协议开源全部前端 WebGL 客户端代码、动作注入中间件以及知识库文档。
                   </p>
 
                   <div className="mt-8 flex flex-wrap gap-4">
@@ -637,27 +688,27 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                       href="https://github.com/wangguode/terra-world-travel"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="terra-btn rounded-full bg-white px-7 py-3 text-[16px] font-bold text-black no-underline hover:bg-white/90 transition"
+                      className="rounded-full bg-white px-6 py-2.5 text-[15px] font-semibold text-black no-underline hover:bg-white/90 transition"
                     >
-                      在 GitHub 上 Star 关注
+                      访问 GitHub 官方仓库
                     </a>
                     <button
                       type="button"
                       onClick={handleCopyBibtex}
-                      className="terra-btn rounded-full bg-white/10 px-6 py-3 text-[16px] font-medium text-white hover:bg-white/20 transition"
+                      className="rounded-full bg-white/10 px-6 py-2.5 text-[15px] font-medium text-white hover:bg-white/15 transition"
                     >
-                      {copiedBibtex ? "已复制学术引用 BibTeX" : "复制 BibTeX 引用"}
+                      {copiedBibtex ? "已复制学术引用 BibTeX" : "复制学术引用 (BibTeX)"}
                     </button>
                   </div>
                 </div>
 
                 {/* BibTeX 引用块 */}
-                <div className="lg:col-span-6 rounded-[24px] bg-[#121214] p-6 terra-reveal">
-                  <div className="flex items-center justify-between text-[16px] text-white/40 pb-3">
-                    <span className="font-semibold text-white">BibTeX Citation</span>
-                    <span className="uppercase text-[16px]">CITATION</span>
+                <div className="lg:col-span-6 rounded-[28px] bg-[#161617] p-8 terra-reveal">
+                  <div className="flex items-center justify-between text-[14px] text-[#a1a1a6] pb-3">
+                    <span className="font-medium text-white">BibTeX Citation</span>
+                    <span className="text-[13px] text-[#a1a1a6]">arXiv:2603.01892</span>
                   </div>
-                  <pre className="mt-2 text-[16px] text-white/80 overflow-x-auto leading-relaxed p-4 bg-black/40 rounded-[14px]">
+                  <pre className="mt-2 text-[13px] text-white/90 overflow-x-auto leading-relaxed p-4 bg-[#1d1d1f] rounded-[16px]">
                     <code>{`@article{terra_oasis_2026,
   title={Terra-Oasis: Playable Action-Conditioned
          Neural World Model Application},
@@ -672,13 +723,13 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
           </section>
 
           {/* 8. 常见问题解答 (FAQ) */}
-          <section id="faq" className="bg-[#070707] py-20 sm:py-28">
+          <section id="faq" className="bg-[#000000] py-20 sm:py-28">
             <div className="mx-auto max-w-7xl px-5 sm:px-10">
               <div className="max-w-2xl terra-reveal">
-                <h2 className="text-[32px] sm:text-[40px] font-bold text-white tracking-tight">
+                <h2 className="text-[28px] sm:text-[40px] font-semibold text-white tracking-tight">
                   关于 TERRA-OASIS 的常见问题
                 </h2>
-                <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+                <p className="mt-3 text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed">
                   深入了解世界模型技术原理、浏览器运行机制与未来发展路线。
                 </p>
               </div>
@@ -689,22 +740,22 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                   return (
                     <div
                       key={faq.q}
-                      className="rounded-[20px] bg-[#0c0c0e] p-6 transition"
+                      className="rounded-[24px] bg-[#161617] p-6 sm:p-7 transition"
                     >
                       <button
                         type="button"
                         onClick={() => toggleFaq(index)}
                         className="w-full flex items-center justify-between text-left gap-4"
                       >
-                        <span className="text-[18px] sm:text-[20px] font-bold text-white tracking-tight">
+                        <span className="text-[17px] sm:text-[19px] font-semibold text-white tracking-tight">
                           {faq.q}
                         </span>
-                        <span className="text-[20px] text-[#00f2fe] shrink-0">
+                        <span className="text-[20px] text-[#2997ff] shrink-0">
                           {isOpen ? "−" : "+"}
                         </span>
                       </button>
                       {isOpen && (
-                        <p className="mt-4 text-[16px] text-white/70 leading-relaxed pt-3">
+                        <p className="mt-4 text-[15px] sm:text-[16px] text-[#d2d2d7] leading-relaxed pt-3">
                           {faq.a}
                         </p>
                       )}
@@ -714,13 +765,13 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
               </div>
 
               {/* 移动端快速扫码体验 */}
-              <div className="mt-14 rounded-[32px] bg-[#121214] p-8 sm:p-14 terra-reveal">
+              <div className="mt-14 rounded-[32px] bg-[#161617] p-8 sm:p-14 terra-reveal">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
                   <div className="lg:col-span-7">
-                    <h3 className="text-[24px] sm:text-[32px] font-bold text-white tracking-tight">
+                    <h3 className="text-[24px] sm:text-[32px] font-semibold text-white tracking-tight">
                       在任意移动设备上即刻启动沙盒
                     </h3>
-                    <p className="mt-4 text-[16px] sm:text-[18px] text-white/70 leading-relaxed max-w-xl">
+                    <p className="mt-4 text-[16px] text-[#d2d2d7] leading-relaxed max-w-xl">
                       针对现代移动浏览器 WebGL 与触控事件进行了深度轻量化优化，无需昂贵算力设备，扫描二维码即可在手机上漫游神经沙盒。
                     </p>
 
@@ -728,7 +779,7 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                       <button
                         type="button"
                         onClick={handleCopyUrl}
-                        className="terra-btn rounded-full bg-white px-7 py-3 text-[16px] font-bold text-black hover:bg-white/90 transition"
+                        className="rounded-full bg-white px-6 py-2.5 text-[15px] font-semibold text-black hover:bg-white/90 transition"
                       >
                         {copiedLink ? "已复制官网访问链接" : "复制网址到移动端"}
                       </button>
@@ -736,7 +787,7 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                   </div>
 
                   <div className="lg:col-span-5 flex justify-center lg:justify-end">
-                    <div className="rounded-3xl bg-white p-6 text-center">
+                    <div className="rounded-[24px] bg-white p-6 text-center">
                       {qrCodeDataUrl ? (
                         <Image
                           src={qrCodeDataUrl}
@@ -747,16 +798,13 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                           className="h-48 w-48 rounded-xl object-contain mx-auto"
                         />
                       ) : (
-                        <div className="h-48 w-48 rounded-xl bg-gray-100 flex items-center justify-center text-black/50 text-[16px]">
-                          加载二维码中
+                        <div className="h-48 w-48 rounded-xl bg-gray-100 flex items-center justify-center text-black/50 text-[14px]">
+                          二维码生成中...
                         </div>
                       )}
-                      <p className="mt-3 text-[16px] font-medium text-[#070707]">
-                        手机扫码 · 即刻交互
-                      </p>
-                      <p className="text-[16px] text-[#070707]/60">
-                        支持 iOS 与 Android 触控漫游
-                      </p>
+                      <div className="mt-3 text-[13px] font-medium text-black">
+                        手机 Safari / Chrome 扫码漫游
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -766,87 +814,84 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
         </main>
       )}
 
-      {/* ===================== 视图分支 B：架构文档中心 (Docs) ===================== */}
+      {/* ===================== 视图分支 B：架构技术文档中心 (Docs) ===================== */}
       {currentView === "docs" && (
-        <main className="min-h-[85vh] bg-[#070707] py-12 sm:py-16">
+        <main className="min-h-[85vh] bg-[#000000] py-12 sm:py-16">
           <div className="mx-auto max-w-7xl px-5 sm:px-10">
             <div className="pb-8">
-              <h1 className="text-[32px] sm:text-[44px] font-bold text-white tracking-tight">
-                TERRA-OASIS 官方技术文档中心
+              <h1 className="text-[32px] sm:text-[44px] font-semibold text-white tracking-tight">
+                TERRA-OASIS 架构技术文档中心
               </h1>
-              <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 max-w-3xl leading-relaxed">
-                深入探索动作条件因果扩散世界模型的完整工程架构、协议规范、物理隐空间调参指南与分布式推理集群部署。
+              <p className="mt-3 text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed max-w-3xl">
+                官方开发指南、动作流条件注入协议规范、14B 因果 Transformer 骨干原理与企业级高可用分布式集群部署指南。
               </p>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* 文档左侧目录导航 */}
-              <aside className="lg:col-span-4 rounded-[24px] bg-[#0c0c0e] p-6 space-y-2 sticky top-24">
-                <div className="text-[16px] font-semibold text-white/40 uppercase tracking-wider mb-3">
-                  架构目录与技术专栏
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* 左侧文档目录 */}
+              <aside className="lg:col-span-4 rounded-[28px] bg-[#161617] p-6 space-y-2 sticky top-28">
+                <div className="text-[14px] font-semibold text-white/90 mb-3 px-3">
+                  架构文档专栏
                 </div>
                 {OFFICIAL_DOCS.map((doc) => {
-                  const isCurrent = doc.id === activeDocId;
+                  const isActive = doc.id === activeDocId;
                   return (
                     <button
                       key={doc.id}
                       type="button"
                       onClick={() => setActiveDocId(doc.id)}
-                      className={`terra-btn w-full text-left rounded-[14px] p-3 text-[16px] transition flex items-center justify-between ${
-                        isCurrent
-                          ? "bg-white text-black font-semibold"
-                          : "text-white/70 hover:bg-white/5 hover:text-white"
+                      className={`w-full text-left rounded-[18px] px-4 py-3.5 transition flex items-center justify-between ${
+                        isActive
+                          ? "bg-[#1d1d1f] text-white font-medium"
+                          : "text-[#a1a1a6] hover:bg-white/5 hover:text-white"
                       }`}
                     >
-                      <span>{doc.title}</span>
-                      <span className={`text-[16px] rounded-full px-2 py-0.5 ${
-                        isCurrent ? "bg-black/10 text-black font-medium" : "bg-white/5 text-white/50"
-                      }`}>
-                        {doc.badge}
-                      </span>
+                      <div>
+                        <div className="text-[15px]">{doc.title}</div>
+                        <div className="text-[13px] text-[#a1a1a6] mt-0.5">{doc.badge}</div>
+                      </div>
+                      <span className="text-[14px] text-[#2997ff]">{isActive ? "•" : ""}</span>
                     </button>
                   );
                 })}
               </aside>
 
-              {/* 文档右侧主内容区 */}
-              <article className="lg:col-span-8 rounded-[28px] bg-[#0c0c0e] p-8 sm:p-10 space-y-6">
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-[#00f2fe]/10 text-[#00f2fe] px-3 py-1 text-[16px] font-medium">
+              {/* 右侧文档详细正文 */}
+              <div className="lg:col-span-8 rounded-[28px] bg-[#161617] p-8 sm:p-12 space-y-8">
+                <div>
+                  <div className="inline-block rounded-full bg-white/5 px-3 py-1 text-[13px] font-medium text-[#2997ff]">
                     {currentDoc.badge}
-                  </span>
-                  <span className="text-[16px] text-white/40">官方开发者参考手册</span>
+                  </div>
+                  <h2 className="mt-4 text-[26px] sm:text-[34px] font-semibold text-white tracking-tight">
+                    {currentDoc.title}
+                  </h2>
+                  <p className="mt-2 text-[16px] text-[#d2d2d7] leading-relaxed">
+                    {currentDoc.summary}
+                  </p>
                 </div>
 
-                <h2 className="text-[28px] sm:text-[36px] font-bold text-white tracking-tight">
-                  {currentDoc.title}
-                </h2>
-
-                <p className="text-[18px] text-white/80 leading-relaxed bg-[#141416] p-4 rounded-[16px]">
-                  {currentDoc.summary}
-                </p>
-
-                <div className="mt-8 space-y-6 text-[16px] text-white/80 leading-relaxed">
-                  <pre className="text-[16px] text-white/90 p-5 bg-[#141416] rounded-[18px] overflow-x-auto leading-relaxed whitespace-pre-wrap font-sans">
-                    {currentDoc.contentMarkdown}
+                <div className="relative">
+                  <pre className="text-[14px] text-white/90 p-6 bg-[#1d1d1f] rounded-[24px] overflow-x-auto leading-relaxed whitespace-pre-wrap font-sans">
+                    <code>{currentDoc.contentMarkdown}</code>
                   </pre>
-                </div>
-
-                <div className="pt-6 flex items-center justify-between gap-4 text-[16px] text-white/50">
-                  <span>最后更新：2026 年 3 月 · v2.0 Release</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(currentDoc.contentMarkdown);
-                      setCopiedDocCode(true);
-                      setTimeout(() => setCopiedDocCode(false), 2000);
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(currentDoc.contentMarkdown || "");
+                        setCopiedDocCode(true);
+                        setTimeout(() => setCopiedDocCode(false), 2000);
+                      } catch {
+                        setCopiedDocCode(true);
+                        setTimeout(() => setCopiedDocCode(false), 2000);
+                      }
                     }}
-                    className="terra-btn text-[#00f2fe] hover:underline"
+                    className="absolute top-4 right-4 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-white/20 transition"
                   >
-                    {copiedDocCode ? "已复制本篇代码与内容" : "复制代码与 Markdown"}
+                    {copiedDocCode ? "已复制全文" : "复制代码/文档"}
                   </button>
                 </div>
-              </article>
+              </div>
             </div>
           </div>
         </main>
@@ -854,13 +899,13 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
 
       {/* ===================== 视图分支 C：前沿研究博客与社区前沿 (Blog) ===================== */}
       {currentView === "blog" && (
-        <main className="min-h-[85vh] bg-[#070707] py-12 sm:py-16">
+        <main className="min-h-[85vh] bg-[#000000] py-12 sm:py-16">
           <div className="mx-auto max-w-7xl px-5 sm:px-10">
             <div className="pb-8 max-w-3xl">
-              <h1 className="text-[32px] sm:text-[44px] font-bold text-white tracking-tight">
+              <h1 className="text-[32px] sm:text-[44px] font-semibold text-white tracking-tight">
                 TERRA 研究博客与前沿探索
               </h1>
-              <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+              <p className="mt-3 text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed">
                 来自核心工程与前沿算法团队的一线实战笔记。解构因果扩散世界模型、神经物理涌现与具身智能 Sim-to-Real 的核心突破。
               </p>
             </div>
@@ -871,26 +916,26 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                 return (
                   <article
                     key={post.id}
-                    className="rounded-[28px] bg-[#0c0c0e] p-8 flex flex-col justify-between transition-transform duration-300 hover:scale-[1.01]"
+                    className="rounded-[28px] bg-[#161617] p-8 flex flex-col justify-between transition-transform duration-300 hover:scale-[1.01]"
                   >
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between text-[16px] text-white/50 tnum">
-                        <span className="rounded-full bg-white/5 text-[#00f2fe] px-3 py-1 font-medium">
+                      <div className="flex items-center justify-between text-[13px] text-[#a1a1a6] tnum">
+                        <span className="rounded-full bg-white/5 text-[#2997ff] px-3 py-1 font-medium">
                           {post.category}
                         </span>
                         <span>{post.readTime}</span>
                       </div>
 
-                      <h2 className="text-[22px] sm:text-[24px] font-bold text-white tracking-tight leading-snug">
+                      <h2 className="text-[20px] sm:text-[22px] font-semibold text-white tracking-tight leading-snug">
                         {post.title}
                       </h2>
 
-                      <p className="text-[16px] text-white/70 leading-relaxed">
+                      <p className="text-[15px] text-[#d2d2d7] leading-relaxed">
                         {post.summary}
                       </p>
 
                       {isExpanded && (
-                        <div className="mt-4 pt-4 space-y-4 text-[16px] text-white/80 leading-relaxed bg-[#141416] p-5 rounded-[18px]">
+                        <div className="mt-4 pt-4 space-y-4 text-[14px] text-white/90 leading-relaxed bg-[#1d1d1f] p-5 rounded-[20px]">
                           {post.content.map((p, idx) => (
                             <p key={idx} className="m-0">
                               {p}
@@ -900,14 +945,14 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                       )}
                     </div>
 
-                    <div className="mt-6 pt-4 flex items-center justify-between gap-4 text-[16px] text-white/40 tnum">
+                    <div className="mt-6 pt-4 flex items-center justify-between gap-4 text-[13px] text-[#a1a1a6] tnum">
                       <span>{post.author} · {post.date}</span>
                       <button
                         type="button"
                         onClick={() => setSelectedBlogId(isExpanded ? null : post.id)}
-                        className="terra-btn text-[#00f2fe] hover:underline font-semibold"
+                        className="text-[#2997ff] hover:underline font-medium"
                       >
-                        {isExpanded ? "收起阅读 ↑" : "阅读全文 ↓"}
+                        {isExpanded ? "收起阅读 ↑" : "阅读全文 &gt;"}
                       </button>
                     </div>
                   </article>
@@ -920,13 +965,13 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
 
       {/* ===================== 视图分支 D：问答 AI 智能助手全功能工作区 (Copilot) ===================== */}
       {currentView === "copilot" && (
-        <main className="min-h-[85vh] bg-[#070707] py-12 sm:py-16">
+        <main className="min-h-[85vh] bg-[#000000] py-12 sm:py-16">
           <div className="mx-auto max-w-5xl px-5 sm:px-10">
             <div className="pb-6">
-              <h1 className="text-[32px] sm:text-[40px] font-bold text-white tracking-tight">
+              <h1 className="text-[32px] sm:text-[40px] font-semibold text-white tracking-tight">
                 TERRA-OASIS 智能问答助手
               </h1>
-              <p className="mt-2 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+              <p className="mt-2 text-[16px] sm:text-[18px] text-[#d2d2d7] leading-relaxed">
                 针对动作条件注入、14B 因果扩散主干、零多边形网格物理模拟提供专业即时解答。
               </p>
             </div>
@@ -938,7 +983,7 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                   key={prompt}
                   type="button"
                   onClick={() => handleSendCopilotQuery(prompt)}
-                  className="terra-btn rounded-full bg-[#0c0c0e] px-4 py-2 text-[16px] text-white/80 hover:bg-white/10 hover:text-white transition"
+                  className="rounded-full bg-[#161617] px-4 py-2 text-[14px] text-[#a1a1a6] hover:bg-[#1d1d1f] hover:text-white transition"
                 >
                   {prompt}
                 </button>
@@ -946,7 +991,7 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
             </div>
 
             {/* 对话窗口 */}
-            <div className="rounded-[28px] bg-[#0c0c0e] p-6 sm:p-8 flex flex-col h-[520px]">
+            <div className="rounded-[28px] bg-[#161617] p-6 sm:p-8 flex flex-col h-[520px]">
               <div className="flex-1 overflow-y-auto space-y-4 pr-2">
                 {chatMessages.map((msg, index) => (
                   <div
@@ -956,10 +1001,10 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                     }`}
                   >
                     <div
-                      className={`max-w-2xl rounded-[20px] p-4 text-[16px] leading-relaxed ${
+                      className={`max-w-2xl rounded-[22px] px-5 py-3.5 text-[15px] leading-relaxed ${
                         msg.sender === "user"
-                          ? "bg-[#00f2fe] text-black font-medium"
-                          : "bg-[#141416] text-white/90 whitespace-pre-wrap"
+                          ? "bg-[#0071e3] text-white font-normal"
+                          : "bg-[#1d1d1f] text-white/90 whitespace-pre-wrap"
                       }`}
                     >
                       {msg.text}
@@ -967,7 +1012,7 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                   </div>
                 ))}
                 {isAiTyping && (
-                  <div className="text-[16px] text-[#00f2fe]">
+                  <div className="text-[14px] text-[#2997ff]">
                     AI 正在基于世界模型因果知识库推理中...
                   </div>
                 )}
@@ -983,14 +1028,14 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
                     if (e.key === "Enter") handleSendCopilotQuery();
                   }}
                   placeholder="询问世界模型机制、动作潜变量注入或 Python SDK 接入..."
-                  className="flex-1 rounded-full bg-[#141416] px-5 py-3.5 text-[16px] text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-[#00f2fe]"
+                  className="flex-1 rounded-full bg-[#1d1d1f] px-5 py-3.5 text-[15px] text-white placeholder-[#a1a1a6] focus:outline-none focus:ring-1 focus:ring-[#2997ff]"
                 />
                 <button
                   type="button"
                   onClick={() => handleSendCopilotQuery()}
-                  className="terra-btn rounded-full bg-[#00f2fe] px-7 py-3.5 text-[16px] font-bold text-black hover:bg-[#00f2fe]/90 transition"
+                  className="rounded-full bg-[#0071e3] px-7 py-3.5 text-[15px] font-medium text-white hover:bg-[#0077ed] transition"
                 >
-                  发送提问
+                  发送
                 </button>
               </div>
             </div>
@@ -1006,168 +1051,234 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
             setCurrentView("copilot");
             setCopilotOpen(!copilotOpen);
           }}
-          className="terra-btn rounded-full bg-[#00f2fe] p-4 sm:px-5 sm:py-3.5 text-black font-bold flex items-center gap-2 hover:scale-105 transition"
+          className="rounded-full bg-[#0071e3] p-3.5 sm:px-5 sm:py-3 text-white font-medium flex items-center gap-2 hover:bg-[#0077ed] transition"
           title="点击唤起世界模型智能问答 AI"
         >
-          <span className="h-2 w-2 rounded-full bg-black" />
-          <span className="text-[16px] hidden sm:inline">AI 问答助手</span>
+          <span className="h-2 w-2 rounded-full bg-white" />
+          <span className="text-[14px] hidden sm:inline">AI 问答助手</span>
         </button>
       </div>
 
-      {/* 8. 官方现代多列标准页脚 (Official Modern Footer) */}
-      <footer className="bg-[#050505] py-16 text-[16px] text-white/50">
+      {/* 9. Apple 风格极简官方多列页脚 (Apple Official Footer) */}
+      <footer className="bg-[#000000] py-16 text-[13px] sm:text-[14px] text-[#a1a1a6]">
         <div className="mx-auto max-w-7xl px-5 sm:px-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pb-12">
             <div>
-              <div className="text-[16px] font-bold text-white uppercase tracking-wider mb-4">
+              <div className="text-[14px] font-semibold text-white mb-3">
                 产品与平台
               </div>
-              <ul className="space-y-2.5 p-0 list-none">
+              <ul className="space-y-2 p-0 list-none">
                 <li>
                   <button
                     type="button"
                     onClick={() => {
                       setCurrentView("overview");
-                      setTimeout(() => {
-                        document.getElementById("interactive-playground")?.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
-                    className="terra-btn text-white/60 hover:text-white transition text-left"
+                    className="hover:text-white transition"
                   >
-                    在线神经沙盒
+                    TERRA-OASIS 概览
+                  </button>
+                </li>
+                <li>
+                  <a href="#interactive-playground" className="hover:text-white transition no-underline text-[#a1a1a6]">
+                    神经虚拟沙盒体验
+                  </a>
+                </li>
+                <li>
+                  <a href="#world-dimensions" className="hover:text-white transition no-underline text-[#a1a1a6]">
+                    五大世界维度矩阵
+                  </a>
+                </li>
+                <li>
+                  <a href="#technological-pillars" className="hover:text-white transition no-underline text-[#a1a1a6]">
+                    内化物理与因果 DiT
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="text-[14px] font-semibold text-white mb-3">
+                开发者与架构文档
+              </div>
+              <ul className="space-y-2 p-0 list-none">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentView("docs");
+                      setActiveDocId("getting-started");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="hover:text-white transition"
+                  >
+                    快速上手与环境配置
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
                     onClick={() => {
-                      setCurrentView("overview");
-                      setTimeout(() => {
-                        document.getElementById("world-dimensions")?.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
+                      setCurrentView("docs");
+                      setActiveDocId("action-protocol");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
-                    className="terra-btn text-white/60 hover:text-white transition text-left"
+                    className="hover:text-white transition"
                   >
-                    多重世界维度
+                    动作注入条件协议 (API)
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
                     onClick={() => {
-                      setCurrentView("overview");
-                      setTimeout(() => {
-                        document.getElementById("technological-pillars")?.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
+                      setCurrentView("docs");
+                      setActiveDocId("dit-backbone");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
-                    className="terra-btn text-white/60 hover:text-white transition text-left"
+                    className="hover:text-white transition"
                   >
-                    动作条件引擎
+                    14B 因果扩散骨干详解
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentView("docs");
+                      setActiveDocId("cluster-deploy");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="hover:text-white transition"
+                  >
+                    8×H100 集群私有化部署
                   </button>
                 </li>
               </ul>
             </div>
 
             <div>
-              <div className="text-[16px] font-bold text-white uppercase tracking-wider mb-4">
-                研究与技术
+              <div className="text-[14px] font-semibold text-white mb-3">
+                前沿研究博客
               </div>
-              <ul className="space-y-2.5 p-0 list-none">
+              <ul className="space-y-2 p-0 list-none">
                 <li>
                   <button
                     type="button"
-                    onClick={() => setCurrentView("docs")}
-                    className="terra-btn text-white/60 hover:text-white transition text-left"
+                    onClick={() => {
+                      setCurrentView("blog");
+                      setSelectedBlogId("blog-1");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="hover:text-white transition"
                   >
-                    官方技术文档
+                    突破 10 秒崩溃魔咒
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
-                    onClick={() => setCurrentView("blog")}
-                    className="terra-btn text-white/60 hover:text-white transition text-left"
+                    onClick={() => {
+                      setCurrentView("blog");
+                      setSelectedBlogId("blog-2");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="hover:text-white transition"
                   >
-                    前沿研究博客
+                    放弃手工着色器涌现物理
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
-                    onClick={() => setCurrentView("copilot")}
-                    className="terra-btn text-white/60 hover:text-white transition text-left"
+                    onClick={() => {
+                      setCurrentView("blog");
+                      setSelectedBlogId("blog-3");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="hover:text-white transition"
                   >
-                    问答 AI 助手
+                    具身智能 Sim-to-Real 探索
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentView("copilot");
+                      setCopilotOpen(true);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="hover:text-white transition flex items-center gap-1.5"
+                  >
+                    <span>智能问答 AI Copilot</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#2997ff]" />
                   </button>
                 </li>
               </ul>
             </div>
 
             <div>
-              <div className="text-[16px] font-bold text-white uppercase tracking-wider mb-4">
-                开源与社区
+              <div className="text-[14px] font-semibold text-white mb-3">
+                开源生态与关于
               </div>
-              <ul className="space-y-2.5 p-0 list-none">
+              <ul className="space-y-2 p-0 list-none">
                 <li>
                   <a
                     href="https://github.com/wangguode/terra-world-travel"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-white/60 hover:text-white no-underline transition"
+                    className="hover:text-white transition no-underline text-[#a1a1a6]"
                   >
                     GitHub 源码仓库
                   </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/wangguode/terra-world-travel/releases"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition no-underline text-[#a1a1a6]"
+                  >
+                    发行版本 (v2.0.0)
+                  </a>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={handleCopyBibtex}
+                    className="hover:text-white transition"
+                  >
+                    复制 BibTeX 学术引用
+                  </button>
                 </li>
                 <li>
                   <button
                     type="button"
                     onClick={() => {
                       setCurrentView("overview");
-                      setTimeout(() => {
-                        document.getElementById("faq")?.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
+                      const el = document.getElementById("faq");
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className="terra-btn text-white/60 hover:text-white transition text-left"
+                    className="hover:text-white transition"
                   >
-                    开发者 FAQ
+                    常见技术问题解答 (FAQ)
                   </button>
-                </li>
-                <li>
-                  <a
-                    href="https://github.com/wangguode/terra-world-travel/issues"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white/60 hover:text-white no-underline transition"
-                  >
-                    问题反馈 Issue
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://github.com/wangguode/terra-world-travel/blob/main/LICENSE"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white/60 hover:text-white no-underline transition"
-                  >
-                    MIT 开源协议
-                  </a>
                 </li>
               </ul>
             </div>
-
-            <div>
-              <div className="text-[16px] font-bold text-white uppercase tracking-wider mb-4">
-                关于 TERRA LAB
-              </div>
-              <p className="text-[16px] text-white/50 leading-relaxed">
-                致力于构建世界模型开放基座，探索端到端神经渲染与自回归时空生成的下一代虚拟现实范式。
-              </p>
-            </div>
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[16px] text-white/40">
-            <p className="m-0">© 2026 TERRA-OASIS · OPEN NEURAL WORLD MODEL APPLICATION.</p>
-            <p className="m-0">Real-Time Action-Conditioned Causal World Simulator.</p>
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[#a1a1a6]">
+            <div>
+              Copyright © 2026 TERRA World Model Open Source Initiative. All rights reserved.
+            </div>
+            <div className="flex gap-4">
+              <span>基于 Apache-2.0 协议开源</span>
+              <span>·</span>
+              <span>面向下一代具身智能与交互世界基座</span>
+            </div>
           </div>
         </div>
       </footer>
@@ -1175,4 +1286,4 @@ frame = client.step(action="move_forward", speed=1.2)`}</code>
   );
 }
 
-export { TerraOasisOfficialWebsite as AppleFlagshipWebsite };
+export default AppleFlagshipWebsite;
