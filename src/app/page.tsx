@@ -180,11 +180,11 @@ export default function HomePage() {
             {/* 3 个大型指标徽章 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-[44px] sm:text-[52px] font-semibold text-[#0071e3] tracking-[-0.03em] tnum">
-                    60 FPS
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum whitespace-nowrap">
+                    60 <span className="text-[22px] sm:text-[24px] font-medium text-[#0071e3]/80">FPS</span>
                   </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
+                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f] shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#34c759]" />
                     <span>Real-Time</span>
                   </div>
@@ -200,11 +200,11 @@ export default function HomePage() {
               </div>
 
               <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-[44px] sm:text-[52px] font-semibold text-[#1d1d1f] tracking-[-0.03em] tnum">
-                    &lt; 16 ms
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#1d1d1f] tracking-tight tnum whitespace-nowrap">
+                    &lt; 16 <span className="text-[22px] sm:text-[24px] font-medium text-[#6e6e73]">ms</span>
                   </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
+                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f] shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#34c759]" />
                     <span>Ultra-Low</span>
                   </div>
@@ -220,11 +220,11 @@ export default function HomePage() {
               </div>
 
               <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-[44px] sm:text-[52px] font-semibold text-[#0071e3] tracking-[-0.03em] tnum">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum whitespace-nowrap">
                     94.2%
                   </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f]">
+                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f] shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#0071e3]" />
                     <span>Zero-Shot</span>
                   </div>
