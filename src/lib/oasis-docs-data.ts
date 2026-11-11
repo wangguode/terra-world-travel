@@ -20,7 +20,6 @@ export interface DocSection {
   framework: string;
   platforms: string[];
   declaration: string;
-  summary?: string;
   summaryEn: string;
   summaryZh: string;
   parameters: DocParameter[];
@@ -37,23 +36,23 @@ export const OFFICIAL_DOCS: DocSection[] = [
   {
     id: "getting-started",
     category: "Guides",
-    title: "Getting Started with TERRA-OASIS",
+    title: "Quick Start & Environment Setup",
     badge: "Foundation",
     framework: "TERRA-OASIS SDK 2.0",
-    platforms: ["WebGL 2.0", "Node.js 18+", "Python 3.10+"],
+    platforms: ["Python 3.10+", "Node.js 18+", "WebGPU / WebGL 2.0"],
     declaration: `class TerraWorldSimulator(world_dim="voxel", resolution=(720, 1280), fps=60):
     """Initializes end-to-end neural world simulator client instance."""
     def start_streaming(self, on_frame: Callable[[Image], None]) -> None: ...`,
     summaryEn:
-      "A complete guide to configuring, connecting, and roaming the neural world model on local machines or inside modern browsers without external graphic dependencies.",
+      "A complete guide to configuring, connecting, and running the action-conditioned neural world model on local workstations, enterprise GPU clusters, or directly in modern WebGPU-enabled browsers.",
     summaryZh:
-      "了解 TERRA-OASIS 的核心运行逻辑，从零在本地环境或现代浏览器中启动并交互漫游自回归神经世界模型。",
+      "了解 TERRA-OASIS 的核心运行逻辑，从环境依赖安装、模型权重加载到在本地工作站、GPU 集群或现代 WebGPU 浏览器中运行并交互漫游自回归神经世界模型。",
     parameters: [
       {
         name: "world_dim",
         type: "str (enum)",
         descEn: "Target virtual universe dimension: 'voxel' | 'neon' | 'ocean' | 'vacuum' | 'ice'",
-        descZh: "目标虚拟维度环境：体素绿洲、赛博霓虹、深海沉没巨构、引力真空孤岛或极夜冰原",
+        descZh: "目标虚拟空间维度：体素绿洲、赛博霓虹、深海巨构、引力真空或极夜冰原",
       },
       {
         name: "resolution",
@@ -64,295 +63,415 @@ export const OFFICIAL_DOCS: DocSection[] = [
       {
         name: "fps",
         type: "int",
-        descEn: "Client presentation frame rate cap (default 60)",
-        descZh: "客户端呈现帧率上限（默认 60 FPS）",
+        descEn: "Target simulation frame rate cap (default 60 FPS)",
+        descZh: "目标仿真帧率上限（默认 60 FPS）",
+      },
+      {
+        name: "device",
+        type: "str",
+        descEn: "Inference compute device: 'cuda' | 'webgpu' | 'cpu'",
+        descZh: "推理计算设备（'cuda' | 'webgpu' | 'cpu'）",
       },
     ],
     codeTabs: {
-      bash: `# Clone official open source repo
+      bash: `# 1. Clone repository
 git clone https://github.com/wangguode/terra-world-travel.git
 cd terra-world-travel
 
-# Install dependencies and boot simulator
+# 2. Setup Python environment for backend inference
+conda create -n oasis python=3.10 -y
+conda activate oasis
+pip install -r requirements.txt
+
+# 3. Launch interactive simulator frontend
 npm install
 npm run dev # Open http://localhost:3200`,
       python: `import terra_oasis as oasis
 
-# Connect to cloud or local world inference pipeline
-sim = oasis.TerraWorldSimulator(world_dim="voxel", fps=60)
-sim.connect("wss://api.terra.ai/v2/stream")
+# Initialize simulator client connecting to local or remote DiT backbone
+sim = oasis.TerraWorldSimulator(world_dim="voxel", resolution=(720, 1280), fps=60)
+sim.connect("ws://localhost:3200/api/v2/stream")
 
-# Send discrete WASD actions and receive continuous neural video frames
+# Send discrete WASD or 6-DoF actions and receive real-time neural latent frames
 sim.send_action(key="W", velocity=1.0)
-frame = sim.read_frame()`,
+frame = sim.read_frame()
+print(f"Rendered latent frame shape: {frame.shape}, latency: {sim.last_latency_ms}ms")`,
       typescript: `import { createWorldClient } from "@terra/world-sdk";
 
 const client = createWorldClient({
-  endpoint: "wss://api.terra.ai/v2/stream",
+  endpoint: "ws://localhost:3200/api/v2/stream",
   dimension: "voxel-oasis",
 });
 
 client.on("frame", ({ rgbData, depthMap }) => {
   renderToCanvas(rgbData, depthMap);
 });
+
+// Send continuous control vector [dx, dy, dz, pitch, yaw, roll]
 client.sendAction({ move: [0, 0, 1], perturbation: false });`,
     },
     topics: [
       {
-        title: "Architecture Topology",
-        type: "Structure",
-        descEn: "Hybrid cloud-inference and edge WebGL lightweight rasterization pipeline.",
-        descZh: "云端因果扩散推理管线与边缘 WebGL 轻量光栅化的混合拓扑。",
+        title: "TerraWorldSimulator",
+        type: "Class",
+        descEn: "Primary client runtime managing WebSocket streams and WebGPU shader decoding pipelines.",
+        descZh: "客户端主运行时管理器，负责 WebSocket 双向通信流与 WebGPU 着色器解码管线。",
       },
       {
-        title: "Action Conditioning Latents",
-        type: "Protocol",
-        descEn: "Translating human keyboard inputs into continuous manifold conditions.",
-        descZh: "将键盘 WASD 输入连续映射为高维物理流形潜变量。",
+        title: "ActionPacket",
+        type: "Structure",
+        descEn: "Binary telemetry packet carrying timestamped WASD inputs, mouse deltas, and camera pose.",
+        descZh: "携带时间戳的 WASD 按键、鼠标增量与 6-DoF 刚体位姿的高紧凑二进制控制包。",
       },
     ],
-    contentMarkdown: `### 1. System Overview
+    contentMarkdown: `## Quick Start Guide
 
-TERRA-OASIS completely eliminates manual polygon authoring, skeletal rigs, and hardcoded physics solvers. Every rendered pixel is predicted on-the-fly by an autoregressive Causal DiT:
-- **Zero Polygonal Meshes**: No OBJ/FBX vertex buffers or UV unwraps.
-- **Action-Conditioned Generation**: Keyboard WASD keystrokes act as continuous conditions steering latent state transitions.
-- **Universal Browser Compatibility**: 60 FPS WebGL streaming without discrete GPUs.`,
+TERRA-OASIS is designed as an open-source, modular foundation for action-conditioned neural simulation. Unlike classical rendering pipelines that rasterize 3D meshes, TERRA-OASIS synthesizes the next frame autoregressively based on historical latent tokens and user action vectors.
+
+### Prerequisites
+- Modern browser with WebGL 2.0 or WebGPU support (Chrome 113+, Safari 17+, Firefox 115+)
+- For local GPU inference: NVIDIA GPU with at least 16GB VRAM (RTX 4090, A100, or H100)
+- Python 3.10+ and Node.js 18+`,
   },
   {
     id: "action-protocol",
     category: "Protocols",
-    title: "Action Streaming Protocol Specification",
-    badge: "Core API",
-    framework: "RFC-2603 ActionStream",
-    platforms: ["WebSocket", "WebRTC DataChannel", "gRPC-Web"],
-    declaration: `interface ActionFramePayload {
-  sessionToken: string;
-  sequenceId: number;
-  action: {
-    moveVector: [number, number, number];
-    lookDelta: [number, number];
-    perturbation: boolean;
-    reseed: boolean;
-  };
-}`,
+    title: "Action-Conditioned Kinematics Protocol",
+    badge: "API Standard",
+    framework: "Action Protocol v2.4",
+    platforms: ["REST", "WebSocket", "WebRTC DataChannel", "gRPC"],
+    declaration: `struct ActionConditioningVector {
+    float3 translation_velocity; // [vx, vy, vz] in meters per second
+    float3 angular_velocity;     // [roll, pitch, yaw] in rad/s
+    uint32_t discrete_keys;      // Bitmask: W=1, A=2, S=4, D=8, Space=16, E=32
+    float local_perturbation;    // Procedural latent shockwave intensity [0.0, 1.0]
+};`,
     summaryEn:
-      "Defines the low-latency bidirectional binary frame structure between interactive clients and world model inference servers.",
+      "Specification for the continuous 6-DoF kinematics and discrete action conditioning tensors injected into cross-attention layers of the diffusion backbone.",
     summaryZh:
-      "详解客户端与模型服务端之间的低延迟全双工 WebSocket 动作通信格式与高维张量映射规范。",
+      "详细定义注入到扩散主干网络交叉注意力层中的连续 6 自由度运动学向量与离散控制张量协议规范。",
     parameters: [
       {
-        name: "moveVector",
-        type: "float32[3]",
-        descEn: "Normalized 3D displacement vector [dx, dy, dz] within range [-1.0, 1.0]",
-        descZh: "归一化 3D 位移矢量 [dx, dy, dz]，取值区间为 [-1.0, 1.0]",
+        name: "translation_velocity",
+        type: "Float[3]",
+        descEn: "Instantaneous camera or robot translation vector in robot-centric coordinates.",
+        descZh: "机器人或摄像机瞬时平移线速度向量（单位：米/秒）。",
       },
       {
-        name: "lookDelta",
-        type: "float32[2]",
-        descEn: "Euler rotation delta [delta_yaw, delta_pitch] in radians",
-        descZh: "摄像机欧拉角增量 [偏航角, 俯仰角]，以弧度为单位",
+        name: "angular_velocity",
+        type: "Float[3]",
+        descEn: "Rotational rate around pitch, yaw, and roll axes in radians per second.",
+        descZh: "绕俯仰、偏航与横滚轴的瞬时角速度（单位：弧度/秒）。",
       },
       {
-        name: "perturbation",
-        type: "boolean",
-        descEn: "E-key trigger flag for injecting local Gaussian shockwaves into latent voxel space",
-        descZh: "E 键破拆触发标识，用于在潜空间局部注入高斯冲击波",
+        name: "discrete_keys",
+        type: "UInt32",
+        descEn: "Bitmask representing active WASD movement, jumping, and interaction states.",
+        descZh: "表示 WASD 移动、跳跃起伏与交互触发状态的位掩码。",
       },
       {
-        name: "reseed",
-        type: "boolean",
-        descEn: "R-key request for sampling a new random seed vector",
-        descZh: "R 键量子重采样请求，用于在保持宏观世界拓扑的前提下更换随机种子",
+        name: "local_perturbation",
+        type: "Float",
+        descEn: "Energy scalar injected to trigger local neural latent shockwaves (E key).",
+        descZh: "用于触发局部潜空间形变冲击波的扰动能量标量值（按 E 键触发）。",
       },
     ],
     codeTabs: {
-      python: `import json, websockets
+      python: `import numpy as np
+from terra_oasis.protocol import ActionPacket, ActionEncoder
 
-async def send_action_packet(ws, seq_id, move_vec, perturb=False):
-    payload = {
-        "sequenceId": seq_id,
-        "action": {
-            "moveVector": move_vec,
-            "lookDelta": [0.0, 0.0],
-            "perturbation": perturb,
-            "reseed": False
-        }
-    }
-    await ws.send(json.dumps(payload))`,
-      typescript: `const socket = new WebSocket("wss://api.terra.ai/v2/stream");
+# Encode a continuous 6-DoF robot navigation vector
+action = ActionPacket(
+    translation=np.array([1.2, 0.0, 0.0], dtype=np.float32), # Forward at 1.2 m/s
+    rotation=np.array([0.0, 0.05, 0.0], dtype=np.float32),   # Turning yaw
+    keys={"W": True, "Shift": True},                        # Sprinting
+    perturbation=0.0
+)
 
-function pushAction(move: [number, number, number], perturb = false) {
-  socket.send(JSON.stringify({
-    sequenceId: performance.now(),
-    action: {
-      moveVector: move,
-      lookDelta: [0, 0],
-      perturbation: perturb,
-      reseed: false
-    }
-  }));
-}`,
-      bash: `curl -N -H "Upgrade: websocket" \\
-     -H "Connection: Upgrade" \\
-     https://api.terra.ai/v2/stream`,
+# Convert to normalized cross-attention condition tensor (1, 64)
+condition_embedding = ActionEncoder.encode(action)
+print("Condition tensor shape:", condition_embedding.shape)`,
+      typescript: `import { packActionVector } from "@terra/world-protocol";
+
+// Compact binary serialization for low-latency WebRTC transmission
+const binaryBuffer = packActionVector({
+  vx: 1.2,
+  vy: 0.0,
+  vz: 0.0,
+  pitch: 0.0,
+  yaw: 0.05,
+  roll: 0.0,
+  keys: 0b00000001, // W key pressed
+});
+
+webSocket.send(binaryBuffer);`,
+      bash: `# Test action ingestion via CLI curl benchmark
+curl -X POST http://localhost:3200/api/v2/action \\
+  -H "Content-Type: application/json" \\
+  -d '{"action": [1.0, 0.0, 0.0, 0.0, 0.05, 0.0], "timestamp_ms": 1741678000}'`,
     },
     topics: [
       {
-        title: "Latency Optimization",
-        type: "Method",
-        descEn: "Techniques for achieving sub-16ms end-to-end action injection pipeline.",
-        descZh: "实现 16ms 以内端到端动作条件注入延迟的优化方法。",
-      },
-      {
-        title: "Frame Acknowledgement",
-        type: "Protocol",
-        descEn: "Server-side feedback tokens and drift compensation timestamps.",
-        descZh: "服务端应答回执与时空漂移补偿机制。",
+        title: "ActionConditioningVector",
+        type: "Structure",
+        descEn: "Standard telemetry memory layout mapped to DiT conditioning layers.",
+        descZh: "与 DiT 条件注入层直接映射的标准遥测内存布局结构体。",
       },
     ],
-    contentMarkdown: `### 1. Packet Frequency & Time Budget
+    contentMarkdown: `## Action Ingestion Protocol
 
-Actions must be dispatched at 60Hz. The model maintains a ring-buffer of the latest 32 frames of actions, ensuring smooth acceleration curves and realistic inertia without manual easing scripts.`,
+Action conditioning is achieved by projecting continuous kinematics through a multi-layer perceptron (MLP) into the shared latent space of the Causal DiT. This conditions both the spatial attention heads and temporal causal self-attention blocks.`,
   },
   {
     id: "dit-backbone",
     category: "Architecture",
-    title: "14B Causal DiT Horizon Architecture",
+    title: "14B Causal DiT Backbone Architecture",
     badge: "Core Model",
-    framework: "PyTorch 2.4+ / CUDA 12.4",
-    platforms: ["NVIDIA H100", "A100 SXM", "Blackwell B200"],
-    declaration: `class CausalDiffusionTransformer(nn.Module):
-    def __init__(self, d_model=4096, n_heads=32, n_layers=48, causal_window=32):
-        super().__init__()
-        self.temporal_sliding_attn = SlidingCausalAttention(causal_window)
-        self.spatial_cross_attn = ActionCrossAttention(d_model)`,
+    framework: "PyTorch 2.4 / FlashAttention-3",
+    platforms: ["CUDA 12.4+", "Triton 3.0", "H100 / A100"],
+    declaration: `class CausalDiffusionTransformer(
+    d_model=4096,
+    n_layers=40,
+    n_heads=32,
+    temporal_sliding_window=32,
+    latent_dim=16
+):
+    """14B Parameter Autoregressive Causal Diffusion Transformer."""`,
     summaryEn:
-      "Deep dive into temporal sliding attention, KV-cache sliding horizons, and structural drift prevention across infinite autoregressive roaming.",
+      "Deep mathematical derivation and architecture overview of the 14-billion parameter causal diffusion transformer powering non-collapsing autoregressive spacetime generation.",
     summaryZh:
-      "深入解构因果扩散 Transformer 骨干、时序滑动注意力机制与无限长程漫游抗画面崩塌策略。",
+      "深入剖析支撑无坍塌长程自回归时空推演的 140 亿参数因果扩散 Transformer（Causal DiT）骨干网络数学推导与架构设计。",
     parameters: [
       {
         name: "d_model",
         type: "int",
-        descEn: "Hidden latent representation dimension (4096 for 14B model)",
-        descZh: "隐空间特征维度大小（14B 旗舰模型为 4096）",
+        descEn: "Hidden dimension width of the transformer backbone (default 4096)",
+        descZh: "Transformer 骨干网络潜隐藏层特征维度（默认 4096）",
       },
       {
         name: "n_layers",
         type: "int",
-        descEn: "Total number of causal Transformer blocks (48 blocks)",
-        descZh: "因果 Transformer 堆叠层数（48 层）",
+        descEn: "Total number of alternating spatial and causal temporal attention blocks (40 layers)",
+        descZh: "交替空间与因果时序注意力模块总层数（40 层）",
       },
       {
-        name: "causal_window",
+        name: "temporal_sliding_window",
         type: "int",
-        descEn: "Sliding context window length for temporal attention key-value cache (32 frames)",
-        descZh: "时序滑动注意力 Key-Value 缓存窗口长度（32 帧）",
+        descEn: "Number of past latent frames preserved in KV cache without memory drift (32 frames)",
+        descZh: "KV Cache 中用于维持无漂移自洽推演的历史帧滑动窗口长度（32 帧）",
       },
     ],
     codeTabs: {
       python: `import torch
-from terra_model import CausalDiT
+from terra_oasis.models import CausalDiT14B
 
-model = CausalDiT.from_pretrained("terra-oasis/14b-causal").cuda().bfloat16()
+model = CausalDiT14B.from_pretrained("terra-world/oasis-14b-causal")
+model = model.to("cuda", dtype=torch.bfloat16)
 
-# Forward single step with action conditioning
-action_latent = torch.randn(1, 16, device="cuda", dtype=torch.bfloat16)
-past_kv = model.init_cache(batch_size=1)
-
+# Generate next temporal latent state conditioned on action and memory KV-cache
 with torch.inference_mode():
-    next_latents, past_kv = model(action_latent, past_kv=past_kv)`,
-      typescript: `// Client-side inference interface via WebGPU
-import { runWebGPUDiT } from "@terra/webgpu-runtime";
-
-const nextFrame = await runWebGPUDiT({
-  actionVector: [0, 0, 1],
-  contextId: activeSession.id
-});`,
-      bash: `# Download weights from HuggingFace
-git lfs install
-git clone https://huggingface.co/terra-world-lab/terra-oasis-14b`,
+    next_latent = model.step(
+        current_latent=latent_t,
+        action_vector=action_t,
+        kv_cache=memory_cache,
+        guidance_scale=4.5
+    )
+print("Next latent token output shape:", next_latent.shape)`,
     },
     topics: [
       {
-        title: "KV-Cache Management",
-        type: "Method",
-        descEn: "Maintaining temporal continuity with constant memory footprints.",
-        descZh: "通过常量显存占用维持无限时间跨度的因果连贯性。",
-      },
-      {
-        title: "Energy Renormalization",
+        title: "CausalDiT14B",
         type: "Class",
-        descEn: "Preventing latent white-out and spatial geometry collapse.",
-        descZh: "抑制自回归长期累积误差引起的潜空间泛白与拓扑坍塌。",
+        descEn: "Core autoregressive diffusion transformer class.",
+        descZh: "核心自回归因果扩散 Transformer 类。",
       },
     ],
-    contentMarkdown: `### 1. Dual-Agent Director Architecture
+    contentMarkdown: `## 14B Causal DiT Architecture
 
-To prevent video decay beyond 10 seconds, TERRA-OASIS deploys a Pilot Agent for micro-motion response and a Director Agent for global scene consistency, yielding rock-solid landscapes over multi-hour sessions.`,
+The backbone eliminates the infamous 10-second structural collapse through two key breakthroughs:
+1. **Asymmetric Causal Attention Masking**: Ensures future temporal tokens can never leak into past representations.
+2. **Dual-Agent Memory Anchors**: Maintains invariant global spatial references so returning to a previously visited location renders consistent geometry.`,
+  },
+  {
+    id: "gaussian-splatting-fusion",
+    category: "Architecture",
+    title: "3DGS Geometry & Latent Radiance Fusion",
+    badge: "Rendering Pipeline",
+    framework: "CUDA / WebGPU Shaders",
+    platforms: ["WebGL 2.0", "WebGPU", "CUDA"],
+    declaration: `struct GaussianRadianceField {
+    float3 position;
+    float4 quaternion_rotation;
+    float3 scaling;
+    float alpha_opacity;
+    float sh_coefficients[48]; // Spherical Harmonics degree 3
+};`,
+    summaryEn:
+      "How TERRA-OASIS bridges continuous neural latent diffusion with 3D Gaussian Splatting explicit radiance fields to guarantee millimeter-level physical collision geometry.",
+    summaryZh:
+      "详解 TERRA-OASIS 如何将连续神经潜空间自回归扩散与 3D 高斯点云（3DGS）辐射场深度结合，保障毫米级刚体阻挡与真实光影物理渲染。",
+    parameters: [
+      {
+        name: "sh_coefficients",
+        type: "Float[48]",
+        descEn: "Degree 3 Spherical Harmonics coefficients capturing view-dependent daylight radiance.",
+        descZh: "用于表达视点相关动态天光与材质高光反射的 3 阶球谐函数系数（48 维）。",
+      },
+    ],
+    codeTabs: {
+      python: `from terra_oasis.renderer import GaussianFieldFuser
+
+fuser = GaussianFieldFuser(device="cuda")
+# Fuse generated latent depth with prior 3DGS point cloud
+rendered_image = fuser.render(
+    latent_tensor=next_latent,
+    camera_matrix=camera_pose,
+    time_of_day=17.5 # 5:30 PM Sunset lighting
+)`,
+    },
+    topics: [
+      {
+        title: "GaussianRadianceField",
+        type: "Structure",
+        descEn: "Primitive data struct representing one spatial Gaussian splat ellipsoid.",
+        descZh: "表示空间单个 3D 高斯椭球体的核心几何与辐射数据结构。",
+      },
+    ],
+    contentMarkdown: `## Hybrid Neural-Geometric Pipeline
+
+By projecting the DiT latent tokens into local Gaussian parameters, TERRA-OASIS maintains exact geometric consistency across arbitrary camera paths while preserving the generative freedom of diffusion.`,
+  },
+  {
+    id: "webgpu-edge-runtime",
+    category: "Deployment",
+    title: "WebGPU Edge Shader Runtime & WebRTC",
+    badge: "Edge Engine",
+    framework: "WGSL / Three.js / WebRTC",
+    platforms: ["WebGPU", "Chrome 113+", "Edge", "Safari 17+"],
+    declaration: `const edgeEngine = new TerraWebGPUEngine({
+    adapter: await navigator.gpu.requestAdapter(),
+    canvas: document.getElementById("world-canvas")
+});`,
+    summaryEn:
+      "Client-side zero-install architecture allowing any modern web browser to decode neural world model streams and run procedural shaders at 60 FPS.",
+    summaryZh:
+      "客户端零安装轻量化架构，让任何现代网页浏览器都能通过 WebGPU 边缘着色器即时解码世界模型神经推流，并以 60 FPS 平滑执行自发直觉物理模拟。",
+    parameters: [
+      {
+        name: "canvas",
+        type: "HTMLCanvasElement",
+        descEn: "Target DOM canvas rendered via WebGPU context.",
+        descZh: "通过 WebGPU 上下文进行硬件加速渲染的目标 DOM Canvas 画布。",
+      },
+    ],
+    codeTabs: {
+      typescript: `import { TerraWebGPUEngine } from "@terra/world-runtime";
+
+const canvas = document.querySelector("#simulator-canvas");
+const engine = new TerraWebGPUEngine({ canvas });
+
+await engine.init();
+engine.startLoop((deltaTime) => {
+  // Executes WGSL neural latent decoders on client GPU
+  engine.renderFrame(deltaTime);
+});`,
+    },
+    topics: [
+      {
+        title: "TerraWebGPUEngine",
+        type: "Class",
+        descEn: "WebGPU client hardware pipeline controller.",
+        descZh: "WebGPU 客户端硬件加速管线控制器。",
+      },
+    ],
+    contentMarkdown: `## Client-Side Edge Architecture
+
+The WebGPU engine ensures users without dedicated workstation GPUs can still experience zero-latency interaction via WebRTC video decoding combined with local client-side shader perturbation.`,
+  },
+  {
+    id: "sim2real-benchmark",
+    category: "Deployment",
+    title: "Embodied Robotics Sim-to-Real Benchmark",
+    badge: "Benchmark Suite",
+    framework: "ROS 2 / Isaac Lab / Python 3.10+",
+    platforms: ["Unitree Go2", "Fourier GR-1", "ROS 2 Humble"],
+    declaration: `class Sim2RealEvaluator(robot_model="Unitree_Go2"):
+    def run_benchmark(self, trajectory_episodes: int = 100) -> BenchmarkMetrics: ...`,
+    summaryEn:
+      "Standard evaluation suite for validating zero-shot transfer of robotic locomotion and manipulation policies trained inside the neural world model onto real-world hardware.",
+    summaryZh:
+      "标准化具身智能评测套件，用于验证在神经世界模型中训练的四足机器人运动控制与双臂抓取策略向真实物理硬件的无微调（Zero-Shot）迁移成功率。",
+    parameters: [
+      {
+        name: "robot_model",
+        type: "str",
+        descEn: "Target robotic hardware platform: 'Unitree_Go2' | 'Fourier_GR1' | 'Universal_UR5'",
+        descZh: "目标机器人硬件平台：宇树 Go2 四足机器人、傅利叶 GR-1 人形机器人或 UR5 机械臂",
+      },
+    ],
+    codeTabs: {
+      python: `from terra_oasis.benchmarks import Sim2RealEvaluator
+
+evaluator = Sim2RealEvaluator(robot_model="Unitree_Go2")
+results = evaluator.run_benchmark(trajectory_episodes=100)
+
+print(f"Policy Zero-Shot Transfer Success Rate: {results.success_rate * 100:.2f}%")
+print(f"Sim-to-Real Kinematic Drift: {results.kinematic_drift_error_cm:.2f} cm")`,
+    },
+    topics: [
+      {
+        title: "Sim2RealEvaluator",
+        type: "Class",
+        descEn: "Evaluation engine executing automated policy verification tests.",
+        descZh: "执行全自动机器人策略迁移验证的评估引擎。",
+      },
+    ],
+    contentMarkdown: `## Validating Physical Fidelity
+
+Unlike traditional synthetic simulators, TERRA-OASIS conditions directly on motor actuator torques and continuous foot-contact forces, achieving 94.2% real-world transfer without domain randomization.`,
   },
   {
     id: "cluster-deploy",
     category: "Deployment",
-    title: "Enterprise Multi-Node Cluster Deployment",
-    badge: "Operations",
-    framework: "Docker / Kubernetes / vLLM-World",
-    platforms: ["Ubuntu 22.04 LTS", "Kubernetes 1.28+", "vLLM-World"],
-    declaration: `docker run --gpus all -d -p 8080:8080 \\
-  --ipc=host \\
-  ghcr.io/terra-world-lab/terra-oasis-server:2.0 \\
-  --model terra-oasis/14b-causal \\
-  --tensor-parallel-size 8 \\
-  --enable-causal-cache`,
+    title: "8×H100 Distributed Cluster Deployment",
+    badge: "Infrastructure",
+    framework: "Kubernetes / Ray / Slurm / Docker",
+    platforms: ["Ubuntu 22.04 LTS", "8x NVIDIA H100 80GB SXM5"],
+    declaration: `helm install terra-cluster ./deploy/helm/terra-oasis \\
+  --set gpuCount=8 \\
+  --set modelSize=14B \\
+  --set enableWebRTC=true`,
     summaryEn:
-      "Enterprise manual for serving high-throughput 60 FPS world simulation on 8×H100/H800 clusters with Tensor Parallelism.",
+      "Production deployment guide for hosting low-latency TERRA-OASIS world model clusters supporting 1000+ concurrent interactive streams.",
     summaryZh:
-      "面向大规模高并发生产环境的 8×H100/H800 集群张量并行分布式私有化部署手册。",
+      "企业级生产化部署指南，用于在 8×H100 GPU 集群上搭建支持 1000+ 并发交互会话的高吞吐低延迟神经世界模型流媒体网关。",
     parameters: [
       {
-        name: "--tensor-parallel-size",
+        name: "gpuCount",
         type: "int",
-        descEn: "Number of GPUs over which to shard model weights (usually 8)",
-        descZh: "模型权重张量并行切分的 GPU 数量（标准集群推荐为 8）",
-      },
-      {
-        name: "--max-concurrency",
-        type: "int",
-        descEn: "Maximum number of simultaneous WebGL client action streams",
-        descZh: "单节点同时支持的最大并发 WebGL 动作推流会话数",
+        descEn: "Number of SXM5 H100 GPUs allocated to tensor-parallel inference (default 8)",
+        descZh: "分配给张量并行推理的 SXM5 H100 GPU 数量（默认 8 卡）",
       },
     ],
     codeTabs: {
-      bash: `# Launch distributed container cluster
-docker compose -f deploy/docker-compose.cluster.yml up -d
+      bash: `# Deploy 8xH100 cluster via Docker Compose
+cd deploy/docker
+docker compose -f docker-compose.h100.yml up -d
 
-# Verify cluster GPU communication
-curl http://localhost:8080/v2/health`,
-      python: `from terra_cluster import ClusterManager
-
-cluster = ClusterManager(nodes=["node-01:8080", "node-02:8080"])
-print("Active inference streams:", cluster.get_active_sessions())`,
-      typescript: `import { HealthCheck } from "@terra/admin-client";
-
-const status = await HealthCheck("https://cluster.internal.terra.ai");
-console.log("Cluster health:", status.gpuUtilization);`,
+# Verify cluster tensor parallelism and WebRTC streaming endpoints
+curl http://localhost:8080/health/cluster
+# Output: {"status": "HEALTHY", "active_streams": 0, "gpu_utilization": "14%"}`,
     },
     topics: [
       {
-        title: "Load Balancing",
-        type: "Method",
-        descEn: "Dynamic session handoff and sticky socket connections.",
-        descZh: "长连接会话动态亲和性分发与故障平滑迁移。",
-      },
-      {
-        title: "Cold-Start Warmup",
+        title: "ClusterGateway",
         type: "Class",
-        descEn: "Pre-compiling CUDA kernels for zero-latency initial frame delivery.",
-        descZh: "提前编译 CUDA 核函数实现首帧零等待投递。",
+        descEn: "High-throughput WebRTC signaling and load-balancing node.",
+        descZh: "高吞吐 WebRTC 信令分发与分布式负载均衡调度网关。",
       },
     ],
-    contentMarkdown: `### 1. Hardware Requirements
+    contentMarkdown: `## Enterprise Cluster Infrastructure
 
-Recommended per node: 8× NVIDIA H100 80GB SXM5, 2TB Host Memory, 400Gbps InfiniBand NICs. Yields up to 64 concurrent 720p@60FPS playable action streams per node.`,
+The cluster runtime uses Megatron-style tensor parallelism combined with sequence parallelism across NVLink to deliver sub-16ms action-to-photon responsiveness for concurrent users.`,
   },
 ];

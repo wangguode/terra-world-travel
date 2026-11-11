@@ -9,8 +9,7 @@ import { AppleHeader } from "@/components/apple-header";
 import { AppleFooter } from "@/components/apple-footer";
 import { CopilotDrawer } from "@/components/copilot-drawer";
 import { AppleStoryGallery } from "@/components/apple-story-gallery";
-import { AppleTalentGallery } from "@/components/apple-talent-gallery";
-import { ECOSYSTEM_STORIES, TALENT_STORIES } from "@/lib/apple-job-creation-data";
+import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
 
 export default function HomePage() {
   const { lang } = useLanguage();
@@ -52,7 +51,7 @@ export default function HomePage() {
 
       <main className="w-full">
         {/* =========================================================================
-            2. Hero Section (复刻 Apple 创造就业官方巨幅 Hero，白色纯净背景)
+            2. Hero Section (Apple 官方风格巨幅 Hero，白色纯净背景)
            ========================================================================= */}
         <section className="relative bg-white pt-16 sm:pt-24 pb-16 sm:pb-24 terra-reveal w-full box-border">
           <div className="mx-auto max-w-5xl px-6 sm:px-8 text-center space-y-6">
@@ -90,7 +89,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Hero 底部大幅照片及纪实注脚 */}
+          {/* Hero 底部实机画面展示及专业注脚（无个人姓名与头衔） */}
           <div className="mt-14 mx-auto max-w-6xl px-6 sm:px-8">
             <div className="relative aspect-[16/9] w-full min-h-[360px] sm:min-h-[460px] overflow-hidden rounded-[28px] sm:rounded-[36px] bg-[#f5f5f7]">
               <Image
@@ -103,20 +102,18 @@ export default function HomePage() {
               />
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between text-[14px] text-[#515154] px-2">
-              <p className="font-medium">
-                <span className="text-[#1d1d1f] font-semibold">Guo Wang</span>
-                <span className="mx-1.5">|</span>
-                <span>Architect</span>
-                <span className="mx-1.5">|</span>
-                <span>Beijing</span>
+              <p className="font-medium text-[#1d1d1f]">
+                4D Spatiotemporal Neural Simulation Field
               </p>
-              <p>Leading the 14B Causal DiT open-source research team.</p>
+              <p className="text-[#515154]">
+                Continuous Action-Conditioned Causal Inference Engine
+              </p>
             </div>
           </div>
         </section>
 
         {/* =========================================================================
-            3. Big Impact Numbers (复刻 Apple 创造就业 500 万大数字浅灰区域)
+            3. Big Impact Numbers (Apple 风格浅灰大数字核心指标区)
            ========================================================================= */}
         <section className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-16">
@@ -176,7 +173,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* 实景走廊照片切片网格 (增加页面图片密度) */}
+            {/* 实景走廊照片切片网格 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="relative aspect-[16/10] overflow-hidden rounded-[24px]">
                 <Image
@@ -210,7 +207,7 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            4. World Economy & Story Gallery (复刻 Apple 放大 App 经济与故事画廊)
+            4. World Economy & Story Gallery (生态故事画廊)
            ========================================================================= */}
         <section id="ecosystem-pillars" className="bg-white py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12">
@@ -236,7 +233,7 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            5. Interactive 3D Simulator (Apple 剧场级工作台，嵌入浅色大厅中)
+            5. Interactive 3D Simulator (Apple 剧场级工作台，嵌入浅色展台)
            ========================================================================= */}
         <section id="interactive-playground" className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-7xl px-6 sm:px-8 space-y-10">
@@ -262,7 +259,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* 实机运行的 3D 模拟器外壳 (精致深色黑晶工作台，嵌入浅灰大展台) */}
+            {/* 实机运行的 3D 模拟器外壳 */}
             <div className="rounded-[32px] bg-[#121214] p-4 sm:p-6 w-full box-border text-white">
               <WorldModelSimulator
                 activeWorldId={activeWorldId}
@@ -276,30 +273,134 @@ export default function HomePage() {
         </section>
 
         {/* =========================================================================
-            6. Talent & Researchers (复刻 Apple 广纳人才纪实画廊，纯白优雅背景)
+            6. Real-World Deployments (替换“广纳人才”，展示真实的具身落地与工业应用)
            ========================================================================= */}
         <section className="bg-white py-20 sm:py-28 terra-reveal w-full box-border">
           <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12">
             <div className="max-w-3xl space-y-3">
               <h2 className="text-[32px] sm:text-[44px] lg:text-[50px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
                 {lang === "en"
-                  ? "Pioneering Physical World Models"
-                  : "为探索真实物理世界，TERRA 广纳人才。"}
+                  ? "Bridging Simulation to the Physical World"
+                  : "从前沿理论，到物理世界的真实落地。"}
               </h2>
               <p className="text-[17px] sm:text-[19px] text-[#515154] leading-relaxed font-normal">
                 {lang === "en"
-                  ? "From machine learning theorists to edge shader engineers, meet the multidisciplinary researchers pushing the envelope of causal spatial intelligence."
-                  : "汇聚机器学习前沿理论学者、图形学系统架构师与具身运动控制专家，共同攻坚因果空间世界模型的科学边界。"}
+                  ? "From quadruped robot field navigation to autonomous driving closed-loop simulation and cultural heritage preservation, explore real-world deployments driven by the neural world model."
+                  : "从四足机器人野外复杂地形巡检，到自动驾驶高保真闭环仿真与千年古建数字孪生，见证自回归因果世界模型在实体工业场景中的核心落地能力。"}
               </p>
             </div>
 
-            {/* 第二套人物画廊 */}
-            <AppleTalentGallery talents={TALENT_STORIES} />
+            {/* 4 大工业级落地场景卡片网格 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* 卡片 1: 具身机器人 */}
+              <div className="rounded-[28px] bg-[#f5f5f7] p-8 space-y-5">
+                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
+                  <Image
+                    src="/images/beijing-pulse/hero-beijing.jpg"
+                    alt="Embodied Robotics Deployment"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-[13px] font-semibold text-[#0071e3]">
+                    {lang === "en" ? "Embodied Locomotion" : "具身智能四足机器人"}
+                  </div>
+                  <h3 className="text-[22px] font-semibold text-[#1d1d1f]">
+                    {lang === "en" ? "Zero-Shot Hardware Transfer" : "真实物理硬件零微调迁移"}
+                  </h3>
+                  <p className="text-[15px] text-[#515154] leading-relaxed">
+                    {lang === "en"
+                      ? "Conditioned directly on continuous motor torques and foot contact sensors, achieving 94.2% policy transfer success on quadruped robots without real-world damage penalties."
+                      : "直接基于四足机器人电机连续扭矩与足端触地压力传感器推演，实现 94.2% 的策略无微调迁移成功率，免受真实物理试错损耗。"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 卡片 2: 自动驾驶 */}
+              <div className="rounded-[28px] bg-[#f5f5f7] p-8 space-y-5">
+                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
+                  <Image
+                    src="/images/beijing-pulse/futuristic.jpg"
+                    alt="Autonomous Driving Closed-Loop Simulation"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-[13px] font-semibold text-[#0071e3]">
+                    {lang === "en" ? "Autonomous Mobility" : "自动驾驶反事实仿真"}
+                  </div>
+                  <h3 className="text-[22px] font-semibold text-[#1d1d1f]">
+                    {lang === "en" ? "Counterfactual Road Exploration" : "极限工况与反事实决策推演"}
+                  </h3>
+                  <p className="text-[15px] text-[#515154] leading-relaxed">
+                    {lang === "en"
+                      ? "Generates dynamic traffic branches based on steering and brake actions, enabling safe closed-loop stress testing for corner cases."
+                      : "依据转向与制动控制向量生成连续动态交通分支，为自动驾驶系统提供零事故风险的极端 corner-case 闭环压力测试环境。"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 卡片 3: 文化遗产数字孪生 */}
+              <div className="rounded-[28px] bg-[#f5f5f7] p-8 space-y-5">
+                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
+                  <Image
+                    src="/images/beijing-pulse/forbidden-city.jpg"
+                    alt="Cultural Heritage Digital Preservation"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-[13px] font-semibold text-[#0071e3]">
+                    {lang === "en" ? "Spatial Digital Twins" : "空间高精度数字孪生"}
+                  </div>
+                  <h3 className="text-[22px] font-semibold text-[#1d1d1f]">
+                    {lang === "en" ? "Sub-Millimeter 3DGS Heritage" : "古建毫米级 3DGS 保护与漫游"}
+                  </h3>
+                  <p className="text-[15px] text-[#515154] leading-relaxed">
+                    {lang === "en"
+                      ? "Unites millions of spatial radiance points with sun-path solar calculation, preserving architectural geometry for digital research."
+                      : "将数百万空间辐射点云与太阳高度角天光物理模型融合，高保真数字化复刻古建筑历史形态，赋能高精细度空间感知。"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 卡片 4: 空间计算与交互娱乐 */}
+              <div className="rounded-[28px] bg-[#f5f5f7] p-8 space-y-5">
+                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px]">
+                  <Image
+                    src="/images/beijing-pulse/temple-of-heaven.jpg"
+                    alt="Interactive Spatial Computing"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-[13px] font-semibold text-[#0071e3]">
+                    {lang === "en" ? "Edge Spatial Computing" : "边缘端空间计算"}
+                  </div>
+                  <h3 className="text-[22px] font-semibold text-[#1d1d1f]">
+                    {lang === "en" ? "Zero-Install WebGPU Streaming" : "全浏览器 WebGPU 零安装即玩"}
+                  </h3>
+                  <p className="text-[15px] text-[#515154] leading-relaxed">
+                    {lang === "en"
+                      ? "Ultra-lightweight WGSL decoders bring full 60 FPS interactive neural world rendering to mobile and desktop browsers instantly."
+                      : "通过超轻量化 WGSL 着色器解码，在普通移动端与桌面浏览器上即开即用，实现 60 FPS 无感延迟动作漫游。"}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
         {/* =========================================================================
-            7. Router & Action Call (复刻 Apple 经典的浅灰行动跳转路由)
+            7. Router & Action Call (Apple 经典的浅灰行动跳转路由)
            ========================================================================= */}
         <section className="bg-[#f5f5f7] py-20 sm:py-24 text-center terra-reveal w-full box-border">
           <div className="mx-auto max-w-4xl px-6 sm:px-8 space-y-6">
@@ -308,8 +409,8 @@ export default function HomePage() {
             </h2>
             <p className="text-[17px] sm:text-[19px] text-[#515154] max-w-2xl mx-auto leading-relaxed">
               {lang === "en"
-                ? "Dive into our comprehensive Apple Developer grade API specifications or inspect peer-reviewed evaluation papers."
-                : "查阅对标 Apple Developer 标准的 API 接口规范与代码范例，或深入阅读收录于 CVPR 2026 的同行评议学术论文。"}
+                ? "Dive into our comprehensive developer API specifications or inspect peer-reviewed evaluation papers from leading research labs."
+                : "查阅详尽的开发者 API 接口规范与代码范例，或深入阅读来自全球顶尖实验室的同行评议学术论文。"}
             </p>
             <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-[15px]">
               <Link
@@ -320,7 +421,7 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/research"
-                className="rounded-full bg-white px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#f5f5f7] transition no-underline border border-[#d2d2d7]"
+                className="rounded-full bg-white px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#f5f5f7] transition no-underline"
               >
                 {lang === "en" ? "Research Publications" : "前沿科研专栏"}
               </Link>
@@ -341,10 +442,10 @@ export default function HomePage() {
            ========================================================================= */}
         <section className="bg-white py-12 px-6 sm:px-8 text-[13px] sm:text-[14px] text-[#515154] leading-relaxed w-full box-border">
           <div className="mx-auto max-w-6xl space-y-2">
-            <p>1. 140 亿参数 Causal DiT 模型结构及消融实验对比数据详见 arXiv:2603.01892 预印本学术论文。</p>
+            <p>1. 140 亿参数自回归因果扩散模型结构及消融实验对比数据详见 arXiv 预印本学术论文。</p>
             <p>2. 60 FPS 连续流式神经推流需现代支持 WebGPU 或 WebGL 2.0 硬件加速环境之浏览器支持。</p>
             <p>3. 具身智能 Sim-to-Real 迁移基准数据基于 Unitree Go2 四足机器人与 Fourier GR-1 人形机器人 100+ 次实测统计。</p>
-            <p>4. TERRA-OASIS 为开源科研空间智能应用项目，模型权重与代码遵循 Apache 2.0 协议发布。</p>
+            <p>4. 演示沙盘中全部三维时空画面均由动作因果自回归模型实时预测生成。</p>
           </div>
         </section>
       </main>

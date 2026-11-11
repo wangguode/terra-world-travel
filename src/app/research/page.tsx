@@ -12,7 +12,7 @@ import { CopilotDrawer } from "@/components/copilot-drawer";
 export default function ResearchPage() {
   const { lang } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [expandedPaperId, setExpandedPaperId] = useState<string | null>("infinite-causal-dit");
+  const [expandedPaperId, setExpandedPaperId] = useState<string | null>("oasis-neural-universe");
   const [copiedBibtexId, setCopiedBibtexId] = useState<string | null>(null);
   const [copilotOpen, setCopilotOpen] = useState(false);
 
@@ -59,16 +59,20 @@ export default function ResearchPage() {
       {/* 1. 统一 Apple 白昼磨砂玻璃导航 */}
       <AppleHeader onOpenCopilot={() => setCopilotOpen(true)} />
 
-      {/* 2. 顶层 Apple ML Research 风格副导航 (浅灰底座) */}
+      {/* 2. 顶层学术专栏面包屑导航 (简洁专业，绝无无意义标语) */}
       <div className="bg-[#f5f5f7] px-6 sm:px-8 py-3 text-[14px] text-[#515154] w-full">
         <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-[#1d1d1f]">Apple-Grade ML Research</span>
+          <nav aria-label="Breadcrumbs" className="flex items-center gap-2 flex-wrap">
+            <Link href="/" className="hover:text-[#0071e3] transition no-underline text-[#515154]">
+              TERRA-OASIS
+            </Link>
             <span className="text-[#86868b]">/</span>
-            <span className="text-[#515154]">Physical Causal World Models</span>
-          </div>
-          <div className="text-[13px] text-[#86868b]">
-            Open Science · Reproducible Benchmarks · Apache 2.0
+            <span className="text-[#86868b]">Research Publications</span>
+            <span className="text-[#86868b]">/</span>
+            <span className="text-[#1d1d1f] font-semibold">Milestone Papers</span>
+          </nav>
+          <div className="text-[13px] text-[#515154]">
+            {filteredPapers.length} Publications Indexed
           </div>
         </div>
       </div>
@@ -94,7 +98,7 @@ export default function ResearchPage() {
                 </p>
 
                 <div className="text-[13px] text-[#86868b]">
-                  <span className="font-medium text-[#1d1d1f]">Authors: </span>
+                  <span className="font-medium text-[#1d1d1f]">Organizations: </span>
                   {featuredPaper.authors.join(", ")}
                 </div>
 
@@ -140,8 +144,8 @@ export default function ResearchPage() {
                     className="object-cover"
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-white/95 p-3 text-[13px] text-[#515154] flex items-center justify-between">
-                    <span className="font-semibold text-[#1d1d1f]">CVPR 2026 Spotlight</span>
-                    <span className="text-[#0071e3]">14B Causal Latent Field</span>
+                    <span className="font-semibold text-[#1d1d1f]">{featuredPaper.badge}</span>
+                    <span className="text-[#0071e3]">{featuredPaper.arxiv}</span>
                   </div>
                 </div>
               </div>
@@ -153,18 +157,18 @@ export default function ResearchPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="text-[28px] sm:text-[34px] font-semibold text-[#1d1d1f] tracking-tight">
-                  {lang === "en" ? "Peer-Reviewed Publications" : "同行评议学术成果"}
+                  {lang === "en" ? "Peer-Reviewed World Model Publications" : "业界顶级世界模型文献专栏"}
                 </h2>
                 <p className="text-[15px] text-[#515154]">
                   {lang === "en"
-                    ? "Fundamental mathematical derivations and physical benchmark validations."
-                    : "从连续时空自回归因果动力学到高斯点云融合的完整基础理论论证。"}
+                    ? "Curated milestone research papers across causal diffusion, game engine synthesis, and embodied foundation intelligence."
+                    : "系统收录 Google DeepMind、OpenAI、Decart、Wayve 等顶尖机构在因果扩散、神经引擎与具身时空领域的里程碑成果。"}
                 </p>
               </div>
 
               {/* 筛选按钮 */}
-              <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] p-1.5">
-                {(["All", "Causal DiT", "Gaussian Splatting", "Embodied Sim2Real"] as const).map(
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] p-1.5 flex-wrap">
+                {(["All", "World Models", "Causal Diffusion", "Embodied AI", "Game Engines"] as const).map(
                   (cat) => {
                     const isSelected = selectedCategory === cat;
                     return (
@@ -212,7 +216,7 @@ export default function ResearchPage() {
                         </h3>
 
                         <p className="text-[14px] text-[#515154]">
-                          <span className="font-medium text-[#1d1d1f]">Authors: </span>
+                          <span className="font-medium text-[#1d1d1f]">Organizations: </span>
                           {paper.authors.join(", ")}
                         </p>
                       </div>
@@ -249,10 +253,10 @@ export default function ResearchPage() {
                       <div className="rounded-[20px] bg-white p-6 space-y-4" data-ui="true">
                         <div className="flex items-center justify-between">
                           <h4 className="text-[15px] font-semibold text-[#1d1d1f]">
-                            {lang === "en" ? "Ablation Study & Benchmark" : "核心消融实验数据对比表"}
+                            {lang === "en" ? "Key Quantitative Benchmarks" : "核心实验评测指标对比"}
                           </h4>
                           <span className="text-[13px] text-[#86868b]">
-                            Evaluation against Sora-like baseline and Diamond
+                            {paper.arxiv}
                           </span>
                         </div>
 
@@ -260,57 +264,50 @@ export default function ResearchPage() {
                           <table className="w-full text-left text-[13px]">
                             <thead className="text-[#86868b] text-[13px] tracking-wider">
                               <tr className="bg-[#f5f5f7]">
-                                <th className="p-3">Model Architecture</th>
-                                <th className="p-3">PSNR ↑</th>
-                                <th className="p-3">SSIM ↑</th>
-                                <th className="p-3">LPIPS ↓</th>
-                                <th className="p-3">Action Latency</th>
-                                <th className="p-3">Collapse Limit</th>
+                                <th className="p-3">Evaluation Metric</th>
+                                <th className="p-3">Baseline Architecture</th>
+                                <th className="p-3">Neural World Model (SOTA)</th>
+                                <th className="p-3">Improvement Delta</th>
                               </tr>
                             </thead>
                             <tbody className="text-[#1d1d1f]">
-                              <tr className="bg-white">
-                                <td className="p-3 font-semibold text-[#0071e3]">
-                                  TERRA 14B Causal DiT (Ours)
-                                </td>
-                                <td className="p-3 font-semibold">32.8 dB</td>
-                                <td className="p-3 font-semibold">0.941</td>
-                                <td className="p-3 font-semibold">0.052</td>
-                                <td className="p-3 font-semibold text-[#0071e3]">15.4 ms</td>
-                                <td className="p-3 font-semibold text-[#0071e3]">&gt; 3600 s (No Collapse)</td>
-                              </tr>
-                              <tr className="bg-[#f5f5f7]/50">
-                                <td className="p-3 text-[#515154]">Standard Video DiT (Vanilla)</td>
-                                <td className="p-3">28.4 dB</td>
-                                <td className="p-3">0.865</td>
-                                <td className="p-3">0.142</td>
-                                <td className="p-3">142 ms</td>
-                                <td className="p-3 text-[#c92a2a]">9.8 s (Latent Collapse)</td>
-                              </tr>
-                              <tr className="bg-white">
-                                <td className="p-3 text-[#515154]">Diamond World Model</td>
-                                <td className="p-3">29.1 dB</td>
-                                <td className="p-3">0.880</td>
-                                <td className="p-3">0.118</td>
-                                <td className="p-3">65 ms</td>
-                                <td className="p-3 text-[#c92a2a]">24.5 s</td>
-                              </tr>
-                              <tr className="bg-[#f5f5f7]/50">
-                                <td className="p-3 text-[#515154]">GameNGen (Single Game)</td>
-                                <td className="p-3">27.9 dB</td>
-                                <td className="p-3">0.849</td>
-                                <td className="p-3">0.165</td>
-                                <td className="p-3">48 ms</td>
-                                <td className="p-3 text-[#c92a2a]">18.0 s</td>
-                              </tr>
+                              {paper.benchmarks.map((bench, idx) => (
+                                <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f7]/50"}>
+                                  <td className="p-3 font-medium text-[#1d1d1f]">{bench.metric}</td>
+                                  <td className="p-3 text-[#515154]">{bench.baseline}</td>
+                                  <td className="p-3 font-semibold text-[#0071e3]">{bench.terraOasis}</td>
+                                  <td className="p-3 font-semibold text-[#0062c4]">{bench.improvement}</td>
+                                </tr>
+                              ))}
                             </tbody>
                           </table>
                         </div>
 
+                        {/* 深度理论章节 */}
+                        {paper.sections.length > 0 && (
+                          <div className="pt-2 space-y-3">
+                            <h5 className="text-[14px] font-semibold text-[#1d1d1f]">
+                              {lang === "en" ? "Core Technical Breakthroughs" : "核心技术突破要点"}
+                            </h5>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {paper.sections.map((sec, secIdx) => (
+                                <div key={secIdx} className="rounded-[16px] bg-[#f5f5f7] p-4 space-y-1.5">
+                                  <div className="text-[13px] font-semibold text-[#1d1d1f]">
+                                    {lang === "en" ? sec.headingEn : sec.headingZh}
+                                  </div>
+                                  <p className="text-[13px] text-[#515154] leading-relaxed">
+                                    {lang === "en" ? sec.bodyEn : sec.bodyZh}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* BibTeX 引用代码框 */}
                         <div className="pt-2">
                           <div className="text-[13px] font-semibold text-[#86868b] mb-1.5">
-                            BibTeX Entry
+                            Standard BibTeX Citation
                           </div>
                           <pre className="rounded-[14px] bg-[#f5f5f7] p-3 text-[13px] text-[#515154] overflow-x-auto m-0">
                             <code>{paper.bibtex}</code>
@@ -324,17 +321,17 @@ export default function ResearchPage() {
             </div>
           </section>
 
-          {/* 6. 学术合作与联合实验室 CTA (浅灰大卡片) */}
+          {/* 6. 学术合作与联合实验室 (浅灰大卡片，简洁专业) */}
           <section className="rounded-[32px] bg-[#f5f5f7] p-8 sm:p-12 text-center terra-reveal space-y-6">
             <h2 className="text-[28px] sm:text-[38px] font-semibold text-[#1d1d1f] tracking-tight">
               {lang === "en"
-                ? "Academic Grant & Joint Lab Access"
-                : "科研基金申请与联合实验室入驻"}
+                ? "Academic Grant & Research Compute Allocation"
+                : "学术研究算力配额与联合实验室"}
             </h2>
             <p className="text-[16px] sm:text-[18px] text-[#515154] max-w-2xl mx-auto leading-relaxed">
               {lang === "en"
-                ? "We grant compute credits and high-bandwidth WebRTC simulator endpoints to accredited universities and non-profit research laboratories."
-                : "我们为全球高校及非营利科研实验室提供 8×H100 集群算力配额与全双工 WebRTC 世界模型推流接口。"}
+                ? "We provide GPU compute clusters, real-time WebRTC simulator endpoints, and pre-trained checkpoint weights to accredited universities and non-profit research laboratories."
+                : "我们为全球高校及非营利科研实验室提供高性能 GPU 集群计算支持、全双工 WebRTC 世界模型推流接口以及开源预训练权重。"}
             </p>
             <div className="pt-2 flex flex-wrap items-center justify-center gap-4 text-[14px]">
               <a
@@ -347,7 +344,7 @@ export default function ResearchPage() {
                 href="/docs"
                 className="rounded-full bg-white px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition no-underline"
               >
-                {lang === "en" ? "Explore Research APIs" : "查阅研究员接口"}
+                {lang === "en" ? "Explore Developer SDK" : "查阅开发者 SDK"}
               </Link>
             </div>
           </section>
