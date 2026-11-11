@@ -149,6 +149,23 @@ export default function WorldModelSimulator({
   const [cameraCoords, setCameraCoords] = useState({ x: 0, y: 0, z: 0 });
   const [actionLog, setActionLog] = useState<ActionLogEntry[]>([]);
   const [reseedFlash, setReseedFlash] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.parentElement?.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
 
   const currentWorld =
     WORLD_DIMENSIONS.find((w) => w.id === activeWorldId) || WORLD_DIMENSIONS[0];
@@ -737,6 +754,15 @@ export default function WorldModelSimulator({
                 {isPlayingTime ? "暂停" : "流转"}
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="terra-btn rounded-full bg-white/10 px-3 py-1.5 text-[16px] text-white hover:bg-white/20 transition hidden sm:inline-block"
+              title="切换全屏沉浸视界"
+            >
+              {isFullscreen ? "退出全屏" : "全屏视界"}
+            </button>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-# TERRA-OASIS // 开源动作驱动可交互神经世界模型应用 (Playable Neural World Simulator)
+# TERRA-OASIS · 开源动作驱动可交互神经世界模型应用 (Playable Neural World Simulator)
 
 <p align="center">
   <img src="./public/icon.png" width="96" height="96" alt="Terra-Oasis Logo" style="border-radius: 20px;" />

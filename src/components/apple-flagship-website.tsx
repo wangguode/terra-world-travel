@@ -155,6 +155,12 @@ export default function TerraOasisOfficialWebsite() {
               世界矩阵
             </a>
             <a
+              href="#quickstart"
+              className="text-white/70 hover:text-white no-underline transition hidden md:inline"
+            >
+              极速接入
+            </a>
+            <a
               href="#faq"
               className="text-white/70 hover:text-white no-underline transition hidden lg:inline"
             >
@@ -462,7 +468,61 @@ export default function TerraOasisOfficialWebsite() {
           </div>
         </section>
 
-        {/* 6. 学术研究与开发者生态 (Research & Citation) */}
+        {/* 6. 开发者极速接入与动作流 SDK (Developer Quickstart) */}
+        <section id="quickstart" className="bg-[#070707] py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-5 sm:px-10">
+            <div className="max-w-2xl terra-reveal">
+              <h2 className="text-[32px] sm:text-[40px] font-bold text-white tracking-tight">
+                开发者极速接入与动作流 SDK
+              </h2>
+              <p className="mt-3 text-[16px] sm:text-[18px] text-white/70 leading-relaxed">
+                面向游戏引擎、机器人控制与研究人员。三行代码即可连接 TERRA-OASIS 动作流服务，注入连续按键与位姿张量。
+              </p>
+            </div>
+
+            <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 terra-reveal">
+              <div className="rounded-[24px] bg-[#0c0c0e] p-6 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="text-[18px] font-bold text-white">客户端免配即玩</div>
+                  <p className="mt-2 text-[16px] text-white/70 leading-relaxed">
+                    完全无需安装环境与独立显卡。任何支持 WebGL 的现代浏览器打开即可通过键盘 WASD 实时漫游 60 FPS 神经虚拟沙盒。
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <a href="#interactive-playground" className="text-[#00f2fe] text-[16px] font-semibold hover:underline no-underline">
+                    立即在上方体验 →
+                  </a>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] bg-[#0c0c0e] p-6 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="text-[18px] font-bold text-white">Python 动作流 SDK</div>
+                  <pre className="mt-2 text-[16px] text-white/80 p-3 bg-black/40 rounded-[12px] overflow-x-auto leading-relaxed">
+                    <code>{`import terra_oasis as oasis
+
+client = oasis.connect("wss://api.terra-oasis.org")
+frame = client.step(action="move_forward", speed=1.2)`}</code>
+                  </pre>
+                </div>
+                <div className="text-[16px] text-white/40">pip install terra-oasis-sdk</div>
+              </div>
+
+              <div className="rounded-[24px] bg-[#0c0c0e] p-6 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="text-[18px] font-bold text-white">Docker 容器私有化部署</div>
+                  <pre className="mt-2 text-[16px] text-white/80 p-3 bg-black/40 rounded-[12px] overflow-x-auto leading-relaxed">
+                    <code>{`docker run --gpus all -p 3200:3200 \\
+  ghcr.io/wangguode/terra-oasis:latest`}</code>
+                  </pre>
+                </div>
+                <div className="text-[16px] text-white/40">支持多卡 GPU 张量并行推理</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 7. 学术研究与开发者生态 (Research & Citation) */}
         <section id="research" className="bg-[#09090b] py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-5 sm:px-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
@@ -711,7 +771,7 @@ export default function TerraOasisOfficialWebsite() {
           </div>
 
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[16px] text-white/40">
-            <p className="m-0">© 2026 TERRA-OASIS // OPEN NEURAL WORLD MODEL APPLICATION.</p>
+            <p className="m-0">© 2026 TERRA-OASIS · OPEN NEURAL WORLD MODEL APPLICATION.</p>
             <p className="m-0">Real-Time Action-Conditioned Causal World Simulator.</p>
           </div>
         </div>
