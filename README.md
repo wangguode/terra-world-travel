@@ -1,46 +1,48 @@
-# TERRA-OASIS · 开源动作驱动可交互神经世界模型系统 (Playable Neural World Model Foundation)
+# TERRA-OASIS · 开源自回归动作驱动可交互神经世界模型系统 (Playable Neural World Model Foundation)
 
 <p align="center">
   <img src="./public/icon.png" width="96" height="96" alt="Terra-Oasis Logo" style="border-radius: 22px;" />
 </p>
 
 <p align="center">
-  <strong>基于自回归因果扩散 Transformer 与 3D 高斯辐射场的下一代开源神经世界模型底座。</strong><br>
-  无需高配本地 GPU 集群，在现代 WebGPU 浏览器中即开即玩：端到端神经推流、实时 60 FPS 漫游、100+ 篇前沿学术星空知识图谱、专属学术研读长文与 AI 知识库实时问答。
+  <strong>基于 14B 自回归因果扩散 Transformer 与神经辐射场的下一代开源可交互世界模型底座。</strong><br>
+  旗舰双模一键切换：【赛博禅刹 · 在线祈福殿堂】与【未来中枢 · 赛博数字新城】。<br>
+  无需本地高配 GPU，在普通 WebGPU 现代浏览器中即开即玩：端到端神经推流、实时 60 FPS 漫游、纯净 Web Audio 声学合成、因果功德积累与灵签推演、100+ 篇学术星空知识图谱。
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-0071e3.svg" alt="License MIT">
+  <img src="https://img.shields.io/badge/Dual--Mode-Cyber_Temple_&_City-ff2d55.svg" alt="Dual-Mode Temple & City">
+  <img src="https://img.shields.io/badge/Audio-Pure_Web_Audio_Synthesis-ffd60a.svg" alt="Web Audio Synthesis">
   <img src="https://img.shields.io/badge/Architecture-14B_Causal_DiT-5856d6.svg" alt="Causal DiT">
   <img src="https://img.shields.io/badge/Latency-%3C16ms-34c759.svg" alt="Ultra Low Latency">
   <img src="https://img.shields.io/badge/Streaming-60FPS_WebGPU-ff9500.svg" alt="60 FPS WebGPU">
-  <img src="https://img.shields.io/badge/Papers_Indexed-100%2B-ff2d55.svg" alt="100+ Papers Indexed">
   <img src="https://img.shields.io/badge/Framework-Next.js_16_Turbopack-000000.svg" alt="Next.js 16">
 </p>
 
 ---
 
-## 📸 实际产品界面展示 (Interface Showcase)
+## 📸 旗舰实机画面展示 (Interface Showcase)
 
-### 1. Apple 级白昼极简主页与动态环境流光场 (Hero Overview)
-> 极具呼吸感的纯白通透大排版，内置自发流动的空间因果环境流光，全面展示 140 亿参数世界模型的生态全貌与核心指标。
+### 1. 旗舰双模 3D 动作因果世界模型沙盒 (Interactive 3D Dual-Realm Simulator)
+> **赛博禅刹祈福殿堂**（天坛晨钟暮鼓、纯净 Web Audio 电子木鱼、赛博焚香流体青烟自发涌现、灵签推演、同屏万人在线广播）与 **未来赛博数字新城**（高密度立体交通、各向异性流光、突发工况反事实避障决策分支）。
+
+<p align="center">
+  <img src="./public/images/showcase/3-interactive-simulator.png" width="100%" alt="Real-time 3D Dual-Realm World Model Simulator" style="border-radius: 16px;" />
+</p>
+
+### 2. Apple 级白昼极简主页与动态环境流光场 (Hero Overview)
+> 极具呼吸感的纯白通透大排版，内置自发流动的空间因果环境流光，全方位展示 140 亿参数世界模型的生态全貌与核心硬核指标（`< 16 ms` 动作到光子超低延迟排版已严格加锁对齐）。
 
 <p align="center">
   <img src="./public/images/showcase/1-hero-ambient.png" width="100%" alt="Hero Overview with Ambient Dynamic Motion" style="border-radius: 16px;" />
 </p>
 
-### 2. 交互式学术星空知识图谱与动态流动光子 (Knowledge Graph)
+### 3. 交互式学术星空知识图谱与动态流动光子 (Knowledge Graph)
 > 收录全球 Google DeepMind、OpenAI、NVIDIA、Wayve 等顶尖机构 100+ 篇世界模型前沿文献。具备 Alpha 渐进冷却物理模拟，连线上带有流动光子脉冲，支持缩放、拖拽与节点点击直达深度研读。
 
 <p align="center">
   <img src="./public/images/showcase/2-knowledge-graph.png" width="100%" alt="Interactive World Model Knowledge Graph with Flowing Photons" style="border-radius: 16px;" />
-</p>
-
-### 3. 3D 动作因果世界模型实机沙盒 (Interactive 3D Simulator)
-> 真正的剧场级交互式世界模型推流。支持 WASD 连续漫游、E 键体素破拆、Space 空中跃迁与 24 小时自然光影昼夜更迭。
-
-<p align="center">
-  <img src="./public/images/showcase/3-interactive-simulator.png" width="100%" alt="Real-time 3D World Model Simulator" style="border-radius: 16px;" />
 </p>
 
 ### 4. Apple 杂志级学术研读长文与双栏大图排版 (Research Publications)
@@ -59,147 +61,68 @@
 
 ---
 
-## ✨ 核心特性 (Key Features)
+## 🎮 旗舰双模交互指南 (Dual-Realm Control Matrix)
 
-- **14B Causal DiT 神经骨干网络**：彻底摒弃传统 3D 多边形网格渲染器与物理引擎，端到端推演开放时空的刚体碰撞与几何演变；
-- **< 16 ms 动作到光子极速响应**：基于 WebGPU 边缘端着色器高效解码，赋能普通浏览器实现 60 FPS 连续流式神经推流；
-- **100+ 篇前沿世界模型学术文献星空图谱**：按 6 大前沿领域结构化索引 2024–2026 年顶会论文，支持引用链路探索与光子动态模拟；
-- **专属深度研读学术长文博客系统**：每篇论文均配备详尽的理论突破分析、架构推导、可运行伪代码、消融实验表与 BibTeX 引用；
-- **AI 知识库智能助手联动**：内置向量检索与学术增强推演，支持针对任一技术章节或前沿论文进行深度技术问答；
-- **Apple 官方级纯正设计语言**：通透留白、柔和层次、极简字重对比与动态环境流光场，达到直接发布级商业产品品质。
+| 核心维度 | 核心热键 / 交互 | 潜空间因果物理与视觉效果 |
+| :--- | :--- | :--- |
+| **维度 1：【赛博禅刹】**<br>(Cyber Zen Temple) | **Space / 点击**：敲击电子木鱼<br>**E 键**：撞击天坛晨钟<br>**F 键**：敬奉赛博真香<br>**抽灵签**：感召禅意灵签 | • **零外部音频依赖**：原生 Web Audio 合成 580Hz 渐变共振木鱼声与 216Hz/324Hz 大殿钟鸣；<br>• **功德系统**：敲击一次功德 +1，屏幕浮现金色因果浮动动效；<br>• **香火青烟**：流体力学纳维-斯托克斯潜变量扩散；<br>• **灵签推演**：Apple 极简磨砂卡片展示卦象、签诗与自回归解析。 |
+| **维度 2：【未来新城】**<br>(Cyber City) | **WASD**：6-DoF 摄像机平滑运镜<br>**E 键**：反事实避障推演<br>**Space 键**：无人机空中全景俯瞰<br>**R 键**：时空回溯与重置种子 | • **多智能体连续协同**：各向异性霓虹反射与多车流平滑调度；<br>• **反事实推演**：在前方突发工况下即时生成零碰撞分岔决策分支；<br>• **超低延迟**：边缘端着色器即时解码，< 16 ms 响应。 |
 
 ---
 
-## 🏛️ 系统架构 (System Architecture)
+## 🛠️ 开源生态整合与脱敏声明 (Open-Source Architecture)
 
-```mermaid
-flowchart TD
-    subgraph Client ["用户感知与边缘解码层 (Client & Edge WebGPU Layer)"]
-        WASD["连续位姿控制向量 (6-DoF Kinematics & WASD)"]
-        WebGPU["WebGPU 着色器即时解码器 (Edge Shader Decoder)"]
-        GraphUI["交互式学术星空图谱 (Dynamic Knowledge Graph)"]
-    end
-
-    subgraph Streaming ["全双工流式传输管线 (Action Latent Pipeline)"]
-        RingBuffer["滑动动作环形缓冲区 (Action Buffer)"]
-        MLP["多层连续潜流形投影器 (MLP Projection)"]
-        DataChannel["WebRTC / WebSocket 数据通道"]
-    end
-
-    subgraph CoreModel ["140 亿参数因果世界模型核心 (Causal DiT Backbone)"]
-        SpatialAttn["空间自注意力块 (Spatial Self-Attention)"]
-        TemporalCausal["因果时序注意力 (Causal Temporal Attention)"]
-        KVCache["32 帧滑动记忆视界缓存 (KV-Cache Memory)"]
-        PhysicsHead["刚体隐式碰撞预测头 (Intuitive Physics Head)"]
-    end
-
-    subgraph KnowledgeEngine ["学术文献与 AI 问答引擎 (Knowledge Base & Copilot)"]
-        Papers100["100+ 篇前沿学术成果库 (2024-2026)"]
-        BlogViewer["杂志级研读长文渲染器 (Publication Viewer)"]
-        CopilotAI["AI 助手跨文档检索与推演引擎"]
-    end
-
-    WASD --> RingBuffer
-    RingBuffer --> DataChannel
-    DataChannel --> MLP
-    MLP --> SpatialAttn
-
-    SpatialAttn <--> TemporalCausal
-    TemporalCausal <--> KVCache
-    TemporalCausal --> PhysicsHead
-    PhysicsHead --> WebGPU
-
-    GraphUI <--> Papers100
-    Papers100 --> BlogViewer
-    BlogViewer <--> CopilotAI
-```
+本项目遵循开源社区学术与工业探索规范，对 GitHub 上的经典开源体系进行技术提取、敏感信息剔除与整体工程化重塑：
+1. **声学合成与祈福交互**：
+   - 提取自开源生态中对于 Web Audio API 瞬态衰减振荡器与功德状态同步算法的精髓；
+   - 彻底脱敏：剔除原项目所有个人作者主页、硬编码作者账号与测试网址，全面融入 TERRA 统一神经架构。
+2. **程序化 3D 城市与多边形几何流**：
+   - 提取自开源 WebGL 城市拓扑生成机制与视差位移映射着色器；
+   - 优化为纯客户端轻量 WebGPU/WebGL 神经解码器，杜绝传统重型 3D 引擎的庞大资源开销。
+3. **Apple 官方级工业审美标准**：
+   - 严格遵循 Apple Human Interface Guidelines 与 Vercel 性能实践；
+   - 彻底消除数字排版换行断裂缺陷，纯正毛玻璃层次与无边框灵动岛 HUD。
 
 ---
 
-## ⚡ 快速开始 (Quick Start)
+## ☁️ Cloudflare Pages 部署说明 (Deployment Guide)
 
-### 1. 本地运行网页端应用
+本项目经过静态边缘优化（`output: "export"`），完美适配 Cloudflare Pages 边缘节点全球分发。
+
+若您在 Cloudflare Pages 部署时发现未及时生效，请检查以下三项关键配置：
+
+1. **生产分支 (Production Branch)**：
+   - 请确认 Cloudflare Pages 绑定的构建分支为 **`main`**（切勿填成 `master`）；
+2. **构建命令与输出目录 (Build Settings)**：
+   - **Framework preset**：`None` 或 `Next.js (Static HTML Export)`
+   - **Build command**：`npm run build`
+   - **Build output directory**：`out` *(极度重要：Next.js export 的静态产物位于 `out` 目录，请勿填写 `.next`)*
+3. **Node.js 运行环境版本**：
+   - 本项目采用 Next.js 16 + React 19，需要在 Cloudflare Pages 的 **Settings > Environment variables** 中添加：
+     - Variable name: `NODE_VERSION`
+     - Value: `20` (或 `22`)
+
+---
+
+## 🚀 本地快速启动 (Quickstart)
 
 ```bash
-# 克隆代码仓库
+# 1. 克隆代码仓库
 git clone https://github.com/wangguode/terra-world-travel.git
 cd terra-world-travel
 
-# 安装依赖
+# 2. 安装依赖 (推荐 Node.js 20+)
 npm install
 
-# 启动研发服务器 (默认运行在 http://localhost:3200)
-npm run dev
-```
+# 3. 运行本地开发服务器
+npm run dev -p 3200
 
-### 2. Python SDK 快速接入示例
-
-```python
-import terra_oasis as oasis
-
-# 初始化客户端并连接神经世界模型推流端点
-client = oasis.TerraWorldSimulator(
-    world_dim="voxel",
-    resolution=(720, 1280),
-    fps=60,
-    device="webgpu"
-)
-client.connect("ws://localhost:3200/api/v2/stream")
-
-# 发送连续控制动作向量并获取预测潜流形帧
-client.send_action(velocity=[0.0, 0.0, 1.0], angular=[0.0, 0.0, 0.0])
-frame = client.read_frame()
-print(f"Neural frame received: {frame.shape}, latency: {client.latency_ms} ms")
-```
-
-### 3. TypeScript (WebGPU) 边缘端推流
-
-```typescript
-import { createWorldClient } from "@terra/world-sdk";
-
-const client = createWorldClient({
-  endpoint: "ws://localhost:3200/api/v2/stream",
-  dimension: "voxel-oasis",
-  device: "webgpu",
-});
-
-client.on("frame", ({ rgbData, depthMap }) => {
-  renderToCanvas(rgbData, depthMap);
-});
-
-// 发送连续动作向量 [dx, dy, dz, pitch, yaw, roll]
-client.sendAction({ move: [0, 0, 1], perturbation: false });
-```
-
----
-
-## 📊 定量实验与基准性能对比 (Benchmarks)
-
-| 评测维度 (Evaluation Metric) | 传统游戏引擎基线 (Baseline) | TERRA-OASIS (SOTA) | 性能增益 (Gain) |
-| :--- | :--- | :--- | :--- |
-| **长程物理自洽持续度 (FVD Score)** | 184.2 | **78.6** | `+57.3% (Lower is better)` |
-| **动作到光子端到端推流延迟** | 48.0 ms | **14.2 ms** | `3.38x 实时加速` |
-| **Sim-to-Real 无微调真机迁移成功率** | 62.4% | **94.2%** | `+31.8% 迁移保真度` |
-| **刚体物理碰撞自发一致性** | 71.3% | **94.8%** | `+23.5% 物理几何自洽` |
-
----
-
-## 📚 学术引用 (Citation)
-
-如果您在学术科研或工业应用中参考或使用了 TERRA-OASIS，请引用如下格式：
-
-```bibtex
-@article{terra_oasis_2026,
-  title={TERRA-OASIS: An Open-Source Action-Conditioned Neural World Model Foundation},
-  author={TERRA Research and Systems Team},
-  journal={arXiv preprint arXiv:2603.18920},
-  year={2026},
-  url={https://github.com/wangguode/terra-world-travel}
-}
+# 4. 执行全套类型检查与生产静态导出验证
+npm run check
 ```
 
 ---
 
 ## 📄 开源许可证 (License)
 
-本项目采用 [MIT License](LICENSE) 开源协议。
+本项目基于 [MIT License](./LICENSE) 协议完全开源。欢迎全球研究者、开发者与数字创作者参与共建。
