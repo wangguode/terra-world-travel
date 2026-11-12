@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 
 // ---------------------------------------------------------------------------
 // 纯净 Web Audio 原生声学引擎（零外部网络依赖，毫秒级即发即响）
@@ -258,6 +260,10 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
   // 维度模式：'temple' 赛博禅刹 | 'city' 未来新城
   const [worldMode, setWorldMode] = useState<"temple" | "city">("temple");
+  const worldModeRef = useRef<"temple" | "city">(worldMode);
+  useEffect(() => {
+    worldModeRef.current = worldMode;
+  }, [worldMode]);
 
   // 状态机
   const [meritCount, setMeritCount] = useState<number>(108);
@@ -286,6 +292,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const woodenFishBounceRef = useRef(0);
   const monkGroupRef = useRef<THREE.Group | null>(null);
   const maidenGroupRef = useRef<THREE.Group | null>(null);
+  const cityMixerRef = useRef<THREE.AnimationMixer | null>(null);
   const vehiclesRef = useRef<Array<{ mesh: THREE.Mesh; speed: number; limit: number }>>([]);
   const flyingCarsRef = useRef<Array<{ mesh: THREE.Mesh; speed: number; radius: number; angle: number; height: number }>>([]);
 
@@ -500,16 +507,25 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     }
     cloudsRef.current = clouds;
 
-    // 1.2 壮阔层峦叠嶂群山 (Layered Mountains)
-    const mountainMat = new THREE.MeshStandardMaterial({ color: 0x221f38, roughness: 0.95 });
-    for (let i = 0; i < 22; i++) {
-      const angle = (i / 22) * Math.PI * 2;
-      const dist = 120 + (i % 4) * 25;
-      const mHeight = 42 + (i % 6) * 15;
-      const mGeo = new THREE.ConeGeometry(36 + (i % 4) * 8, mHeight, 6);
+    // 1.2 壮阔层峦叠嶂群山 (Layered Mountain Range)
+    const mountainMat = new THREE.MeshStandardMaterial({ color: 0x241d3b, roughness: 0.92 });
+    const snowCapMat = new THREE.MeshStandardMaterial({ color: 0xe6e9f2, roughness: 0.6 });
+    for (let i = 0; i < 28; i++) {
+      const angle = (i / 28) * Math.PI * 2;
+      const dist = 115 + (i % 5) * 22;
+      const mHeight = 48 + (i % 7) * 16;
+      const mGeo = new THREE.ConeGeometry(38 + (i % 4) * 8, mHeight, 7);
       const mMesh = new THREE.Mesh(mGeo, mountainMat);
       mMesh.position.set(Math.cos(angle) * dist, mHeight / 2 - 4, Math.sin(angle) * dist);
       templeGroup.add(mMesh);
+
+      // 远景高耸雪顶
+      if (mHeight > 70) {
+        const snowGeo = new THREE.ConeGeometry(12, 16, 7);
+        const snowMesh = new THREE.Mesh(snowGeo, snowCapMat);
+        snowMesh.position.set(Math.cos(angle) * dist, mHeight - 10, Math.sin(angle) * dist);
+        templeGroup.add(snowMesh);
+      }
     }
 
     // 1.3 禅刹地面青石板广场
@@ -553,137 +569,296 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     templeGroup.add(roof);
 
     // =========================================================================
-    // 1.6 核心圣物：【中央金尊大佛 (The Golden Buddha)】
+    // GLTF 高保真开源大模型加载系统 (零外部依赖，本地 WASM Draco 极速解码)
+    // =========================================================================
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath("/draco/");
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
+
+    // =========================================================================
+    // 1.6 核心圣物：【真实金尊大佛 (The Golden Buddha)】
     // =========================================================================
     const buddhaGroup = new THREE.Group();
     buddhaGroup.position.set(0, 1.6, -6);
 
     // 多层金雕莲花宝座 (Lotus Throne)
     const lotusBase = new THREE.Mesh(
-      new THREE.CylinderGeometry(3.2, 3.8, 1.2, 16),
-      new THREE.MeshStandardMaterial({ color: 0xc98728, metalness: 0.8, roughness: 0.3 })
+      new THREE.CylinderGeometry(3.6, 4.2, 1.3, 24),
+      new THREE.MeshStandardMaterial({ color: 0xc98728, metalness: 0.85, roughness: 0.28 })
     );
     buddhaGroup.add(lotusBase);
 
-    // 佛像结跏趺坐金身 (Golden Buddha Body)
+    // 默认即显几何体（极速呈现，待 GLB 加载完毕后平滑隐退）
+    const mockBuddhaMesh = new THREE.Group();
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xffd23f,
       metalness: 0.85,
       roughness: 0.22,
     });
-
-    // 佛陀莲花盘坐腿部
     const legs = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.9, 12), goldMat);
     legs.position.y = 1.0;
-    buddhaGroup.add(legs);
-
-    // 佛陀躯干法相
+    mockBuddhaMesh.add(legs);
     const torso = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.7, 2.6, 12), goldMat);
     torso.position.y = 2.6;
-    buddhaGroup.add(torso);
-
-    // 佛陀头颅与顶髻
+    mockBuddhaMesh.add(torso);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 16), goldMat);
     head.position.y = 4.4;
-    buddhaGroup.add(head);
-
+    mockBuddhaMesh.add(head);
     const ushnisha = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), goldMat);
     ushnisha.position.y = 5.2;
-    buddhaGroup.add(ushnisha);
+    mockBuddhaMesh.add(ushnisha);
+    buddhaGroup.add(mockBuddhaMesh);
+
+    // 加载真实历史雕塑 3D 结跏趺坐大佛 (Sitting Buddha GLB)
+    gltfLoader.load(
+      "/models/sitting-buddha.glb",
+      (gltf) => {
+        const buddha = gltf.scene;
+        const box = new THREE.Box3().setFromObject(buddha);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const targetH = 6.8;
+        const s = targetH / Math.max(size.y, 0.001);
+        buddha.scale.setScalar(s);
+        buddha.position.set(0, 0.65, 0);
+        buddha.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const m = child as THREE.Mesh;
+            m.castShadow = true;
+            m.receiveShadow = true;
+            m.material = new THREE.MeshStandardMaterial({
+              color: 0xffd23f,
+              metalness: 0.84,
+              roughness: 0.26,
+              emissive: 0x3d2b00,
+              emissiveIntensity: 0.28,
+            });
+          }
+        });
+        buddhaGroup.add(buddha);
+        mockBuddhaMesh.visible = false;
+      },
+      undefined,
+      (err) => console.warn("sitting-buddha load fallback:", err)
+    );
 
     // 佛像脑后悬浮旋转的自发光金色佛光光环 (Latent Halo)
-    const haloGeo = new THREE.TorusGeometry(2.4, 0.12, 16, 48);
+    const haloGeo = new THREE.TorusGeometry(2.6, 0.12, 16, 48);
     const haloMat = new THREE.MeshStandardMaterial({
       color: 0xffea78,
       emissive: 0xffd60a,
-      emissiveIntensity: 0.85,
+      emissiveIntensity: 0.9,
       roughness: 0.2,
     });
     const halo = new THREE.Mesh(haloGeo, haloMat);
-    halo.position.set(0, 4.4, -0.6);
+    halo.position.set(0, 4.6, -0.6);
     buddhaHaloRef.current = halo;
     buddhaGroup.add(halo);
 
     // 大佛金光点光源
-    const buddhaLight = new THREE.PointLight(0xffba3b, 4.5, 22);
+    const buddhaLight = new THREE.PointLight(0xffba3b, 4.8, 24);
     buddhaLight.position.set(0, 4.8, 1.5);
     buddhaGroup.add(buddhaLight);
 
     templeGroup.add(buddhaGroup);
 
     // =========================================================================
-    // 1.7 人文生灵：【和尚僧侣 NPC (Buddhist Monk)】
+    // 1.7 真实古建瑰宝：【飞檐斗拱古刹大宝塔 (Ancient Pagoda)】
+    // =========================================================================
+    gltfLoader.load(
+      "/models/pagoda.glb",
+      (gltf) => {
+        const pagoda = gltf.scene;
+        const box = new THREE.Box3().setFromObject(pagoda);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const s = 36.0 / Math.max(size.y, 0.001);
+        pagoda.scale.setScalar(s);
+        pagoda.position.set(-28, 0, -6);
+        pagoda.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        templeGroup.add(pagoda);
+      },
+      undefined,
+      (err) => console.warn("pagoda load fallback:", err)
+    );
+
+    // =========================================================================
+    // 1.8 人文生灵：【和尚僧侣 NPC (Buddhist Monk)】
     // =========================================================================
     const monkGroup = new THREE.Group();
     monkGroup.position.set(-3.2, 0, 7.8);
     monkGroupRef.current = monkGroup;
 
-    // 黄褐色僧袍躯干
+    const mockMonkMesh = new THREE.Group();
     const monkRobe = new THREE.Mesh(
       new THREE.CylinderGeometry(0.36, 0.44, 1.5, 10),
       new THREE.MeshStandardMaterial({ color: 0x8a5220, roughness: 0.8 })
     );
     monkRobe.position.y = 0.9;
-    monkGroup.add(monkRobe);
-
-    // 和尚光头与合十双手
+    mockMonkMesh.add(monkRobe);
     const monkHead = new THREE.Mesh(
       new THREE.SphereGeometry(0.24, 12, 12),
       new THREE.MeshStandardMaterial({ color: 0xf5cfb3, roughness: 0.5 })
     );
     monkHead.position.y = 1.8;
-    monkGroup.add(monkHead);
-
+    mockMonkMesh.add(monkHead);
     const monkHands = new THREE.Mesh(
       new THREE.BoxGeometry(0.18, 0.25, 0.18),
       new THREE.MeshStandardMaterial({ color: 0xf5cfb3 })
     );
     monkHands.position.set(0, 1.15, 0.35);
-    monkGroup.add(monkHands);
+    mockMonkMesh.add(monkHands);
+    monkGroup.add(mockMonkMesh);
+
+    // 加载真实 3D 黄袍和尚僧人模型 (Monk GLB)
+    gltfLoader.load(
+      "/models/monk-kaykit.glb",
+      (gltf) => {
+        const monk = gltf.scene;
+        const box = new THREE.Box3().setFromObject(monk);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const s = 1.95 / Math.max(size.y, 0.001);
+        monk.scale.setScalar(s);
+        monk.position.set(0, 0, 0);
+        monk.rotation.y = Math.PI;
+        monk.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        monkGroup.add(monk);
+        mockMonkMesh.visible = false;
+      },
+      undefined,
+      (err) => console.warn("monk load fallback:", err)
+    );
 
     templeGroup.add(monkGroup);
 
     // =========================================================================
-    // 1.8 人文生灵：【汉服优美女子香客 NPC (Hanfu Devotee)】
+    // 1.9 人文生灵：【汉服美女香客 NPC (Hanfu Devotee)】
     // =========================================================================
     const maidenGroup = new THREE.Group();
     maidenGroup.position.set(3.2, 0, 7.2);
     maidenGroupRef.current = maidenGroup;
 
-    // 飘逸对襟襦裙 (粉白与绯红相映)
+    const mockMaidenMesh = new THREE.Group();
     const maidenSkirt = new THREE.Mesh(
       new THREE.ConeGeometry(0.52, 1.45, 12),
       new THREE.MeshStandardMaterial({ color: 0xdb4d6d, roughness: 0.6 })
     );
     maidenSkirt.position.y = 0.8;
-    maidenGroup.add(maidenSkirt);
-
+    mockMaidenMesh.add(maidenSkirt);
     const maidenUpper = new THREE.Mesh(
       new THREE.CylinderGeometry(0.26, 0.32, 0.6, 10),
       new THREE.MeshStandardMaterial({ color: 0xfef4f4, roughness: 0.5 })
     );
     maidenUpper.position.y = 1.35;
-    maidenGroup.add(maidenUpper);
-
-    // 女子螓首与青丝发髻
+    mockMaidenMesh.add(maidenUpper);
     const maidenHead = new THREE.Mesh(
       new THREE.SphereGeometry(0.21, 12, 12),
       new THREE.MeshStandardMaterial({ color: 0xffdfd0, roughness: 0.4 })
     );
     maidenHead.position.y = 1.8;
-    maidenGroup.add(maidenHead);
-
+    mockMaidenMesh.add(maidenHead);
     const maidenHair = new THREE.Mesh(
       new THREE.SphereGeometry(0.23, 10, 10),
       new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 })
     );
     maidenHair.position.set(0, 1.9, -0.05);
-    maidenGroup.add(maidenHair);
+    mockMaidenMesh.add(maidenHair);
+    maidenGroup.add(mockMaidenMesh);
+
+    // 加载真实 3D 翩跹古典美女仕女塑像 (Dancing Bodhisattva / Maiden GLB)
+    gltfLoader.load(
+      "/models/bodhisattva-dancing.glb",
+      (gltf) => {
+        const maiden = gltf.scene;
+        const box = new THREE.Box3().setFromObject(maiden);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const s = 1.95 / Math.max(size.y, 0.001);
+        maiden.scale.setScalar(s);
+        maiden.position.set(0, 0, 0);
+        maiden.rotation.y = -Math.PI * 0.25;
+        maiden.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const m = child as THREE.Mesh;
+            m.castShadow = true;
+            m.receiveShadow = true;
+            m.material = new THREE.MeshStandardMaterial({
+              color: 0xfbe6d6,
+              roughness: 0.45,
+              metalness: 0.12,
+            });
+          }
+        });
+        maidenGroup.add(maiden);
+        mockMaidenMesh.visible = false;
+      },
+      undefined,
+      (err) => console.warn("maiden load fallback:", err)
+    );
 
     templeGroup.add(maidenGroup);
 
     // =========================================================================
-    // 1.9 人文景观：【古韵禅茶馆 (Zen Teahouse)】
+    // 1.10 自然胜境：【真实 3D 菩提古树与翠色垂柳 (Bodhi Tree & Willow)】
+    // =========================================================================
+    gltfLoader.load(
+      "/models/bodhi-tree.glb",
+      (gltf) => {
+        const tree = gltf.scene;
+        const box = new THREE.Box3().setFromObject(tree);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const s = 15.0 / Math.max(size.y, 0.001);
+        tree.scale.setScalar(s);
+        tree.position.set(22, 0, 16);
+        tree.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        templeGroup.add(tree);
+      },
+      undefined,
+      (err) => console.warn("bodhi-tree load fallback:", err)
+    );
+
+    gltfLoader.load(
+      "/models/willow.glb",
+      (gltf) => {
+        const willow = gltf.scene;
+        const box = new THREE.Box3().setFromObject(willow);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const s = 12.0 / Math.max(size.y, 0.001);
+        willow.scale.setScalar(s);
+        willow.position.set(-18, 0, 16);
+        willow.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        templeGroup.add(willow);
+      },
+      undefined,
+      (err) => console.warn("willow load fallback:", err)
+    );
+
+    // =========================================================================
+    // 1.11 人文景观：【古韵禅茶馆 (Zen Teahouse)】
     // =========================================================================
     const teahouseGroup = new THREE.Group();
     teahouseGroup.position.set(18, 0, 8);
@@ -704,13 +879,36 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     teaRoof.position.y = 4.8;
     teahouseGroup.add(teaRoof);
 
-    // 茶亭案几
-    const teaTable = new THREE.Mesh(
+    // 默认茶亭案几与真实 3D 茶桌模型加载
+    const mockTeaTable = new THREE.Mesh(
       new THREE.BoxGeometry(3.4, 0.85, 1.6),
       new THREE.MeshStandardMaterial({ color: 0x2e1a0e, roughness: 0.7 })
     );
-    teaTable.position.set(0, 0.85, 0);
-    teahouseGroup.add(teaTable);
+    mockTeaTable.position.set(0, 0.85, 0);
+    teahouseGroup.add(mockTeaTable);
+
+    gltfLoader.load(
+      "/models/table.glb",
+      (gltf) => {
+        const table = gltf.scene;
+        const box = new THREE.Box3().setFromObject(table);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const s = 1.4 / Math.max(size.y, 0.001);
+        table.scale.setScalar(s);
+        table.position.set(0, 0.35, 0);
+        table.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        teahouseGroup.add(table);
+        mockTeaTable.visible = false;
+      },
+      undefined,
+      (err) => console.warn("table load fallback:", err)
+    );
 
     // 案几上的紫砂茶壶
     const teapot = new THREE.Mesh(
@@ -922,6 +1120,35 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     const bridge2 = new THREE.Mesh(bridgeGeo, bridgeMat);
     bridge2.position.set(0, 12, 20);
     cityGroup.add(bridge2);
+
+    // 加载 Three.js 官方世界级 3D 动漫赛博都市大模型 (Littlest Tokyo, by Glen Fox)
+    gltfLoader.load(
+      "/models/LittlestTokyo.glb",
+      (gltf) => {
+        const cityModel = gltf.scene;
+        // Littlest Tokyo 模型缩放并置于街区中央，正对玩家漫游大道
+        cityModel.scale.setScalar(0.045);
+        cityModel.position.set(0, 0, 0);
+        cityModel.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        cityGroup.add(cityModel);
+
+        // 绑定轨道电车循环运行与招牌霓虹闪烁动画
+        if (gltf.animations && gltf.animations.length > 0) {
+          const mixer = new THREE.AnimationMixer(cityModel);
+          gltf.animations.forEach((clip) => {
+            mixer.clipAction(clip).play();
+          });
+          cityMixerRef.current = mixer;
+        }
+      },
+      undefined,
+      (err) => console.warn("LittlestTokyo load fallback:", err)
+    );
 
     // 地面高速穿行光轨车流
     const vehicles: Array<{ mesh: THREE.Mesh; speed: number; limit: number }> = [];
@@ -1156,6 +1383,11 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         fc.mesh.rotation.y = -fc.angle + Math.PI / 2;
       });
 
+      // 9. 真实赛博都市轨道列车运行与街区霓虹动画推进
+      if (cityMixerRef.current && worldModeRef.current === "city") {
+        cityMixerRef.current.update(dt);
+      }
+
       // 周期性更新 HUD 坐标
       if (Math.random() < 0.25) {
         setCameraCoords({
@@ -1176,6 +1408,9 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
       cancelAnimationFrame(animId);
+      if (cityMixerRef.current) {
+        cityMixerRef.current.stopAllAction();
+      }
       renderer.dispose();
     };
   }, [activeKeys]);
