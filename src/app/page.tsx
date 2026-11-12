@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import True3DWorldGame from "@/components/true-3d-world-game";
 import WorldModelSimulator from "@/components/beijing-pulse-world-model";
 import { useLanguage } from "@/lib/language-context";
 import { AppleHeader } from "@/components/apple-header";
@@ -12,7 +13,6 @@ import { CopilotDrawer } from "@/components/copilot-drawer";
 import { AppleStoryGallery } from "@/components/apple-story-gallery";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
-import { HeroNeuralAmbient } from "@/components/hero-neural-ambient";
 import { AppleArchitectureCompare } from "@/components/apple-architecture-compare";
 import { AppleNeuralSpecDeepdive } from "@/components/apple-neural-spec-deepdive";
 import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
@@ -22,8 +22,8 @@ export default function HomePage() {
   const router = useRouter();
   const { lang } = useLanguage();
 
-  // 3D 模拟器状态
-  const [activeWorldId, setActiveWorldId] = useState<string>("voxel-oasis");
+  // 3D 模拟器状态 (默认进入赛博禅刹祈福殿堂)
+  const [activeWorldId, setActiveWorldId] = useState<string>("cyber-temple");
   const [activeHour, setActiveHour] = useState<number>(17.5);
   const [snowMode, setSnowMode] = useState<boolean>(false);
 
@@ -91,72 +91,55 @@ export default function HomePage() {
 
       <main className="w-full">
         {/* =========================================================================
-            2. Hero Section (Apple 官方风格巨幅 Hero，白色纯净背景 + 动态环境光斑)
+            2. Hero Section: 旗舰双模 3D 游戏主舞台 (赛博禅刹 & 赛博新城开屏即玩)
            ========================================================================= */}
-        <section className="relative overflow-hidden bg-white pt-16 sm:pt-24 pb-16 sm:pb-24 terra-reveal w-full box-border">
-          {/* Apple 级动态环境流光背景 */}
-          <HeroNeuralAmbient />
+        <section id="hero-3d-world" className="relative w-full bg-[#070707] text-white overflow-hidden">
+          <div className="relative w-full h-[88vh] sm:h-[92vh]">
+            <True3DWorldGame
+              onToggleSpecs={() => {
+                const el = document.getElementById("knowledge-graph");
+                el?.scrollIntoView({ behavior: "smooth" });
+              }}
+            />
+          </div>
+        </section>
 
-          <div className="relative z-10 mx-auto max-w-5xl px-6 sm:px-8 text-center space-y-6">
-            <div className="space-y-3 max-w-4xl mx-auto">
-              <div className="text-[13px] sm:text-[15px] font-semibold text-[#0071e3] tracking-widest uppercase">
-                TERRA-OASIS Spatial Ecosystem
-              </div>
-              <h1 className="text-[38px] sm:text-[68px] lg:text-[84px] font-semibold text-[#1d1d1f] tracking-[-0.035em] leading-[1.04]">
-                {lang === "en"
-                  ? "14B Parameters. Limitless Potential."
-                  : "140 亿参数神经因果模型，更多可能的起点。"}
-              </h1>
+        {/* 游戏下方导读与快速导航 */}
+        <section className="bg-white py-12 sm:py-16 terra-reveal w-full box-border">
+          <div className="mx-auto max-w-5xl px-6 sm:px-8 text-center space-y-4">
+            <div className="text-[13px] sm:text-[14px] font-semibold text-[#0071e3] tracking-widest uppercase">
+              TERRA-OASIS Real-time Foundation
             </div>
-
-            <p className="text-[18px] sm:text-[21px] text-[#6e6e73] max-w-3xl mx-auto leading-relaxed font-normal">
+            <h1 className="text-[32px] sm:text-[50px] font-semibold text-[#1d1d1f] tracking-tight">
               {lang === "en"
-                ? "Across robotics, spatial computing, and interactive virtual worlds, TERRA contributes fundamentally to the next era of embodied physical intelligence. By uniting 3D Gaussian radiance fields with causal autoregressive diffusion, we provide researchers and creators with a real-time world foundation."
-                : "在具身机器人、空间计算与交互式虚拟时空中，TERRA 从底层推动空间智能的产业落地。通过将 3D 高斯点云辐射场与自回归因果扩散 Transformer 深度融合，我们为全球开发者与科研同行提供即时运行的世界模型底座。"}
+                ? "Dual-Realm Playable World Model Engine"
+                : "旗舰双模时空：在线赛博禅刹与未来数字新城"}
+            </h1>
+            <p className="text-[17px] sm:text-[19px] text-[#6e6e73] max-w-2xl mx-auto leading-relaxed">
+              {lang === "en"
+                ? "14B causal autoregressive neural world model. WASD continuous 3D roaming, Web Audio wooden fish synthesis, fluid incense diffusion, and urban counterfactual obstacle avoidance."
+                : "140 亿参数自回归因果世界模型驱动：全 3D 几何大殿庭院、Web Audio 原生木鱼与大殿晨钟声学合成、流体青烟自发扩散与多智能体连续决策推演。"}
             </p>
-
-            <div className="pt-3 flex flex-wrap items-center justify-center gap-4 text-[15px] sm:text-[16px]">
-              <a
-                href="#interactive-playground"
-                className="rounded-full bg-[#0071e3] px-7 py-3 text-white font-medium hover:bg-[#0077ed] active:scale-[0.98] transition no-underline"
-              >
-                {lang === "en" ? "Explore Live Simulation" : "在线体验世界模型"}
-              </a>
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-4 text-[14px] sm:text-[15px]">
               <a
                 href="#knowledge-graph"
-                className="rounded-full bg-[#f5f5f7] px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] active:scale-[0.98] transition no-underline"
+                className="rounded-full bg-[#f5f5f7] px-6 py-2.5 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition no-underline"
               >
-                {lang === "en" ? "Interactive Knowledge Graph" : "交互式知识图谱"}
+                {lang === "en" ? "Explore 100+ Papers Graph" : "查阅 100+ 篇学术星空图谱"}
               </a>
+              <Link
+                href="/research"
+                className="rounded-full bg-[#0071e3] px-6 py-2.5 text-white font-medium hover:bg-[#0077ed] transition no-underline"
+              >
+                {lang === "en" ? "Research Publications" : "研读学术专刊长文"}
+              </Link>
               <Link
                 href="/docs"
                 className="text-[#0071e3] hover:underline flex items-center gap-1 font-medium transition no-underline"
               >
-                <span>{lang === "en" ? "Developer Documentation" : "查阅开发者文档"}</span>
+                <span>{lang === "en" ? "Developer Docs" : "开发者技术文档"}</span>
                 <span>&gt;</span>
               </Link>
-            </div>
-          </div>
-
-          {/* Hero 底部实机画面展示及专业注脚 */}
-          <div className="mt-14 mx-auto max-w-6xl px-6 sm:px-8">
-            <div className="relative aspect-[16/9] w-full min-h-[360px] sm:min-h-[460px] overflow-hidden rounded-[28px] sm:rounded-[36px] bg-[#f5f5f7]">
-              <Image
-                src="/images/beijing-pulse/hero-beijing.jpg"
-                alt="Embodied Robotics Field Laboratory"
-                fill
-                priority
-                sizes="(max-width: 1200px) 100vw, 80vw"
-                className="object-cover"
-              />
-            </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between text-[13px] sm:text-[14px] text-[#6e6e73] px-2">
-              <p className="font-medium text-[#1d1d1f]">
-                4D Spatiotemporal Neural Simulation Field
-              </p>
-              <p className="text-[#6e6e73]">
-                Continuous Action-Conditioned Causal Inference Engine
-              </p>
             </div>
           </div>
         </section>
