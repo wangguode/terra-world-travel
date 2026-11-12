@@ -20,6 +20,14 @@
   <img src="https://img.shields.io/badge/Framework-Next.js_16_Turbopack-000000.svg" alt="Next.js 16">
 </p>
 
+<p align="center">
+  <a href="https://terra-world-travel.153557421.workers.dev/">
+    <img src="https://img.shields.io/badge/🌐_在线实时体验_Live_Demo-terra--world--travel.153557421.workers.dev-0071e3?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Live Demo on Cloudflare" />
+  </a>
+</p>
+
+> 🔗 **官方唯一在线演示入口**：[https://terra-world-travel.153557421.workers.dev/](https://terra-world-travel.153557421.workers.dev/) （全球边缘 CDN 直连，即开即玩）
+
 ---
 
 ## 📸 旗舰实机画面展示 (Interface Showcase)
