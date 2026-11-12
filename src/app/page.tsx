@@ -356,14 +356,14 @@ export default function HomePage() {
 
               <h2 className="text-[34px] sm:text-[48px] lg:text-[56px] font-semibold text-white tracking-tight leading-[1.06]">
                 {lang === "en"
-                  ? "Intuitive physics. Synthesized live in your browser."
-                  : "自发涌现的直觉物理，在浏览器中即刻亲历。"}
+                  ? "Intuitive physics. Dual-realm spatiotemporal streaming in your browser."
+                  : "旗舰双模时空：赛博禅刹祈福殿堂与未来数字新城。"}
               </h2>
 
               <p className="text-[17px] sm:text-[19px] text-[#86868b] leading-relaxed">
                 {lang === "en"
-                  ? "Take control using WASD keys for 6-DoF continuous camera kinematics, press E to trigger neural latent shockwaves, and slide the celestial controller to evolve daylight and solar angles."
-                  : "键盘 WASD 键平滑走行动力学，E 键触发局部潜空间形变冲击波，滑动时间轴实时感受天光云影与太阳高度角的连续因果演变。"}
+                  ? "Explore multiplayer continuous causal worlds: Space for kinetic leaps & electronic wooden fish, F for cyber incense fluid diffusion, and E for temple bells or urban counterfactual obstacle avoidance."
+                  : "多人同屏在线漫游与世界模型自回归推流：WASD 走行动力学，Space 敲击电子木鱼积攒因果功德，F 键敬奉赛博真香诱发流体青烟扩散，E 键撞响天坛晨钟或在未来新城注入突发工况反事实避障。"}
               </p>
             </div>
 

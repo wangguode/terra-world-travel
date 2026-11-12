@@ -15,6 +15,176 @@ interface WorldModelSimulatorProps {
   snowMode: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// 纯净 Web Audio 原生声学合成器（零外部网络与音频文件依赖，毫秒级响应）
+// ---------------------------------------------------------------------------
+class ZenAudioEngine {
+  private ctx: AudioContext | null = null;
+
+  private init(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    if (!this.ctx) {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
+    }
+    return this.ctx;
+  }
+
+  // 敲击电子木鱼（短促木质共振声波）
+  playWoodenFish() {
+    const ctx = this.init();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(580, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+
+      gain.gain.setValueAtTime(0.75, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.09);
+    } catch {
+      // 容错降级
+    }
+  }
+
+  // 鸣古钟（空灵深远多谐波大殿鸣钟）
+  playTempleBell() {
+    const ctx = this.init();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const freqs = [216, 324, 432, 648];
+      const gains = [0.4, 0.25, 0.15, 0.08];
+
+      freqs.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(gains[i], now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 2.8);
+      });
+    } catch {
+      // 容错降级
+    }
+  }
+
+  // 未来悬浮飞跃或变道推进
+  playCyberDrive() {
+    const ctx = this.init();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch {
+      // 容错降级
+    }
+  }
+}
+
+const zenAudio = new ZenAudioEngine();
+
+// ---------------------------------------------------------------------------
+// 禅刹灵签文库
+// ---------------------------------------------------------------------------
+interface ZenFortune {
+  id: number;
+  grade: string;
+  name: string;
+  poem: string;
+  meaning: string;
+  tag: string;
+}
+
+const ZEN_FORTUNES: ZenFortune[] = [
+  {
+    id: 1,
+    grade: "第 42 签 · 上上大吉",
+    name: "因果澄澈 · 潜龙出渊",
+    poem: "晨钟初叩净尘嚣，潜象千重自泛潮。自回归途无碍阻，万般吉兆入云霄。",
+    meaning: "当前世界模型神经潜变量极度平稳，梯度流向顺畅，所求因果圆满自洽。",
+    tag: "功德圆满",
+  },
+  {
+    id: 2,
+    grade: "第 18 签 · 乾元亨利",
+    name: "青烟聚气 · 佛光初照",
+    poem: "宝鼎炉香烟袅袅，祈年殿外露华浓。心灯长照三千界，春水生波遇惠风。",
+    meaning: "心念纯澈，因果自洽。多智能体协作无间，反事实推演迎刃而解。",
+    tag: "顺遂亨通",
+  },
+  {
+    id: 3,
+    grade: "第 88 签 · 万象更新",
+    name: "空谷回音 · 暮鼓归真",
+    poem: "古刹清泉涤俗念，虚灵方寸见菩提。繁花落尽秋将去，月满西楼晓日齐。",
+    meaning: "时空视界宽广无垠，潜流暗动即是新生，专注当下必有回响。",
+    tag: "逢凶化吉",
+  },
+  {
+    id: 4,
+    grade: "第 99 签 · 极上神兆",
+    name: "紫气东来 · 寰宇同频",
+    poem: "九霄阊阖开天阙，万国衣冠拜冕旒。此去平川八万里，乘风破浪上瀛洲。",
+    meaning: "潜空间收敛至全局最优极值，行动指令无损转化为视觉奇迹。",
+    tag: "大吉大利",
+  },
+];
+
+// 多人在线动作广播流
+const MULTIPLAYER_BROADCASTS = [
+  { user: "信众·道一 0x9F", action: "敲击祈年殿晨钟", detail: "鸣钟涤荡 · 功德+1", time: "刚刚" },
+  { user: "漫游者·Cypher", action: "未来新城极速避障", detail: "反事实无损变道推演成功", time: "2秒前" },
+  { user: "信众·妙音 0x7C", action: "虔诚敬奉赛博真香", detail: "青烟流体力学自发涌现", time: "4秒前" },
+  { user: "探索者·Neo", action: "抽取灵签【潜龙出渊】", detail: "获上上大吉签文 · 福泽连绵", time: "6秒前" },
+  { user: "信众·无尘 0x2A", action: "连续敲击电子木鱼", detail: "功德累积达 108 遍 · 万物澄澈", time: "9秒前" },
+  { user: "智能体·Agent-09", action: "立体交通自主会车", detail: "超视距协同零碰撞", time: "14秒前" },
+];
+
+interface FloatingMerit {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+}
+
 const VERTEX_SHADER = `
 varying vec2 vUv;
 void main() {
@@ -45,7 +215,7 @@ uniform vec3 uAmbientColor;
 uniform float uSunIntensity;
 uniform float uAtmosphereHaze;
 uniform float uSnowCover;
-uniform float uPerturbationWave; // 世界扰动冲击波
+uniform float uPerturbationWave; // 世界扰动/青烟扩散冲击波
 uniform vec2 uPerturbationCenter;
 
 varying vec2 vUv;
@@ -53,7 +223,7 @@ varying vec2 vUv;
 void main() {
   vec2 uv = vUv;
 
-  // 1. 世界扰动冲击波 (E 键或点击触发的局部神经潜空间形变)
+  // 1. 世界扰动与焚香青烟扩散 (潜空间形变)
   if (uPerturbationWave > 0.0) {
     vec2 diff = uv - uPerturbationCenter;
     float dist = length(diff);
@@ -138,7 +308,7 @@ export default function WorldModelSimulator({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [activeKeys, setActiveKeys] = useState<Record<string, boolean>>({});
-  const [renderMode, setRenderMode] = useState<number>(0); // 0: Radiance, 1: Depth, 2: Normal
+  const [renderMode, setRenderMode] = useState<number>(0);
   const [isPlayingTime, setIsPlayingTime] = useState(false);
   const [currentHour, setCurrentHour] = useState(hour);
 
@@ -150,6 +320,25 @@ export default function WorldModelSimulator({
   const [actionLog, setActionLog] = useState<ActionLogEntry[]>([]);
   const [reseedFlash, setReseedFlash] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // 功德与赛博祈福状态
+  const [meritCount, setMeritCount] = useState<number>(108);
+  const [floatingMerits, setFloatingMerits] = useState<FloatingMerit[]>([]);
+  const [activeFortune, setActiveFortune] = useState<ZenFortune | null>(null);
+  const [onlineUsersCount, setOnlineUsersCount] = useState<number>(3842);
+  const [broadcastIndex, setBroadcastIndex] = useState<number>(0);
+
+  const isTemple = activeWorldId === "cyber-temple";
+  const isCity = activeWorldId === "cyber-city";
+
+  // 定时轮转多人广播流与信众人数
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setBroadcastIndex((prev) => (prev + 1) % MULTIPLAYER_BROADCASTS.length);
+      setOnlineUsersCount((prev) => prev + (Math.random() > 0.5 ? 1 : -1));
+    }, 4200);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -211,17 +400,64 @@ export default function WorldModelSimulator({
     ]);
   }, []);
 
-  // 触发世界扰动 (E 键或鼠标交互)
-  const triggerPerturbation = useCallback((uvX = 0.5, uvY = 0.5) => {
+  // 触发世界扰动 (E 键、焚香或鼠标点击)
+  const triggerPerturbation = useCallback((uvX = 0.5, uvY = 0.5, customLabel?: string) => {
     waveCenterRef.current.set(uvX, uvY);
     uniformsRef.current.uPerturbationCenter.value.set(uvX, uvY);
     waveProgressRef.current = 0.001;
-    recordAction("E / Click", "Latent Block Break & World Perturbation", [
-      parseFloat((Math.random() * 0.4 - 0.2).toFixed(3)),
-      parseFloat((Math.random() * 0.4 - 0.2).toFixed(3)),
-      0.5,
-    ]);
+    recordAction(
+      customLabel ? "Zen Action" : "E / Click",
+      customLabel || "Latent Block Break & World Perturbation",
+      [
+        parseFloat((Math.random() * 0.4 - 0.2).toFixed(3)),
+        parseFloat((Math.random() * 0.4 - 0.2).toFixed(3)),
+        0.5,
+      ]
+    );
   }, [recordAction]);
+
+  // 生成浮动金色功德文字
+  const spawnFloatingMerit = useCallback((text = "功德 +1 · 因果自洽") => {
+    const id = `${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+    const x = 50 + (Math.random() * 20 - 10);
+    const y = 50 + (Math.random() * 10 - 5);
+    setFloatingMerits((prev) => [...prev.slice(-6), { id, text, x, y }]);
+    setMeritCount((c) => c + 1);
+
+    setTimeout(() => {
+      setFloatingMerits((prev) => prev.filter((m) => m.id !== id));
+    }, 1800);
+  }, []);
+
+  // 敲击电子木鱼
+  const handleKnockWoodenFish = useCallback(() => {
+    zenAudio.playWoodenFish();
+    triggerPerturbation(0.5, 0.6, "敲击电子木鱼 · 涤荡尘嚣");
+    spawnFloatingMerit("功德 +1 · 万象澄澈");
+  }, [triggerPerturbation, spawnFloatingMerit]);
+
+  // 撞响天坛晨钟
+  const handleRingTempleBell = useCallback(() => {
+    zenAudio.playTempleBell();
+    triggerPerturbation(0.5, 0.4, "天坛晨钟长鸣 · 声学因果自发涌现");
+    spawnFloatingMerit("功德 +3 · 福慧双增");
+  }, [triggerPerturbation, spawnFloatingMerit]);
+
+  // 虔诚焚香
+  const handleBurnIncense = useCallback(() => {
+    zenAudio.playTempleBell();
+    triggerPerturbation(0.5, 0.7, "虔诚敬奉赛博真香 · 青烟自发涌现");
+    spawnFloatingMerit("焚香圆满 · 青烟化吉");
+  }, [triggerPerturbation, spawnFloatingMerit]);
+
+  // 赛博抽签
+  const handleDrawFortune = useCallback(() => {
+    zenAudio.playTempleBell();
+    const fortune = ZEN_FORTUNES[Math.floor(Math.random() * ZEN_FORTUNES.length)];
+    setActiveFortune(fortune);
+    recordAction("Fortune", `求得上签: ${fortune.name}`, [0.1, 0.8, 0.5]);
+    spawnFloatingMerit("感召灵签 · 天地同频");
+  }, [recordAction, spawnFloatingMerit]);
 
   // 重置世界种子 (R 键)
   const triggerReseed = useCallback(() => {
@@ -240,14 +476,25 @@ export default function WorldModelSimulator({
       const key = e.key.toLowerCase();
       setActiveKeys((prev) => ({ ...prev, [key]: true }));
 
-      if (key === "e") {
-        triggerPerturbation(0.5, 0.5);
+      if (key === "f" && isTemple) {
+        handleBurnIncense();
+      } else if (key === "e") {
+        if (isTemple) {
+          handleRingTempleBell();
+        } else {
+          zenAudio.playCyberDrive();
+          triggerPerturbation(0.5, 0.5, "反事实变道避障推演");
+        }
       } else if (key === "r") {
         triggerReseed();
       } else if (key === " " || key === "space") {
-        // 跳跃冲量
-        velRef.current.y += 0.045 * (currentWorld.physics.gravity > 0 ? 1 : -1);
-        recordAction("Space", "Kinetic Leap / Altitude Impulse", [0, 1.2, 0]);
+        if (isTemple) {
+          handleKnockWoodenFish();
+        } else {
+          zenAudio.playCyberDrive();
+          velRef.current.y += 0.045 * (currentWorld.physics.gravity > 0 ? 1 : -1);
+          recordAction("Space", "Kinetic Leap / Drone Ascend", [0, 1.2, 0]);
+        }
       }
     };
 
@@ -266,7 +513,16 @@ export default function WorldModelSimulator({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [currentWorld, triggerPerturbation, triggerReseed, recordAction]);
+  }, [
+    isTemple,
+    currentWorld,
+    handleBurnIncense,
+    handleKnockWoodenFish,
+    handleRingTempleBell,
+    triggerPerturbation,
+    triggerReseed,
+    recordAction,
+  ]);
 
   // Three.js 核心初始化
   useEffect(() => {
@@ -344,7 +600,6 @@ export default function WorldModelSimulator({
       velRef.current.x += accel.x;
       velRef.current.y += accel.y;
 
-      // 阻尼与回弹
       const drag = Math.max(0.78, 1.0 - currentWorld.physics.drag);
       velRef.current.x *= drag;
       velRef.current.y *= drag;
@@ -485,7 +740,12 @@ export default function WorldModelSimulator({
     const rect = e.currentTarget.getBoundingClientRect();
     const uvX = (e.clientX - rect.left) / rect.width;
     const uvY = 1.0 - (e.clientY - rect.top) / rect.height;
-    triggerPerturbation(uvX, uvY);
+
+    if (isTemple) {
+      handleKnockWoodenFish();
+    } else {
+      triggerPerturbation(uvX, uvY);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -504,11 +764,79 @@ export default function WorldModelSimulator({
     mouseRef.current.y = 0;
   };
 
+  const currentBroadcast = MULTIPLAYER_BROADCASTS[broadcastIndex];
+
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-[#070707] font-sans">
       {/* 闪烁重置指示 */}
       {reseedFlash && (
         <div className="pointer-events-none absolute inset-0 z-50 bg-[#00f2fe]/20 transition-opacity duration-300" />
+      )}
+
+      {/* 浮动金色功德文字 */}
+      <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden">
+        {floatingMerits.map((item) => (
+          <div
+            key={item.id}
+            style={{ left: `${item.x}%`, top: `${item.y}%` }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 animate-float-fade font-semibold text-[#ffd60a] text-[18px] sm:text-[22px] tracking-tight whitespace-nowrap"
+          >
+            {item.text}
+          </div>
+        ))}
+      </div>
+
+      {/* 赛博禅意灵签弹窗 (Apple 极简浮层视觉) */}
+      {activeFortune && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div
+            className="w-full max-w-md rounded-[28px] bg-[#1d1d1f] p-6 sm:p-8 text-white space-y-5 border border-white/10 animate-fade-in"
+            data-ui="true"
+          >
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#ffd60a]/15 px-3 py-1 text-[12px] font-semibold text-[#ffd60a]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#ffd60a]" />
+                <span>{activeFortune.grade}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveFortune(null)}
+                className="rounded-full bg-white/10 h-7 px-3 flex items-center justify-center text-[12px] text-white/70 hover:bg-white/20 hover:text-white transition cursor-pointer"
+              >
+                关闭
+              </button>
+            </div>
+
+            <div className="space-y-1 text-center py-2">
+              <div className="text-[13px] text-[#2997ff] font-medium tracking-widest">
+                赛博禅刹 · 灵签推演
+              </div>
+              <h3 className="text-[26px] font-semibold text-white tracking-tight">
+                {activeFortune.name}
+              </h3>
+            </div>
+
+            <div className="rounded-[18px] bg-white/5 p-4 text-center leading-relaxed text-[#ffd60a] text-[15px] font-medium">
+              “{activeFortune.poem}”
+            </div>
+
+            <div className="space-y-2 text-[14px] text-white/70 leading-relaxed">
+              <div className="text-white/40 text-[12px]">【卦象解析】</div>
+              <div>{activeFortune.meaning}</div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[12px] text-white/40">累计功德：{meritCount}</span>
+              <button
+                type="button"
+                onClick={handleDrawFortune}
+                className="rounded-full bg-[#2997ff] px-5 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer"
+              >
+                再求一签
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 渲染画布与鼠标交互层 */}
@@ -521,7 +849,19 @@ export default function WorldModelSimulator({
       >
         <canvas ref={canvasRef} className="h-full w-full object-cover" />
 
-        {/* 游戏准星 (Interactive Crosshair) */}
+        {/* 顶部居中：多人在线信众动作广播条 (Apple 极简灵动药丸) */}
+        <div className="pointer-events-none absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 rounded-full bg-[#1d1d1f]/95 px-4 py-1.5 border border-white/10 text-[12px] text-white/90 max-w-[90vw] sm:max-w-md" data-ui="true">
+          <span className="h-2 w-2 rounded-full bg-[#34c759] shrink-0" />
+          <span className="text-white/50 shrink-0 tnum">{onlineUsersCount} 在线</span>
+          <span className="text-white/20">|</span>
+          <div className="truncate text-[12px]">
+            <span className="text-[#2997ff] font-medium mr-1.5">{currentBroadcast.user}</span>
+            <span className="text-white/70">{currentBroadcast.action}</span>
+            <span className="text-white/40 ml-1.5 hidden sm:inline">({currentBroadcast.detail})</span>
+          </div>
+        </div>
+
+        {/* 游戏准星 */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="relative flex items-center justify-center">
             <div className="h-5 w-[1px] bg-white/70" />
@@ -532,15 +872,15 @@ export default function WorldModelSimulator({
 
         {/* HUD 左上：世界维度与时空坐标 */}
         <div className="pointer-events-none absolute top-4 sm:top-6 left-4 sm:left-6 z-30 max-w-sm">
-          <div className="rounded-[18px] bg-[#0c0c0e]/95 p-3.5 sm:p-4 text-[16px] text-white/90">
-            <div className="flex items-center gap-2 text-[16px] text-[#00f2fe] tnum">
+          <div className="rounded-[18px] bg-[#0c0c0e]/95 p-3.5 sm:p-4 text-[16px] text-white/90 border border-white/5" data-ui="true">
+            <div className="flex items-center gap-2 text-[15px] text-[#00f2fe] tnum">
               <span className="h-2 w-2 rounded-full bg-[#00f2fe]" />
               <span>{currentWorld.codename}</span>
             </div>
-            <div className="mt-1 font-bold text-white text-[18px] sm:text-[20px] tracking-tight">
+            <div className="mt-1 font-semibold text-white text-[17px] sm:text-[19px] tracking-tight">
               {currentWorld.name}
             </div>
-            <div className="mt-2 flex items-center gap-3 text-[16px] text-white/50 tnum">
+            <div className="mt-2 flex items-center gap-3 text-[14px] text-white/50 tnum">
               <span>X: {cameraCoords.x > 0 ? `+${cameraCoords.x}` : cameraCoords.x}m</span>
               <span>Y: {cameraCoords.y > 0 ? `+${cameraCoords.y}` : cameraCoords.y}m</span>
               <span>Z: {cameraCoords.z > 0 ? `+${cameraCoords.z}` : cameraCoords.z}m</span>
@@ -548,9 +888,9 @@ export default function WorldModelSimulator({
           </div>
         </div>
 
-        {/* HUD 右上：自回归神经生成监控 (Apple Vision Pro 空间遥测) */}
+        {/* HUD 右上：自回归神经生成监控 */}
         <div className="pointer-events-none absolute top-4 sm:top-6 right-4 sm:right-6 z-30 hidden sm:block">
-          <div className="rounded-[20px] bg-[#1d1d1f]/90 p-3.5 sm:p-4 text-right text-[12px] text-white/80 space-y-1.5 tnum" data-ui="true">
+          <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3.5 sm:p-4 text-right text-[12px] text-white/80 space-y-1.5 tnum border border-white/5" data-ui="true">
             <div className="flex items-center justify-end gap-2">
               <span className="text-[#2997ff] text-[13px] font-medium tnum">Causal DiT 60FPS</span>
               <span className="h-2 w-2 rounded-full bg-[#34c759]" />
@@ -570,11 +910,92 @@ export default function WorldModelSimulator({
           </div>
         </div>
 
-        {/* HUD 左下：Apple 妙控键盘触控反馈与实时动作流 */}
+        {/* 赛博禅刹专属祈福快捷浮岛 (Temple Exclusive Panel) */}
+        {isTemple && (
+          <div className="absolute top-24 sm:top-28 right-4 sm:right-6 z-30 flex flex-col items-end gap-2">
+            <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2.5 max-w-[210px]" data-ui="true">
+              <div className="flex items-center justify-between text-[11px] text-white/50">
+                <span>赛博禅修 · 功德积攒</span>
+                <span className="text-[#ffd60a] font-semibold tnum">{meritCount}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleKnockWoodenFish}
+                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-white transition cursor-pointer"
+                  title="敲击电子木鱼（Space）"
+                >
+                  敲木鱼
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRingTempleBell}
+                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-white transition cursor-pointer"
+                  title="撞天坛晨钟（E）"
+                >
+                  撞晨钟
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBurnIncense}
+                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-[#ffd60a] transition cursor-pointer"
+                  title="赛博焚香（F）"
+                >
+                  焚香祈愿
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDrawFortune}
+                  className="rounded-[10px] bg-[#2997ff]/20 hover:bg-[#2997ff]/30 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-[#2997ff] transition cursor-pointer"
+                  title="感召灵签"
+                >
+                  抽灵签
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 赛博新城专属反事实决策浮岛 (City Exclusive Panel) */}
+        {isCity && (
+          <div className="absolute top-24 sm:top-28 right-4 sm:right-6 z-30 flex flex-col items-end gap-2">
+            <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2 max-w-[220px]" data-ui="true">
+              <div className="text-[11px] text-white/50">多智能体 · 反事实仿真</div>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    zenAudio.playCyberDrive();
+                    triggerPerturbation(0.5, 0.5, "前方突发变道避障推演");
+                  }}
+                  className="rounded-[10px] bg-[#2997ff]/20 hover:bg-[#2997ff]/30 active:scale-95 py-2 px-3 text-left text-[12px] font-medium text-[#2997ff] transition cursor-pointer flex items-center justify-between"
+                >
+                  <span>注入突发避障 (E)</span>
+                  <span className="text-[10px] text-[#2997ff]/70">分支</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    velRef.current.y += 0.05;
+                    recordAction("Drone", "无人机高空广角俯瞰", [0, 2.0, 0]);
+                  }}
+                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-3 text-left text-[12px] font-medium text-white transition cursor-pointer flex items-center justify-between"
+                >
+                  <span>无人机全景 (Space)</span>
+                  <span className="text-[10px] text-white/50">俯瞰</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* HUD 左下：控制键盘触控与实时动作流 */}
         <div className="absolute bottom-24 sm:bottom-28 left-4 sm:left-10 z-30 flex items-center gap-3">
-          <div className="rounded-[20px] bg-[#1d1d1f]/90 p-3 text-white" data-ui="true">
+          <div className="rounded-[20px] bg-[#1d1d1f]/90 p-3 text-white border border-white/5 shadow-xl" data-ui="true">
             <div className="text-[11px] text-white/50 mb-2 font-medium hidden sm:block tracking-wide">
-              WASD 移动 · Space 跳跃 · E 破拆扰动 · R 重置
+              {isTemple
+                ? "WASD 漫游 · Space 敲木鱼 · F 焚香 · E 撞钟"
+                : "WASD 漫游 · Space 跃升 · E 突发避障 · R 重置"}
             </div>
             <div className="flex flex-col items-center gap-1.5">
               <button
@@ -638,11 +1059,11 @@ export default function WorldModelSimulator({
             </div>
           </div>
 
-          {/* 实时动作流抓取 (Action Stream Log) */}
-          <div className="hidden md:flex flex-col gap-1 rounded-[20px] bg-[#1d1d1f]/90 p-3 text-[12px] text-white/70 min-w-[220px]" data-ui="true">
-            <div className="text-white/40 text-[11px] mb-1 font-sans">实时动作潜变量流 (Action Log)</div>
+          {/* 实时动作流抓取 */}
+          <div className="hidden md:flex flex-col gap-1 rounded-[20px] bg-[#1d1d1f]/90 p-3 text-[12px] text-white/70 min-w-[220px] border border-white/5 shadow-xl" data-ui="true">
+            <div className="text-white/40 text-[11px] mb-1 font-sans">实时动作潜变量流 (Action Stream)</div>
             {actionLog.length === 0 ? (
-              <div className="text-white/30 text-[12px]">按下 WASD / E 注入动作...</div>
+              <div className="text-white/30 text-[12px]">点击或按下 WASD / E 互动...</div>
             ) : (
               actionLog.slice(0, 3).map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-[12px] tnum">
@@ -656,7 +1077,7 @@ export default function WorldModelSimulator({
         </div>
 
         {/* 底部一体化应用控制器 */}
-        <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-10 right-4 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-full bg-[#1d1d1f]/90 px-4 sm:px-6 py-2.5" data-ui="true">
+        <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-10 right-4 sm:right-10 z-20 flex flex-wrap items-center justify-between gap-4 rounded-full bg-[#1d1d1f]/90 px-4 sm:px-6 py-2.5 border border-white/10 shadow-2xl backdrop-blur-xl" data-ui="true">
           {/* 左侧：世界维度选择器 */}
           <div className="flex items-center gap-3 overflow-x-auto max-w-full pb-1 sm:pb-0 scrollbar-none whitespace-nowrap">
             {WORLD_DIMENSIONS.map((w) => {

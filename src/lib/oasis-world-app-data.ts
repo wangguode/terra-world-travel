@@ -30,6 +30,66 @@ export interface WorldDimension {
 
 export const WORLD_DIMENSIONS: WorldDimension[] = [
   {
+    id: "cyber-temple",
+    name: "赛博禅刹 · 在线祈福殿堂",
+    codename: "TERRA-ZEN-TEMPLE",
+    category: "Cyber Temple & Heritage",
+    headline: "天坛晨钟暮鼓、多人赛博焚香与流体青烟自发涌现",
+    description:
+      "基于 14B 自回归世界模型驱动的在线 3D 赛博禅刹。全球探索者跨时区同屏在线漫游，实时敬奉赛博真香、鸣钟敲击电子木鱼积攒因果功德。香火青烟与古建日照光影完全由因果扩散潜空间自发推演，零几何穿模，空灵共振。",
+    image: "/images/beijing-pulse/temple-of-heaven.jpg",
+    depthMap: "/depth/temple-of-heaven.png",
+    physics: {
+      gravity: 9.8,
+      drag: 0.15,
+      bounce: 0.08,
+      entropy: 0.05,
+      lightCycle: "Zen Golden Hour · Incense Diffusion",
+    },
+    diffusionConfig: {
+      defaultSteps: 30,
+      latentDim: "16x64x64",
+      causalWindow: 48,
+      frameRate: 60,
+      noiseScale: 0.05,
+    },
+    interventions: [
+      { key: "F", label: "赛博焚香 (Incense)", effect: "在香炉前激发流体力学青烟潜变量扩散" },
+      { key: "Space", label: "鸣钟敲磬 (Zen Bell)", effect: "敲击鸣钟激发全局声学因果涟漪，功德+1" },
+      { key: "E", label: "佛光普照 (Radiance Sheen)", effect: "注入太阳高度角金光透射波，平定万物" },
+    ],
+  },
+  {
+    id: "cyber-city",
+    name: "未来中枢 · 赛博数字新城",
+    codename: "TERRA-CYBER-CITY",
+    category: "Multiplayer Autonomous Urban",
+    headline: "多智能体连续协同、各向异性车流与反事实决策推演",
+    description:
+      "高密度立体未来都市。基于连续控制向量实时推演车辆变道与行人避障。通过按 E 键注入突发工况扰动，世界模型即时生成零事故风险的反事实分支，展现超低延迟闭环仿真实力。",
+    image: "/images/beijing-pulse/futuristic.jpg",
+    depthMap: "/depth/forbidden-city.png",
+    physics: {
+      gravity: 9.8,
+      drag: 0.22,
+      bounce: 0.04,
+      entropy: 0.18,
+      lightCycle: "Bioluminescent Neon & Wet Asphalts",
+    },
+    diffusionConfig: {
+      defaultSteps: 28,
+      latentDim: "16x64x64",
+      causalWindow: 64,
+      frameRate: 60,
+      noiseScale: 0.10,
+    },
+    interventions: [
+      { key: "E", label: "反事实推演 (Counterfactual Branch)", effect: "在前方车流中模拟突发变道与紧急制动" },
+      { key: "Space", label: "无人机视点 (Drone Ascend)", effect: "切换空中三维全景俯瞰时空流向" },
+      { key: "R", label: "时空回溯 (Rollback Horizon)", effect: "回滚至前序关键帧重新推演分岔决策" },
+    ],
+  },
+  {
     id: "voxel-oasis",
     name: "神经像素沙盒 (Voxel Oasis)",
     codename: "TERRA-DIT-01",
