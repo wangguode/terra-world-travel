@@ -47,7 +47,7 @@ class ZenSoundEngine {
       osc.start(now);
       osc.stop(now + 0.085);
     } catch {
-      // 降级
+      // 容错降级
     }
   }
 
@@ -76,7 +76,33 @@ class ZenSoundEngine {
         osc.stop(now + 3.0);
       });
     } catch {
-      // 降级
+      // 容错降级
+    }
+  }
+
+  // 禅茶清润水流音
+  playTeaPour() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(820, now);
+      osc.frequency.exponentialRampToValueAtTime(1240, now + 0.2);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } catch {
+      // 容错降级
     }
   }
 
@@ -102,7 +128,7 @@ class ZenSoundEngine {
       osc.start(now);
       osc.stop(now + 0.18);
     } catch {
-      // 降级
+      // 容错降级
     }
   }
 }
@@ -110,7 +136,7 @@ class ZenSoundEngine {
 const zenAudio = new ZenSoundEngine();
 
 // ---------------------------------------------------------------------------
-// 灵签与同屏信众广播
+// 灵签文库与信众广播
 // ---------------------------------------------------------------------------
 interface FortuneCard {
   id: number;
@@ -124,14 +150,14 @@ const FORTUNES: FortuneCard[] = [
   {
     id: 1,
     grade: "第 42 签 · 上上大吉",
-    title: "因果澄澈 · 潜龙出渊",
+    title: "金尊佛光 · 潜龙出渊",
     poem: "晨钟初叩净尘嚣，潜象千重自泛潮。自回归途无碍阻，万般吉兆入云霄。",
     meaning: "当前自回归神经潜空间极度平稳自洽，梯度流向顺畅，所求之事必得圆满成就。",
   },
   {
     id: 2,
     grade: "第 18 签 · 乾元亨利",
-    title: "青烟聚气 · 佛光初照",
+    title: "禅茶一味 · 佛光初照",
     poem: "宝鼎炉香烟袅袅，祈年殿外露华浓。心灯长照三千界，春水生波遇惠风。",
     meaning: "心念纯澈，因果自洽。多智能体协同无间，反事实分支推演迎刃而解。",
   },
@@ -145,12 +171,12 @@ const FORTUNES: FortuneCard[] = [
 ];
 
 const BROADCAST_MESSAGES = [
-  { user: "信众·道一 0x9F", action: "敲击祈年殿晨钟", detail: "晨钟长鸣 · 功德+1", time: "刚刚" },
-  { user: "漫游者·Cypher", action: "未来新城极速避障", detail: "反事实无损变道成功", time: "2秒前" },
-  { user: "信众·妙音 0x7C", action: "虔诚敬奉赛博真香", detail: "青烟流体自发涌现", time: "4秒前" },
-  { user: "探索者·Neo", action: "抽取灵签【潜龙出渊】", detail: "获上上大吉签文 · 福泽连绵", time: "6秒前" },
-  { user: "信众·无尘 0x2A", action: "连续敲击电子木鱼", detail: "功德累积达 108 遍 · 万象澄澈", time: "9秒前" },
-  { user: "智能体·Agent-09", action: "高架桥协同换道", detail: "超视距协同零碰撞", time: "14秒前" },
+  { user: "信众·若雪", action: "在佛前焚香祈福", detail: "香火袅袅 · 功德+1", time: "刚刚" },
+  { user: "僧人·慧明", action: "大殿内撞响晨钟", detail: "钟鸣梵音 · 涤荡万象", time: "2秒前" },
+  { user: "漫游者·Cypher", action: "未来新城高架避障", detail: "反事实无损变道成功", time: "4秒前" },
+  { user: "探索者·子墨", action: "茶馆小憩品茗禅思", detail: "心神澄澈 · 福慧双增", time: "7秒前" },
+  { user: "信众·无尘", action: "连续敲击电子木鱼", detail: "功德累积达 108 遍", time: "9秒前" },
+  { user: "智能体·Agent-09", action: "立体空中交通巡航", detail: "超视距协同零碰撞", time: "14秒前" },
 ];
 
 interface FloatingText {
@@ -170,7 +196,7 @@ function createBuildingTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d");
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
-  ctx.fillStyle = "#0a0f1d";
+  ctx.fillStyle = "#0c1020";
   ctx.fillRect(0, 0, 128, 256);
 
   for (let y = 8; y < 256; y += 12) {
@@ -180,7 +206,7 @@ function createBuildingTexture(): THREE.CanvasTexture {
         ctx.fillStyle = rand > 0.8 ? "#ffd60a" : rand > 0.6 ? "#00f2fe" : "#ffffff";
         ctx.fillRect(x, y, 8, 7);
       } else {
-        ctx.fillStyle = "#05070e";
+        ctx.fillStyle = "#060812";
         ctx.fillRect(x, y, 8, 7);
       }
     }
@@ -199,11 +225,10 @@ function createZenStoneTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d");
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
-  ctx.fillStyle = "#2c3038";
+  ctx.fillStyle = "#323740";
   ctx.fillRect(0, 0, 256, 256);
 
-  // 石砖勾缝
-  ctx.strokeStyle = "#1b1d22";
+  ctx.strokeStyle = "#20242b";
   ctx.lineWidth = 3;
   for (let i = 0; i <= 256; i += 64) {
     ctx.beginPath();
@@ -251,16 +276,20 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const templeGroupRef = useRef<THREE.Group | null>(null);
   const cityGroupRef = useRef<THREE.Group | null>(null);
   const smokeParticlesRef = useRef<THREE.Points | null>(null);
+  const teaSmokeRef = useRef<THREE.Points | null>(null);
   const petalParticlesRef = useRef<THREE.Points | null>(null);
+  const cloudsRef = useRef<THREE.Group[]>([]);
+  const buddhaHaloRef = useRef<THREE.Mesh | null>(null);
   const bellMeshRef = useRef<THREE.Mesh | null>(null);
   const bellSwingRef = useRef(0);
   const woodenFishMeshRef = useRef<THREE.Mesh | null>(null);
   const woodenFishBounceRef = useRef(0);
-  const vehiclesRef = useRef<Array<{ mesh: THREE.Mesh; speed: number; axis: "x" | "z"; limit: number }>>([]);
+  const monkGroupRef = useRef<THREE.Group | null>(null);
+  const maidenGroupRef = useRef<THREE.Group | null>(null);
+  const vehiclesRef = useRef<Array<{ mesh: THREE.Mesh; speed: number; limit: number }>>([]);
   const flyingCarsRef = useRef<Array<{ mesh: THREE.Mesh; speed: number; radius: number; angle: number; height: number }>>([]);
-  const avatarMeshesRef = useRef<THREE.Group[]>([]);
 
-  // 真正的游戏角色移动与物理参数 (Player Character Controller)
+  // 角色动力学控制器
   const playerRef = useRef({
     pos: new THREE.Vector3(0, 1.8, 14.0),
     vel: new THREE.Vector3(0, 0, 0),
@@ -312,7 +341,13 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   // 敬真香
   const handleBurnIncense = useCallback(() => {
     zenAudio.playBell();
-    spawnFloatingText("赛博焚香 · 青烟化吉");
+    spawnFloatingText("赛博焚香 · 佛光普照");
+  }, [spawnFloatingText]);
+
+  // 品禅茶
+  const handleDrinkTea = useCallback(() => {
+    zenAudio.playTeaPour();
+    spawnFloatingText("禅茶一味 · 功德 +5");
   }, [spawnFloatingText]);
 
   // 抽灵签
@@ -352,7 +387,6 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           handleKnockWoodenFish();
         } else {
           zenAudio.playCyberPulse();
-          // 跳跃冲量
           if (playerRef.current.isGrounded) {
             playerRef.current.vel.y = 8.5;
             playerRef.current.isGrounded = false;
@@ -366,6 +400,8 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         }
       } else if (key === "f" && worldMode === "temple") {
         handleBurnIncense();
+      } else if (key === "t" && worldMode === "temple") {
+        handleDrinkTea();
       }
     };
 
@@ -384,17 +420,17 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [worldMode, handleKnockWoodenFish, handleRingBell, handleBurnIncense, handleTriggerAvoidance]);
+  }, [worldMode, handleKnockWoodenFish, handleRingBell, handleBurnIncense, handleDrinkTea, handleTriggerAvoidance]);
 
   // ---------------------------------------------------------------------------
-  // Three.js 核心 3D 世界构建（自然山峦风景 + 禅刹殿宇群 + 赛博霓虹城）
+  // Three.js 核心 3D 世界构建（大佛、僧人、汉服美女、禅茶馆、群山与白云）
   // ---------------------------------------------------------------------------
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    // 1. 渲染器配置
+    // 1. 渲染器
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -403,86 +439,105 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.18;
     rendererRef.current = renderer;
 
-    // 2. 场景与透视相机
+    // 2. 场景与相机
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#181424");
-    scene.fog = new THREE.FogExp2("#181424", 0.008);
+    scene.background = new THREE.Color("#262238");
+    scene.fog = new THREE.FogExp2("#262238", 0.007);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(
       62,
       container.clientWidth / container.clientHeight,
       0.1,
-      450
+      500
     );
     camera.position.set(0, 1.8, 14.0);
     cameraRef.current = camera;
 
-    // 3. 全局夕阳暖金照明
-    const ambientLight = new THREE.AmbientLight(0xffdec7, 0.95);
+    // 3. 全局光照系统
+    const ambientLight = new THREE.AmbientLight(0xffecd6, 1.1);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffaa5e, 2.2);
-    sunLight.position.set(30, 45, 20);
+    const sunLight = new THREE.DirectionalLight(0xffb86c, 2.4);
+    sunLight.position.set(35, 55, 25);
     scene.add(sunLight);
 
     // =========================================================================
-    // 维度 1：【赛博禅刹 · 壮阔群山庭院与古刹殿群】 (Cyber Zen Temple & Scenery)
+    // 维度 1：【赛博禅刹全景大世界】 (Buddha, Temple, Mountains, Clouds, NPCs)
     // =========================================================================
     const templeGroup = new THREE.Group();
     templeGroupRef.current = templeGroup;
     scene.add(templeGroup);
 
-    // 1.1 天空与远山剪影 (Sky & Distant Mountains)
-    const mountainMat = new THREE.MeshStandardMaterial({
-      color: 0x1c1a2e,
-      roughness: 0.9,
+    // 1.1 天空与白云系统 (3D Volumetric Soft Clouds)
+    const clouds: THREE.Group[] = [];
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0xfffcf5,
+      roughness: 0.8,
+      transparent: true,
+      opacity: 0.85,
     });
-    for (let i = 0; i < 18; i++) {
-      const angle = (i / 18) * Math.PI * 2;
-      const dist = 110 + (i % 3) * 25;
-      const mHeight = 35 + (i % 5) * 12;
-      const mGeo = new THREE.ConeGeometry(30 + (i % 4) * 8, mHeight, 5);
+
+    for (let c = 0; c < 12; c++) {
+      const cloud = new THREE.Group();
+      const puffCount = 5 + Math.floor(Math.random() * 4);
+      for (let p = 0; p < puffCount; p++) {
+        const puffGeo = new THREE.SphereGeometry(3.5 + Math.random() * 2.5, 8, 8);
+        const puff = new THREE.Mesh(puffGeo, cloudMat);
+        puff.position.set((p - puffCount / 2) * 3.2, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 2.0);
+        cloud.add(puff);
+      }
+      cloud.position.set(
+        (Math.random() - 0.5) * 180,
+        32 + Math.random() * 22,
+        (Math.random() - 0.5) * 180
+      );
+      templeGroup.add(cloud);
+      clouds.push(cloud);
+    }
+    cloudsRef.current = clouds;
+
+    // 1.2 壮阔层峦叠嶂群山 (Layered Mountains)
+    const mountainMat = new THREE.MeshStandardMaterial({ color: 0x221f38, roughness: 0.95 });
+    for (let i = 0; i < 22; i++) {
+      const angle = (i / 22) * Math.PI * 2;
+      const dist = 120 + (i % 4) * 25;
+      const mHeight = 42 + (i % 6) * 15;
+      const mGeo = new THREE.ConeGeometry(36 + (i % 4) * 8, mHeight, 6);
       const mMesh = new THREE.Mesh(mGeo, mountainMat);
       mMesh.position.set(Math.cos(angle) * dist, mHeight / 2 - 4, Math.sin(angle) * dist);
       templeGroup.add(mMesh);
     }
 
-    // 1.2 禅刹青石地砖广场 (带防滑纹理)
+    // 1.3 禅刹地面青石板广场
     const stoneTex = createZenStoneTexture();
-    const groundGeo = new THREE.PlaneGeometry(120, 120);
-    const groundMat = new THREE.MeshStandardMaterial({
-      map: stoneTex,
-      roughness: 0.8,
-      metalness: 0.1,
-    });
+    const groundGeo = new THREE.PlaneGeometry(140, 140);
+    const groundMat = new THREE.MeshStandardMaterial({ map: stoneTex, roughness: 0.8, metalness: 0.1 });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
     templeGroup.add(groundMesh);
 
-    // 1.3 汉白玉大殿台基 (三层须弥座与雕栏)
-    const baseGeo = new THREE.BoxGeometry(26, 1.4, 20);
-    const baseMat = new THREE.MeshStandardMaterial({ color: 0xedeef0, roughness: 0.35 });
+    // 1.4 汉白玉大殿台基与前阶
+    const baseGeo = new THREE.BoxGeometry(28, 1.6, 22);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f4, roughness: 0.35 });
     const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-    baseMesh.position.set(0, 0.7, -4);
+    baseMesh.position.set(0, 0.8, -4);
     templeGroup.add(baseMesh);
 
-    // 汉白玉石阶
-    const stairGeo = new THREE.BoxGeometry(8, 0.7, 4);
-    const stairMesh = new THREE.Mesh(stairGeo, baseMat);
-    stairMesh.position.set(0, 0.35, 7.5);
+    const stairMesh = new THREE.Mesh(new THREE.BoxGeometry(9, 0.8, 4.5), baseMat);
+    stairMesh.position.set(0, 0.4, 8.5);
     templeGroup.add(stairMesh);
 
-    // 1.4 大殿朱红立柱阵列 (12 根金顶红柱)
-    const pillarGeo = new THREE.CylinderGeometry(0.42, 0.46, 6.5, 16);
-    const pillarMat = new THREE.MeshStandardMaterial({ color: 0xa12020, roughness: 0.45 });
+    // 1.5 大殿朱红廊柱与金瓦双重飞檐殿顶
+    const pillarGeo = new THREE.CylinderGeometry(0.44, 0.48, 7.2, 16);
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x9e1e1e, roughness: 0.45 });
     const pillarCoords = [
-      [-10, 4.2, 3], [-5, 4.2, 3], [5, 4.2, 3], [10, 4.2, 3],
-      [-10, 4.2, -4], [-5, 4.2, -4], [5, 4.2, -4], [10, 4.2, -4],
-      [-10, 4.2, -11], [-5, 4.2, -11], [5, 4.2, -11], [10, 4.2, -11],
+      [-11, 4.8, 4], [-5.5, 4.8, 4], [5.5, 4.8, 4], [11, 4.8, 4],
+      [-11, 4.8, -4], [-5.5, 4.8, -4], [5.5, 4.8, -4], [11, 4.8, -4],
+      [-11, 4.8, -12], [-5.5, 4.8, -12], [5.5, 4.8, -12], [11, 4.8, -12],
     ];
     pillarCoords.forEach(([x, y, z]) => {
       const p = new THREE.Mesh(pillarGeo, pillarMat);
@@ -490,31 +545,230 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       templeGroup.add(p);
     });
 
-    // 1.5 重檐金琉璃庑殿顶 (金色双层大屋脊)
-    const roof1Geo = new THREE.ConeGeometry(19, 4.8, 4);
+    const roofGeo = new THREE.ConeGeometry(21, 5.5, 4);
     const roofMat = new THREE.MeshStandardMaterial({ color: 0xdf8a14, roughness: 0.3, metalness: 0.35 });
-    const roof1 = new THREE.Mesh(roof1Geo, roofMat);
-    roof1.position.set(0, 9.2, -4);
-    roof1.rotation.y = Math.PI / 4;
-    templeGroup.add(roof1);
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.set(0, 10.6, -4);
+    roof.rotation.y = Math.PI / 4;
+    templeGroup.add(roof);
 
-    // 1.6 殿前青铜大香炉 (三足两耳鼎，带呼吸香火)
+    // =========================================================================
+    // 1.6 核心圣物：【中央金尊大佛 (The Golden Buddha)】
+    // =========================================================================
+    const buddhaGroup = new THREE.Group();
+    buddhaGroup.position.set(0, 1.6, -6);
+
+    // 多层金雕莲花宝座 (Lotus Throne)
+    const lotusBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.2, 3.8, 1.2, 16),
+      new THREE.MeshStandardMaterial({ color: 0xc98728, metalness: 0.8, roughness: 0.3 })
+    );
+    buddhaGroup.add(lotusBase);
+
+    // 佛像结跏趺坐金身 (Golden Buddha Body)
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xffd23f,
+      metalness: 0.85,
+      roughness: 0.22,
+    });
+
+    // 佛陀莲花盘坐腿部
+    const legs = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.9, 12), goldMat);
+    legs.position.y = 1.0;
+    buddhaGroup.add(legs);
+
+    // 佛陀躯干法相
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.7, 2.6, 12), goldMat);
+    torso.position.y = 2.6;
+    buddhaGroup.add(torso);
+
+    // 佛陀头颅与顶髻
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 16), goldMat);
+    head.position.y = 4.4;
+    buddhaGroup.add(head);
+
+    const ushnisha = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), goldMat);
+    ushnisha.position.y = 5.2;
+    buddhaGroup.add(ushnisha);
+
+    // 佛像脑后悬浮旋转的自发光金色佛光光环 (Latent Halo)
+    const haloGeo = new THREE.TorusGeometry(2.4, 0.12, 16, 48);
+    const haloMat = new THREE.MeshStandardMaterial({
+      color: 0xffea78,
+      emissive: 0xffd60a,
+      emissiveIntensity: 0.85,
+      roughness: 0.2,
+    });
+    const halo = new THREE.Mesh(haloGeo, haloMat);
+    halo.position.set(0, 4.4, -0.6);
+    buddhaHaloRef.current = halo;
+    buddhaGroup.add(halo);
+
+    // 大佛金光点光源
+    const buddhaLight = new THREE.PointLight(0xffba3b, 4.5, 22);
+    buddhaLight.position.set(0, 4.8, 1.5);
+    buddhaGroup.add(buddhaLight);
+
+    templeGroup.add(buddhaGroup);
+
+    // =========================================================================
+    // 1.7 人文生灵：【和尚僧侣 NPC (Buddhist Monk)】
+    // =========================================================================
+    const monkGroup = new THREE.Group();
+    monkGroup.position.set(-3.2, 0, 7.8);
+    monkGroupRef.current = monkGroup;
+
+    // 黄褐色僧袍躯干
+    const monkRobe = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.36, 0.44, 1.5, 10),
+      new THREE.MeshStandardMaterial({ color: 0x8a5220, roughness: 0.8 })
+    );
+    monkRobe.position.y = 0.9;
+    monkGroup.add(monkRobe);
+
+    // 和尚光头与合十双手
+    const monkHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.24, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xf5cfb3, roughness: 0.5 })
+    );
+    monkHead.position.y = 1.8;
+    monkGroup.add(monkHead);
+
+    const monkHands = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.25, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0xf5cfb3 })
+    );
+    monkHands.position.set(0, 1.15, 0.35);
+    monkGroup.add(monkHands);
+
+    templeGroup.add(monkGroup);
+
+    // =========================================================================
+    // 1.8 人文生灵：【汉服优美女子香客 NPC (Hanfu Devotee)】
+    // =========================================================================
+    const maidenGroup = new THREE.Group();
+    maidenGroup.position.set(3.2, 0, 7.2);
+    maidenGroupRef.current = maidenGroup;
+
+    // 飘逸对襟襦裙 (粉白与绯红相映)
+    const maidenSkirt = new THREE.Mesh(
+      new THREE.ConeGeometry(0.52, 1.45, 12),
+      new THREE.MeshStandardMaterial({ color: 0xdb4d6d, roughness: 0.6 })
+    );
+    maidenSkirt.position.y = 0.8;
+    maidenGroup.add(maidenSkirt);
+
+    const maidenUpper = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.26, 0.32, 0.6, 10),
+      new THREE.MeshStandardMaterial({ color: 0xfef4f4, roughness: 0.5 })
+    );
+    maidenUpper.position.y = 1.35;
+    maidenGroup.add(maidenUpper);
+
+    // 女子螓首与青丝发髻
+    const maidenHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.21, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xffdfd0, roughness: 0.4 })
+    );
+    maidenHead.position.y = 1.8;
+    maidenGroup.add(maidenHead);
+
+    const maidenHair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.23, 10, 10),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 })
+    );
+    maidenHair.position.set(0, 1.9, -0.05);
+    maidenGroup.add(maidenHair);
+
+    templeGroup.add(maidenGroup);
+
+    // =========================================================================
+    // 1.9 人文景观：【古韵禅茶馆 (Zen Teahouse)】
+    // =========================================================================
+    const teahouseGroup = new THREE.Group();
+    teahouseGroup.position.set(18, 0, 8);
+
+    // 茶亭木质地板台基与柱廊
+    const teaFloor = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 0.5, 9),
+      new THREE.MeshStandardMaterial({ color: 0x4a2e1b, roughness: 0.8 })
+    );
+    teaFloor.position.y = 0.25;
+    teahouseGroup.add(teaFloor);
+
+    // 茶亭攒尖顶
+    const teaRoof = new THREE.Mesh(
+      new THREE.ConeGeometry(7.5, 3.2, 6),
+      new THREE.MeshStandardMaterial({ color: 0x3d424a, roughness: 0.6 })
+    );
+    teaRoof.position.y = 4.8;
+    teahouseGroup.add(teaRoof);
+
+    // 茶亭案几
+    const teaTable = new THREE.Mesh(
+      new THREE.BoxGeometry(3.4, 0.85, 1.6),
+      new THREE.MeshStandardMaterial({ color: 0x2e1a0e, roughness: 0.7 })
+    );
+    teaTable.position.set(0, 0.85, 0);
+    teahouseGroup.add(teaTable);
+
+    // 案几上的紫砂茶壶
+    const teapot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 10, 10),
+      new THREE.MeshStandardMaterial({ color: 0x6e2c16, roughness: 0.4, metalness: 0.2 })
+    );
+    teapot.position.set(-0.5, 1.45, 0);
+    teahouseGroup.add(teapot);
+
+    // 品茗茶盏
+    for (let c = 0; c < 2; c++) {
+      const teacup = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.05, 0.1, 8),
+        new THREE.MeshStandardMaterial({ color: 0x7da494, roughness: 0.3 })
+      );
+      teacup.position.set(0.2 + c * 0.4, 1.35, 0);
+      teahouseGroup.add(teacup);
+    }
+
+    // 茶香袅袅升腾热气粒子 (Tea Steam Particles)
+    const teaSmokeCount = 45;
+    const teaSmokeGeo = new THREE.BufferGeometry();
+    const teaSmokePos = new Float32Array(teaSmokeCount * 3);
+    for (let i = 0; i < teaSmokeCount; i++) {
+      teaSmokePos[i * 3 + 0] = (Math.random() - 0.5) * 0.2;
+      teaSmokePos[i * 3 + 1] = 1.5 + Math.random() * 1.5;
+      teaSmokePos[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
+    }
+    teaSmokeGeo.setAttribute("position", new THREE.BufferAttribute(teaSmokePos, 3));
+    const teaSmokeMat = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.14,
+      transparent: true,
+      opacity: 0.55,
+    });
+    const teaSmokePoints = new THREE.Points(teaSmokeGeo, teaSmokeMat);
+    teaSmokeRef.current = teaSmokePoints;
+    teahouseGroup.add(teaSmokePoints);
+
+    templeGroup.add(teahouseGroup);
+
+    // 1.10 殿前青铜大香炉 (带真香与香火青烟)
     const censerGeo = new THREE.CylinderGeometry(1.4, 1.0, 1.6, 16);
     const censerMat = new THREE.MeshStandardMaterial({ color: 0x3d4e42, metalness: 0.85, roughness: 0.35 });
     const censer = new THREE.Mesh(censerGeo, censerMat);
     censer.position.set(0, 2.0, 5.0);
     templeGroup.add(censer);
 
-    // 香炉三炷真香
     for (let i = -1; i <= 1; i++) {
-      const stickGeo = new THREE.CylinderGeometry(0.035, 0.035, 1.8, 8);
-      const stickMat = new THREE.MeshBasicMaterial({ color: 0xff3b30 });
-      const stick = new THREE.Mesh(stickGeo, stickMat);
+      const stick = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.035, 0.035, 1.8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xff3b30 })
+      );
       stick.position.set(i * 0.3, 2.9, 5.0);
       templeGroup.add(stick);
     }
 
-    // 香炉青烟流体粒子 (向上流动旋转扩散)
+    // 香炉青烟粒子
     const smokeCount = 140;
     const smokeGeo = new THREE.BufferGeometry();
     const smokePos = new Float32Array(smokeCount * 3);
@@ -534,47 +788,47 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     smokeParticlesRef.current = smokePoints;
     templeGroup.add(smokePoints);
 
-    // 1.7 庭院落花粒子系统 (随风飘扬的粉色花瓣)
+    // 1.11 飘零落花粒子
     const petalCount = 180;
     const petalGeo = new THREE.BufferGeometry();
     const petalPos = new Float32Array(petalCount * 3);
     for (let i = 0; i < petalCount; i++) {
-      petalPos[i * 3 + 0] = (Math.random() - 0.5) * 70;
+      petalPos[i * 3 + 0] = (Math.random() - 0.5) * 80;
       petalPos[i * 3 + 1] = 0.5 + Math.random() * 18;
-      petalPos[i * 3 + 2] = (Math.random() - 0.5) * 70;
+      petalPos[i * 3 + 2] = (Math.random() - 0.5) * 80;
     }
     petalGeo.setAttribute("position", new THREE.BufferAttribute(petalPos, 3));
     const petalMat = new THREE.PointsMaterial({
       color: 0xffb7c5,
-      size: 0.22,
+      size: 0.24,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
     });
     const petalPoints = new THREE.Points(petalGeo, petalMat);
     petalParticlesRef.current = petalPoints;
     templeGroup.add(petalPoints);
 
-    // 1.8 庭院风景：苍劲迎客松树群与石灯笼长廊
-    const treeTrunkGeo = new THREE.CylinderGeometry(0.3, 0.55, 4.5, 8);
-    const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x422a18, roughness: 0.9 });
-    const treeLeavesGeo = new THREE.ConeGeometry(2.8, 4.2, 7);
-    const treeLeavesMat = new THREE.MeshStandardMaterial({ color: 0x1f542f, roughness: 0.6 });
+    // 1.12 迎客松树林与石灯长廊
+    const treeTrunkGeo = new THREE.CylinderGeometry(0.32, 0.58, 4.8, 8);
+    const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2516, roughness: 0.9 });
+    const treeLeavesGeo = new THREE.ConeGeometry(3.0, 4.5, 7);
+    const treeLeavesMat = new THREE.MeshStandardMaterial({ color: 0x1b4a28, roughness: 0.6 });
 
     const treePositions = [
-      [-14, 2.2, 10], [-18, 2.2, 0], [-15, 2.2, -10],
-      [14, 2.2, 10], [18, 2.2, 0], [15, 2.2, -10],
-      [-8, 2.2, 22], [8, 2.2, 22],
+      [-15, 2.4, 10], [-19, 2.4, 0], [-16, 2.4, -10],
+      [15, 2.4, 16], [22, 2.4, 0], [16, 2.4, -10],
+      [-9, 2.4, 24], [9, 2.4, 24],
     ];
     treePositions.forEach(([tx, ty, tz]) => {
       const trunk = new THREE.Mesh(treeTrunkGeo, treeTrunkMat);
       trunk.position.set(tx, ty, tz);
       const leaves = new THREE.Mesh(treeLeavesGeo, treeLeavesMat);
-      leaves.position.set(tx, ty + 3.2, tz);
+      leaves.position.set(tx, ty + 3.4, tz);
       templeGroup.add(trunk);
       templeGroup.add(leaves);
     });
 
-    // 石灯笼阵列 (带暖金烛光)
+    // 石灯笼
     const lanternGeo = new THREE.CylinderGeometry(0.25, 0.35, 1.6, 6);
     const lanternMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.6 });
     const lanternPositions = [
@@ -591,20 +845,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       templeGroup.add(lanternLight);
     });
 
-    // 1.9 庭院碧波放生池与拱桥
-    const pondGeo = new THREE.CylinderGeometry(8, 8, 0.3, 24);
-    const pondMat = new THREE.MeshStandardMaterial({
-      color: 0x0f4d54,
-      roughness: 0.15,
-      metalness: 0.4,
-      transparent: true,
-      opacity: 0.88,
-    });
-    const pondMesh = new THREE.Mesh(pondGeo, pondMat);
-    pondMesh.position.set(-18, 0.1, 15);
-    templeGroup.add(pondMesh);
-
-    // 1.10 中央紫檀木鱼台与立体 3D 电子木鱼
+    // 1.13 中央紫檀木鱼台与立体 3D 电子木鱼
     const tableGeo = new THREE.BoxGeometry(2.2, 1.2, 1.4);
     const tableMat = new THREE.MeshStandardMaterial({ color: 0x382012, roughness: 0.7 });
     const tableMesh = new THREE.Mesh(tableGeo, tableMat);
@@ -619,35 +860,13 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     woodenFishMeshRef.current = fishMesh;
     templeGroup.add(fishMesh);
 
-    // 1.11 悬挂天坛晨钟 (铜金大钟)
+    // 1.14 悬挂天坛晨钟
     const bellGeo = new THREE.CylinderGeometry(0.55, 0.95, 2.1, 16);
     const bellMat = new THREE.MeshStandardMaterial({ color: 0x8a6e35, metalness: 0.85, roughness: 0.3 });
     const bellMesh = new THREE.Mesh(bellGeo, bellMat);
     bellMesh.position.set(-7.5, 5.2, 3.5);
     bellMeshRef.current = bellMesh;
     templeGroup.add(bellMesh);
-
-    // 1.12 同屏在线信众化身 (Multiplayer Devotee Avatars)
-    const avatarGroup1 = new THREE.Group();
-    const avatarBody1 = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.3, 1.2, 4, 8),
-      new THREE.MeshStandardMaterial({ color: 0x2997ff, roughness: 0.4, metalness: 0.2 })
-    );
-    avatarBody1.position.y = 1.0;
-    avatarGroup1.add(avatarBody1);
-    avatarGroup1.position.set(-2.5, 0, 7.5);
-    templeGroup.add(avatarGroup1);
-
-    const avatarGroup2 = new THREE.Group();
-    const avatarBody2 = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.3, 1.2, 4, 8),
-      new THREE.MeshStandardMaterial({ color: 0xffd60a, roughness: 0.4, metalness: 0.2 })
-    );
-    avatarBody2.position.y = 1.0;
-    avatarGroup2.add(avatarBody2);
-    avatarGroup2.position.set(2.8, 0, 6.8);
-    templeGroup.add(avatarGroup2);
-    avatarMeshesRef.current = [avatarGroup1, avatarGroup2];
 
     // =========================================================================
     // 维度 2：【未来中枢 · 赛博立体都市与霓虹天际线】 (Cyber City 3D)
@@ -657,7 +876,6 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     cityGroup.visible = false;
     scene.add(cityGroup);
 
-    // 2.1 赛博网格与多车道深色沥青路面
     const cityGroundGeo = new THREE.PlaneGeometry(240, 240);
     const cityGroundMat = new THREE.MeshStandardMaterial({ color: 0x05070c, roughness: 0.3, metalness: 0.7 });
     const cityGround = new THREE.Mesh(cityGroundGeo, cityGroundMat);
@@ -668,7 +886,6 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     cityGrid.position.y = 0.02;
     cityGroup.add(cityGrid);
 
-    // 2.2 程序化生成 64 栋高低错落摩天大厦与全息广告灯带
     const buildingTex = createBuildingTexture();
     const bMat = new THREE.MeshStandardMaterial({
       map: buildingTex,
@@ -678,7 +895,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
     for (let x = -90; x <= 90; x += 24) {
       for (let z = -90; z <= 90; z += 24) {
-        if (Math.abs(x) < 14 && Math.abs(z) < 14) continue; // 留出中央十字大道
+        if (Math.abs(x) < 14 && Math.abs(z) < 14) continue;
         const h = 24 + Math.random() * 65;
         const w = 11 + Math.random() * 7;
         const bGeo = new THREE.BoxGeometry(w, h, w);
@@ -686,7 +903,6 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         bMesh.position.set(x, h / 2, z);
         cityGroup.add(bMesh);
 
-        // 楼顶红色航空警示信标
         const beacon = new THREE.Mesh(
           new THREE.SphereGeometry(0.35, 8, 8),
           new THREE.MeshBasicMaterial({ color: 0xff3b30 })
@@ -696,7 +912,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       }
     }
 
-    // 2.3 双层高架立体交通桥廊 (Skybridges)
+    // 双层高架立体交通桥廊
     const bridgeGeo = new THREE.BoxGeometry(160, 1.2, 5.5);
     const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x1b2333, metalness: 0.6, roughness: 0.3 });
     const bridge1 = new THREE.Mesh(bridgeGeo, bridgeMat);
@@ -707,8 +923,8 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     bridge2.position.set(0, 12, 20);
     cityGroup.add(bridge2);
 
-    // 2.4 地面高速穿行光轨车流 (Light-Trail Vehicles)
-    const vehicles: Array<{ mesh: THREE.Mesh; speed: number; axis: "x" | "z"; limit: number }> = [];
+    // 地面高速穿行光轨车流
+    const vehicles: Array<{ mesh: THREE.Mesh; speed: number; limit: number }> = [];
     const carGeo = new THREE.BoxGeometry(1.2, 0.5, 2.4);
 
     for (let i = 0; i < 24; i++) {
@@ -721,13 +937,12 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       vehicles.push({
         mesh: car,
         speed: (12 + Math.random() * 16) * (isRed ? -1 : 1),
-        axis: "z",
         limit: 85,
       });
     }
     vehiclesRef.current = vehicles;
 
-    // 2.5 高空巡航悬浮飞车 (Flying Vehicles in Sky)
+    // 高空巡航悬浮飞车
     const flyingCars: Array<{ mesh: THREE.Mesh; speed: number; radius: number; angle: number; height: number }> = [];
     for (let i = 0; i < 6; i++) {
       const fCar = new THREE.Mesh(
@@ -756,7 +971,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     };
     window.addEventListener("resize", handleResize);
 
-    // 鼠标与触控 360° 自由旋转视角 (FPS Camera Look)
+    // 鼠标与触控 360° 自由旋转视角
     const handleMouseDown = (e: MouseEvent) => {
       isPointerDownRef.current = true;
       lastMousePosRef.current = { x: e.clientX, y: e.clientY };
@@ -780,7 +995,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     window.addEventListener("mouseup", handleMouseUp);
 
     // -------------------------------------------------------------------------
-    // 渲染主循环 (60 FPS Game Loop: 真实物理、人物移动与粒子动画)
+    // 渲染主循环 (60 FPS 完整角色漫游物理、白云飘移、佛光旋转)
     // -------------------------------------------------------------------------
     let animId: number;
     const clock = new THREE.Clock();
@@ -817,7 +1032,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         playerRef.current.bobbing += dt * 9.5;
       }
 
-      // 重力与下落
+      // 重力跳跃与下落
       if (!playerRef.current.isGrounded) {
         playerRef.current.vel.y -= 22.0 * dt;
         playerRef.current.pos.y += playerRef.current.vel.y * dt;
@@ -828,7 +1043,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         }
       }
 
-      // 摄像机头部呼吸晃动 (Head Bobbing)
+      // 头部呼吸晃动
       const bobOffset = isWalking ? Math.sin(playerRef.current.bobbing) * 0.045 : 0;
       camera.position.set(
         playerRef.current.pos.x,
@@ -836,7 +1051,6 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         playerRef.current.pos.z
       );
 
-      // 视线朝向计算
       const targetLook = new THREE.Vector3()
         .copy(camera.position)
         .add(
@@ -848,7 +1062,28 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         );
       camera.lookAt(targetLook);
 
-      // 2. 香炉青烟粒子动画
+      // 2. 白云随风飘移系统
+      cloudsRef.current.forEach((cloud, idx) => {
+        cloud.position.x += dt * (1.2 + (idx % 3) * 0.4);
+        if (cloud.position.x > 90) {
+          cloud.position.x = -90;
+        }
+      });
+
+      // 3. 佛光光环缓缓自转与呼吸发光
+      if (buddhaHaloRef.current) {
+        buddhaHaloRef.current.rotation.z += dt * 0.35;
+      }
+
+      // 4. 和尚与仕女自然呼吸与轻微摆动
+      if (monkGroupRef.current) {
+        monkGroupRef.current.position.y = Math.sin(time * 2.2) * 0.03;
+      }
+      if (maidenGroupRef.current) {
+        maidenGroupRef.current.position.y = Math.sin(time * 2.4 + 1.0) * 0.035;
+      }
+
+      // 5. 香炉青烟与茶香水汽粒子
       if (smokeParticlesRef.current) {
         const posAttr = smokeParticlesRef.current.geometry.attributes.position;
         const arr = posAttr.array as Float32Array;
@@ -863,7 +1098,21 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         posAttr.needsUpdate = true;
       }
 
-      // 3. 庭院落花粒子动画 (自然风向飘零)
+      if (teaSmokeRef.current) {
+        const tAttr = teaSmokeRef.current.geometry.attributes.position;
+        const tArr = tAttr.array as Float32Array;
+        for (let i = 0; i < teaSmokeCount; i++) {
+          tArr[i * 3 + 1] += dt * 0.6;
+          tArr[i * 3 + 0] += Math.sin(tArr[i * 3 + 1] * 3.0) * dt * 0.15;
+          if (tArr[i * 3 + 1] > 2.8) {
+            tArr[i * 3 + 1] = 1.45;
+            tArr[i * 3 + 0] = (Math.random() - 0.5) * 0.15;
+          }
+        }
+        tAttr.needsUpdate = true;
+      }
+
+      // 6. 飘零落花
       if (petalParticlesRef.current) {
         const pAttr = petalParticlesRef.current.geometry.attributes.position;
         const pArr = pAttr.array as Float32Array;
@@ -872,31 +1121,25 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           pArr[i * 3 + 0] += Math.sin(time + i) * dt * 0.4;
           if (pArr[i * 3 + 1] < 0.2) {
             pArr[i * 3 + 1] = 16.0;
-            pArr[i * 3 + 0] = (Math.random() - 0.5) * 70;
+            pArr[i * 3 + 0] = (Math.random() - 0.5) * 80;
           }
         }
         pAttr.needsUpdate = true;
       }
 
-      // 4. 木鱼敲击受力形变动画
+      // 7. 木鱼与晨钟动效
       if (woodenFishMeshRef.current && woodenFishBounceRef.current > 0) {
         woodenFishBounceRef.current = Math.max(0, woodenFishBounceRef.current - dt * 6.5);
         const s = 1.0 - woodenFishBounceRef.current * 0.2;
         woodenFishMeshRef.current.scale.set(1.25 * s, 0.78 * s, 1.05 * s);
       }
 
-      // 5. 晨钟受撞摇摆动画
       if (bellMeshRef.current && bellSwingRef.current > 0) {
         bellSwingRef.current = Math.max(0, bellSwingRef.current - dt * 1.6);
         bellMeshRef.current.rotation.z = Math.sin(time * 12.0) * bellSwingRef.current * 0.22;
       }
 
-      // 6. 信众化身微呼吸动效
-      avatarMeshesRef.current.forEach((av, idx) => {
-        av.position.y = Math.sin(time * 2.0 + idx) * 0.05;
-      });
-
-      // 7. 赛博城市车流与飞车穿梭
+      // 8. 赛博城市车流与高空飞车
       vehiclesRef.current.forEach((car) => {
         car.mesh.position.z += car.speed * dt;
         if (car.mesh.position.z > car.limit) car.mesh.position.z = -car.limit;
@@ -947,8 +1190,8 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       playerRef.current.yaw = 0;
       playerRef.current.pitch = -0.06;
       if (sceneRef.current) {
-        sceneRef.current.background = new THREE.Color("#181424");
-        sceneRef.current.fog = new THREE.FogExp2("#181424", 0.008);
+        sceneRef.current.background = new THREE.Color("#262238");
+        sceneRef.current.fog = new THREE.FogExp2("#262238", 0.007);
       }
     } else {
       playerRef.current.pos.set(0, 1.8, 22.0);
@@ -1085,11 +1328,19 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
                 </button>
                 <button
                   type="button"
+                  onClick={handleDrinkTea}
+                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-[#34c759] transition cursor-pointer"
+                  title="禅茶馆品茗（T 键）"
+                >
+                  品禅茶
+                </button>
+                <button
+                  type="button"
                   onClick={handleDrawFortune}
-                  className="rounded-[10px] bg-[#2997ff]/20 hover:bg-[#2997ff]/30 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-[#2997ff] transition cursor-pointer"
+                  className="col-span-2 rounded-[10px] bg-[#2997ff]/20 hover:bg-[#2997ff]/30 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-[#2997ff] transition cursor-pointer"
                   title="感召灵签"
                 >
-                  抽灵签
+                  佛前感召灵签
                 </button>
               </div>
             </div>
@@ -1147,8 +1398,8 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 text-white border border-white/5" data-ui="true">
             <div className="text-[11px] text-white/50 mb-2 font-medium hidden sm:block tracking-wide">
               {worldMode === "temple"
-                ? "WASD 平滑漫游 · Shift 奔跑 · Space 敲木鱼 · 鼠标旋转视角"
-                : "WASD 平滑驾驶 · Shift 加速 · Space 跳跃 · 鼠标旋转视角"}
+                ? "WASD 漫游 · Space 敲木鱼 · F 敬香 · T 品茶 · E 撞钟"
+                : "WASD 驾驶 · Shift 加速 · Space 跳跃 · E 避障"}
             </div>
             <div className="flex flex-col items-center gap-1.5">
               <button
@@ -1244,7 +1495,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
               <div className="space-y-1 text-center py-2">
                 <div className="text-[13px] text-[#2997ff] font-medium tracking-widest">
-                  赛博禅刹 · 灵签推演
+                  大雄宝殿 · 金佛灵签推演
                 </div>
                 <h3 className="text-[26px] font-semibold text-white tracking-tight">
                   {activeFortune.title}
