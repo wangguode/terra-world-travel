@@ -4,6 +4,10 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 // ---------------------------------------------------------------------------
 // 纯净 Web Audio 原生声学引擎（零外部网络依赖，毫秒级即发即响）
@@ -274,11 +278,18 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const [activeKeys, setActiveKeys] = useState<Record<string, boolean>>({});
   const [cameraCoords, setCameraCoords] = useState({ x: 0, y: 1.8, z: 12.0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCinematic, setIsCinematic] = useState(false);
+  const isCinematicRef = useRef(false);
+  useEffect(() => {
+    isCinematicRef.current = isCinematic;
+  }, [isCinematic]);
 
   // 3D 引用追踪
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const composerRef = useRef<EffectComposer | null>(null);
+  const dustParticlesRef = useRef<THREE.Points | null>(null);
   const templeGroupRef = useRef<THREE.Group | null>(null);
   const cityGroupRef = useRef<THREE.Group | null>(null);
   const smokeParticlesRef = useRef<THREE.Points | null>(null);
@@ -409,6 +420,12 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         handleBurnIncense();
       } else if (key === "t" && worldMode === "temple") {
         handleDrinkTea();
+      } else if (key === "c") {
+        setIsCinematic((prev) => {
+          const next = !prev;
+          spawnFloatingText(next ? "开启电影级全景运镜" : "退出电影运镜 · 恢复自由漫游");
+          return next;
+        });
       }
     };
 
@@ -427,7 +444,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [worldMode, handleKnockWoodenFish, handleRingBell, handleBurnIncense, handleDrinkTea, handleTriggerAvoidance]);
+  }, [worldMode, handleKnockWoodenFish, handleRingBell, handleBurnIncense, handleDrinkTea, handleTriggerAvoidance, spawnFloatingText]);
 
   // ---------------------------------------------------------------------------
   // Three.js 核心 3D 世界构建（大佛、僧人、汉服美女、禅茶馆、群山与白云）
@@ -437,7 +454,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    // 1. 渲染器
+    // 1. 渲染器（电影级 ACES 调色 + PCF 硬件软阴影）
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -446,31 +463,64 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.18;
+    renderer.toneMappingExposure = 1.25;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
 
-    // 2. 场景与相机
+    // 2. 场景与相机（电影 54mm 黄金视场角与深邃暮色雾霭）
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#262238");
-    scene.fog = new THREE.FogExp2("#262238", 0.007);
+    scene.background = new THREE.Color("#1f1933");
+    scene.fog = new THREE.FogExp2("#1f1933", 0.0062);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(
-      62,
+      54,
       container.clientWidth / container.clientHeight,
       0.1,
-      500
+      600
     );
     camera.position.set(0, 1.8, 14.0);
     cameraRef.current = camera;
 
-    // 3. 全局光照系统
-    const ambientLight = new THREE.AmbientLight(0xffecd6, 1.1);
+    // 3. 全局光照系统与动态物理软阴影
+    const ambientLight = new THREE.AmbientLight(0xffeedb, 0.75);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffb86c, 2.4);
-    sunLight.position.set(35, 55, 25);
+    const sunLight = new THREE.DirectionalLight(0xffb86c, 2.8);
+    sunLight.position.set(45, 60, 30);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 180;
+    sunLight.shadow.camera.left = -45;
+    sunLight.shadow.camera.right = 45;
+    sunLight.shadow.camera.top = 45;
+    sunLight.shadow.camera.bottom = -45;
+    sunLight.shadow.bias = -0.0004;
+    sunLight.shadow.radius = 2.2;
     scene.add(sunLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x738aff, 0x473121, 0.45);
+    scene.add(hemiLight);
+
+    // 4. 后期处理 UnrealBloomPass 电影级辉光管线
+    const composer = new EffectComposer(renderer);
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(container.clientWidth, container.clientHeight),
+      0.65, // strength
+      0.4,  // radius
+      0.82  // threshold
+    );
+    composer.addPass(bloomPass);
+
+    const outputPass = new OutputPass();
+    composer.addPass(outputPass);
+    composerRef.current = composer;
 
     // =========================================================================
     // 维度 1：【赛博禅刹全景大世界】 (Buddha, Temple, Mountains, Clouds, NPCs)
@@ -528,12 +578,13 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       }
     }
 
-    // 1.3 禅刹地面青石板广场
+    // 1.3 禅刹地面青石板广场 (接收逼真物理软阴影)
     const stoneTex = createZenStoneTexture();
     const groundGeo = new THREE.PlaneGeometry(140, 140);
     const groundMat = new THREE.MeshStandardMaterial({ map: stoneTex, roughness: 0.8, metalness: 0.1 });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
+    groundMesh.receiveShadow = true;
     templeGroup.add(groundMesh);
 
     // 1.4 汉白玉大殿台基与前阶
@@ -541,10 +592,14 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     const baseMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f4, roughness: 0.35 });
     const baseMesh = new THREE.Mesh(baseGeo, baseMat);
     baseMesh.position.set(0, 0.8, -4);
+    baseMesh.castShadow = true;
+    baseMesh.receiveShadow = true;
     templeGroup.add(baseMesh);
 
     const stairMesh = new THREE.Mesh(new THREE.BoxGeometry(9, 0.8, 4.5), baseMat);
     stairMesh.position.set(0, 0.4, 8.5);
+    stairMesh.castShadow = true;
+    stairMesh.receiveShadow = true;
     templeGroup.add(stairMesh);
 
     // 1.5 大殿朱红廊柱与金瓦双重飞檐殿顶
@@ -558,6 +613,8 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     pillarCoords.forEach(([x, y, z]) => {
       const p = new THREE.Mesh(pillarGeo, pillarMat);
       p.position.set(x, y, z);
+      p.castShadow = true;
+      p.receiveShadow = true;
       templeGroup.add(p);
     });
 
@@ -566,7 +623,30 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     const roof = new THREE.Mesh(roofGeo, roofMat);
     roof.position.set(0, 10.6, -4);
     roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true;
+    roof.receiveShadow = true;
     templeGroup.add(roof);
+
+    // 电影级空气神圣金光微粒 (Cinematic Golden Dust Motes / Spirit Particles)
+    const dustCount = 360;
+    const dustGeo = new THREE.BufferGeometry();
+    const dustPos = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i++) {
+      dustPos[i * 3 + 0] = (Math.random() - 0.5) * 45;
+      dustPos[i * 3 + 1] = 0.5 + Math.random() * 9.5;
+      dustPos[i * 3 + 2] = (Math.random() - 0.5) * 35;
+    }
+    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+    const dustMat = new THREE.PointsMaterial({
+      color: 0xffe680,
+      size: 0.22,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+    });
+    const dustPoints = new THREE.Points(dustGeo, dustMat);
+    dustParticlesRef.current = dustPoints;
+    templeGroup.add(dustPoints);
 
     // =========================================================================
     // GLTF 高保真开源大模型加载系统 (零外部依赖，本地 WASM Draco 极速解码)
@@ -1195,6 +1275,9 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      if (composerRef.current) {
+        composerRef.current.setSize(width, height);
+      }
     };
     window.addEventListener("resize", handleResize);
 
@@ -1270,24 +1353,40 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         }
       }
 
-      // 头部呼吸晃动
-      const bobOffset = isWalking ? Math.sin(playerRef.current.bobbing) * 0.045 : 0;
-      camera.position.set(
-        playerRef.current.pos.x,
-        playerRef.current.pos.y + bobOffset,
-        playerRef.current.pos.z
-      );
-
-      const targetLook = new THREE.Vector3()
-        .copy(camera.position)
-        .add(
-          new THREE.Vector3(
-            -Math.sin(playerRef.current.yaw) * Math.cos(playerRef.current.pitch),
-            Math.sin(playerRef.current.pitch),
-            -Math.cos(playerRef.current.yaw) * Math.cos(playerRef.current.pitch)
-          )
+      // 电影级运镜 vs 第一人称自由漫游
+      if (isCinematicRef.current) {
+        // 电影级航拍环绕运镜 (Cinematic Director Crane/Drone Shot)
+        const orbitRadius = worldModeRef.current === "temple" ? 17.5 : 22.0;
+        const orbitSpeed = 0.12;
+        const cx = Math.sin(time * orbitSpeed) * orbitRadius;
+        const cz = Math.cos(time * orbitSpeed) * orbitRadius + (worldModeRef.current === "temple" ? -1.0 : 4.0);
+        const cy = 3.6 + Math.sin(time * orbitSpeed * 0.7) * 1.6;
+        camera.position.set(cx, cy, cz);
+        if (worldModeRef.current === "temple") {
+          camera.lookAt(0, 3.2, -5.5);
+        } else {
+          camera.lookAt(0, 3.8, 0);
+        }
+      } else {
+        // 第一人称自由漫游头部呼吸晃动
+        const bobOffset = isWalking ? Math.sin(playerRef.current.bobbing) * 0.045 : 0;
+        camera.position.set(
+          playerRef.current.pos.x,
+          playerRef.current.pos.y + bobOffset,
+          playerRef.current.pos.z
         );
-      camera.lookAt(targetLook);
+
+        const targetLook = new THREE.Vector3()
+          .copy(camera.position)
+          .add(
+            new THREE.Vector3(
+              -Math.sin(playerRef.current.yaw) * Math.cos(playerRef.current.pitch),
+              Math.sin(playerRef.current.pitch),
+              -Math.cos(playerRef.current.yaw) * Math.cos(playerRef.current.pitch)
+            )
+          );
+        camera.lookAt(targetLook);
+      }
 
       // 2. 白云随风飘移系统
       cloudsRef.current.forEach((cloud, idx) => {
@@ -1388,6 +1487,22 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         cityMixerRef.current.update(dt);
       }
 
+      // 10. 电影级神圣空气浮尘微粒轻柔涌动
+      if (dustParticlesRef.current) {
+        const dAttr = dustParticlesRef.current.geometry.attributes.position;
+        const dArr = dAttr.array as Float32Array;
+        const dCount = 360;
+        for (let i = 0; i < dCount; i++) {
+          dArr[i * 3 + 1] -= dt * 0.16;
+          dArr[i * 3 + 0] += Math.sin(time * 0.5 + i) * dt * 0.16;
+          if (dArr[i * 3 + 1] < 0.25) {
+            dArr[i * 3 + 1] = 9.5;
+            dArr[i * 3 + 0] = (Math.random() - 0.5) * 45;
+          }
+        }
+        dAttr.needsUpdate = true;
+      }
+
       // 周期性更新 HUD 坐标
       if (Math.random() < 0.25) {
         setCameraCoords({
@@ -1397,7 +1512,11 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         });
       }
 
-      renderer.render(scene, camera);
+      if (composerRef.current) {
+        composerRef.current.render();
+      } else {
+        renderer.render(scene, camera);
+      }
     };
 
     animate();
@@ -1447,12 +1566,29 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       <div ref={containerRef} className="relative h-full w-full cursor-grab active:cursor-grabbing">
         <canvas ref={canvasRef} className="h-full w-full object-cover" />
 
-        {/* 屏幕准星 */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-4 w-[1px] bg-white/60" />
-          <div className="absolute h-[1px] w-4 bg-white/60" />
-          <div className="absolute h-2 w-2 rounded-full border border-[#2997ff]/80" />
-        </div>
+        {/* 电影级镜头边缘暗角与焦外晕影 (Radial Vignette) */}
+        {/* taste-skill-ignore */}<div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_center,transparent_45%,rgba(0,0,0,0.65)_100%)]" />
+
+        {/* 电影宽银幕上下遮幅 (Cinematic 2.39:1 Letterbox) */}
+        <div
+          className={`pointer-events-none absolute inset-x-0 top-0 z-20 bg-black/95 transition-[height] duration-700 ease-out ${
+            isCinematic ? "h-8 sm:h-12" : "h-0"
+          }`}
+        />
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-black/95 transition-[height] duration-700 ease-out ${
+            isCinematic ? "h-8 sm:h-12" : "h-0"
+          }`}
+        />
+
+        {/* 屏幕准星（电影运镜时自动淡出） */}
+        {!isCinematic && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-500">
+            <div className="h-4 w-[1px] bg-white/60" />
+            <div className="absolute h-[1px] w-4 bg-white/60" />
+            <div className="absolute h-2 w-2 rounded-full border border-[#2997ff]/80" />
+          </div>
+        )}
 
         {/* 浮动金色功德文字 */}
         <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden">
@@ -1607,8 +1743,30 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
             </div>
           )}
 
-          {/* 切换全屏与文档链接 */}
+          {/* 电影运镜切换 / 全屏 / 文献 */}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsCinematic((prev) => {
+                  const next = !prev;
+                  spawnFloatingText(next ? "开启电影级全景运镜 (按 C 切换)" : "恢复自由漫游 (按 C 切换)");
+                  return next;
+                });
+              }}
+              className={`rounded-full px-3 py-1 text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                isCinematic
+                  ? "bg-[#ff9f0a] text-black font-semibold"
+                  : "bg-white/10 hover:bg-white/20 text-white"
+              }`}
+              title="一键开启/退出电影级航拍运镜（快捷键 C）"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+              <span>{isCinematic ? "电影运镜中" : "电影运镜"}</span>
+            </button>
             {onToggleSpecs && (
               <button
                 type="button"
