@@ -1,0 +1,11 @@
+Jiaoshan Dinghui Temple — 焦山定慧寺
+Author: Metazeon (https://sketchfab.com/Metazeon)
+Source: https://sketchfab.com/3d-models/jiaoshan-dinghui-temple-76b17714145141d4823b2e63eb2a5e80
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+Retrieved from GitHub: Bohar-s-Bit/MayaMukh, commit da5eb2b63081522fbb3380b60a79605cc8a8d110, more_models/jiaoshan_dinghui_temple.glb
+License and author verified from embedded glTF asset.extras metadata.
+Changes: GLB unpacked into glTF and split binary buffers; atlas encoded at original8192 resolution as JPEG quality94 for desktop, with4096 JPEG quality90 fallback for mobile; runtime scale/placement/lighting. No endorsement implied.
+This depicts Jiaoshan Dinghui Temple, not the actual Lingshan scenic area. The added monumental Buddha and interactive prayer functions are application additions.
+
+Generic surface textures on the original timber precinct reuse Amazon Lumberyard Bistro v5.2 (Amazon.com, Inc. or affiliates), CC BY4.0. Attribution/license: /models/bistro/LICENSE.txt . Runtime material tiling and tint changed. Not endorsed by Amazon.

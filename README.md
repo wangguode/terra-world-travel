@@ -73,26 +73,33 @@
 
 | 核心维度 | 核心热键 / 交互 | 真实 3D 资产与潜空间因果物理效果 |
 | :--- | :--- | :--- |
-| **维度 1：【赛博禅刹】**<br>(Cyber Zen Temple) | **WASD / 鼠标拖拽**：漫游古刹大世界<br>**Space**：敲击电子木鱼（功德 +1）<br>**E 键**：撞响大殿晨钟<br>**F 键**：敬奉香炉三柱真香<br>**T 键**：东亭雅阁“品禅茶”<br>**抽灵签**：感召禅意灵签 | • **真实佛陀雕塑法相**：真实 3D 结跏趺坐大佛与释迦立佛雕像（PBR 金身与自发光金轮）；<br>• **汉唐飞檐大宝塔**：飞檐斗拱高耸古刹宝塔与大雄宝殿交相辉映；<br>• **生动人文 NPC**：黄袍和尚慧明（合十礼佛）与优美汉服仕女若雪（虔诚祈福）；<br>• **自然生态与茶道**：古韵禅茶亭（实体茶几、紫砂茶壶、升腾水汽）、真实 3D 菩提古树与翠柳；<br>• **壮阔自然大世界**：28 座雪顶层峦叠嶂群山连绵、天际 3D 动态飘移白云群、180 颗纷飞落花。 |
-| **维度 2：【未来新城】**<br>(Cyber City) | **WASD / 鼠标拖拽**：第一人称都市街道漫游<br>**E 键**：突发工况反事实避障推演<br>**Space**：重力跳跃 / 悬浮俯瞰<br>**极速冲刺**：按住 Shift 加速漫游 | • **Three.js 官方世界级 3D 都市**：深度集成 Glen Fox 原作的 `Littlest Tokyo` 赛博动漫都市模型；<br>• **实时动态轨道电车**：车厢在城市高架轨道上自主循环穿梭，伴随各向异性霓虹广告牌闪烁；<br>• **立体双层交运网络**：穿梭光轨车流与高空巡航飞车，打造纵深赛博街区漫游。 |
+| **维度 1：【焦山塔院 & 赛博禅刹】**<br>(Cyber Zen Temple) | **WASD / 鼠标拖拽**：漫游古刹大世界<br>**导览按钮**：实景总览 / 塔院山门 / 古塔细节 / 灵山草案<br>**Space**：敲击电子木鱼（功德 +1）<br>**E 键**：撞响大殿晨钟<br>**F 键**：敬奉香炉三柱真香<br>**T 键**：东亭雅阁“品禅茶”<br>**抽灵签**：感召禅意灵签 | • **焦山定慧寺实景扫描塔院**：真实 3D 摄影测量重建高精古建塔院，支持 8K/4K 贴图自适应加载（CC BY 4.0 Metazeon 原作）；<br>• **真实佛陀雕塑法相**：高精结跏趺坐大佛与释迦立佛雕像（PBR 金身与自发光金轮）；<br>• **真实 HDR 天光环境映射**：Venice Sunset 1K HDR 全景辐射度采样，呈现真实全景环境光照与漫反射；<br>• **生动人文与自然**：和尚慧明（合十礼佛）、汉服仕女若雪、古韵禅茶亭（实木茶几、紫砂茶壶、升腾水汽）、高精菩提古树与翠柳；<br>• **壮阔自然大世界**：雪顶层峦叠嶂群山连绵、天际 3D 动态飘移白云群、180 颗纷飞落花。 |
+| **维度 2：【未来新城 & 写实街区】**<br>(Cyber City / Bistro) | **WASD / 鼠标拖拽**：第一人称都市与写实街区漫游<br>**E 键**：突发工况反事实避障推演<br>**Space**：重力跳跃 / 悬浮俯瞰<br>**极速冲刺**：按住 Shift 加速漫游 | • **Amazon Lumberyard Bistro 写实商业街区**：深度集成世界级 Bistro 户外街区（Vespa、遮阳篷、常春藤绿植、咖啡露台、店铺招牌，全 PBR 高清质感）；<br>• **立体双层交运网络**：穿梭光轨车流与高空巡航飞车，打造纵深赛博街区漫游；<br>• **超低延迟响应**：边缘端着色器即时解码，< 16 ms 响应。 |
 
 ---
 
 ## 🛠️ 开源生态整合、模型来源与脱敏声明 (Open-Source Architecture & Credits)
 
 本项目遵循开源社区学术与工业探索规范，基于 GitHub 顶尖开源项目进行深度资产提取、敏感信息剔除、性能轻量化与统一架构复刻：
-1. **佛教名胜三维模型**（来源：`nickpettican/Journey-To-The-West`, CC BY 4.0）：
+1. **焦山定慧寺实景扫描古建筑**（来源：`Metazeon`, CC BY 4.0）：
+   - `public/models/jiaoshan-temple/`（包含 8K 与 4K 贴图、分包几何体缓存低于 25MB，实景飞檐、古塔、石阶全实景呈现）；
+   - 附带完整源仓库、Commit 与 SHA-256 元数据追踪，详见 `public/models/jiaoshan-temple/credits.txt`。
+2. **写实商业街区模型**（来源：`Amazon Lumberyard Bistro v5.2`, CC BY 4.0）：
+   - `public/models/bistro/`（街区外观 Exterior 场景，Vespa 摩托、店铺招牌、遮阳篷、常春藤植被、路灯、铺路石板，全真实 PBR 贴图），详见 `assets/bistro-credits.md`。
+3. **Venice Sunset 1K HDR 环境贴图**（来源：`Poly Haven`, CC0）：
+   - `public/environments/venice-sunset-1k.hdr`（PMREM 硬件级全景辐射采样，实现地表与金属表面真实天空反射），详见 `assets/environment-credits.md`。
+4. **佛教名胜三维模型**（来源：`nickpettican/Journey-To-The-West`, CC BY 4.0）：
    - `sitting-buddha.glb`、`standing-buddha.glb`（Gautama Buddha 历史雕像高精模型）；
    - `bodhisattva-dancing.glb`（古典翩跹仕女 / 菩萨雕塑）；
    - `bodhi-tree.glb`（Ashim Shakya 原作菩提古树）与 `willow.glb`（Valery.Li 原作翠柳）。
-2. **世界级赛博都市模型**（来源：`mrdoob/three.js` 官方示例, CC BY 4.0）：
-   - `LittlestTokyo.glb`（Glen Fox 原作，烘焙动画、轨道电车与霓虹街区，配合本地 WASM Draco 硬件加速解码）。
-3. **佛门僧侣 NPC 与茶具模型**（来源：`electronstudio/rlzero` & `stemkoski/A-Frame-Examples`, CC0 / MIT）：
+5. **佛门僧侣 NPC 与茶具模型**（来源：`electronstudio/rlzero` & `stemkoski/A-Frame-Examples`, CC0 / MIT）：
    - `monk-kaykit.glb`（黄袍和尚僧人 NPC）；
    - `table.glb`（禅茶几桌）。
-4. **原生声学合成与祈福交互**：
+6. **原生声学合成与祈福交互**：
    - 提取自开源生态中 Web Audio API 瞬态衰减振荡器与功德状态机算法，彻底剔除所有外部依赖与敏感网址，端到端毫秒级即发即响。
-5. **Apple 官方级工业设计规范**：
+7. **Apple 官方级工业设计规范**：
+   - 严格遵循 Apple Human Interface Guidelines 与 Vercel 性能实践；
+   - 彻底修复数字排版换行断裂缺陷（`< 16 ms` 已全局强制同行对齐），具备纯正毛玻璃层次与无边框灵动岛 HUD。
    - 严格遵循 Apple Human Interface Guidelines 与 Vercel 性能实践；
    - 彻底修复数字排版换行断裂缺陷（`< 16 ms` 已全局强制同行对齐），具备纯正毛玻璃层次与无边框灵动岛 HUD。
 

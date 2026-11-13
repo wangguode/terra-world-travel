@@ -1,0 +1,15 @@
+{
+  "asset": {
+    "extras": {
+      "author": "Metazeon (https://sketchfab.com/Metazeon)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/jiaoshan-dinghui-temple-76b17714145141d4823b2e63eb2a5e80",
+      "title": "Jiaoshan Dinghui Temple"
+    },
+    "generator": "Sketchfab-16.59.0",
+    "version": "2.0"
+  },
+  "sourceRepository": "https://github.com/Bohar-s-Bit/MayaMukh",
+  "sourceCommit": "da5eb2b63081522fbb3380b60a79605cc8a8d110",
+  "sourceSha256": "f85750436b5dec6e58e67fe017f685572affe552a87a1b059efe78b2c8c966e3"
+}
