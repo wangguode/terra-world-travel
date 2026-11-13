@@ -100,8 +100,6 @@
 7. **Apple 官方级工业设计规范**：
    - 严格遵循 Apple Human Interface Guidelines 与 Vercel 性能实践；
    - 彻底修复数字排版换行断裂缺陷（`< 16 ms` 已全局强制同行对齐），具备纯正毛玻璃层次与无边框灵动岛 HUD。
-   - 严格遵循 Apple Human Interface Guidelines 与 Vercel 性能实践；
-   - 彻底修复数字排版换行断裂缺陷（`< 16 ms` 已全局强制同行对齐），具备纯正毛玻璃层次与无边框灵动岛 HUD。
 
 ---
 
