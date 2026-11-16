@@ -10,6 +10,9 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { Sky } from "three/examples/jsm/objects/Sky.js";
+import { Water } from "three/examples/jsm/objects/Water.js";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import { createTempleArchitecture } from "@/lib/temple-architecture";
 import { createCityArchitecture } from "@/lib/city-architecture";
 
@@ -230,6 +233,73 @@ function createZenStoneTexture(): THREE.CanvasTexture {
   return tex;
 }
 
+/**
+ * 生成程序化水波法线贴图（供 Three.js 官方 Water 着色器使用，零外链依赖）
+ */
+function createWaterNormalTexture(): THREE.DataTexture {
+  const size = 256;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = (x / size) * Math.PI * 2;
+      const v = (y / size) * Math.PI * 2;
+      const dx =
+        Math.cos(u * 3 + Math.sin(v * 2)) * 0.45 +
+        Math.cos(u * 7 - v * 5) * 0.25 +
+        Math.cos(u * 13 + v * 11) * 0.12;
+      const dy =
+        Math.sin(v * 4 + Math.cos(u * 3)) * 0.45 +
+        Math.sin(v * 6 + u * 5) * 0.25 +
+        Math.sin(v * 11 - u * 9) * 0.12;
+      const len = Math.sqrt(dx * dx + dy * dy + 1);
+      const idx = (y * size + x) * 4;
+      data[idx] = Math.round(((dx / len) * 0.5 + 0.5) * 255);
+      data[idx + 1] = Math.round(((dy / len) * 0.5 + 0.5) * 255);
+      data[idx + 2] = Math.round(((1 / len) * 0.5 + 0.5) * 255);
+      data[idx + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/**
+ * 生成现代摩天大楼玻璃幕墙与夜灯窗格贴图
+ */
+function createSkyscraperFacadeTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  ctx.fillStyle = "#14202c";
+  ctx.fillRect(0, 0, 256, 512);
+
+  for (let row = 0; row < 32; row++) {
+    for (let col = 0; col < 16; col++) {
+      const lit = (row * 7 + col * 13) % 5 === 0;
+      const warm = (row + col) % 3 === 0;
+      ctx.fillStyle = lit
+        ? warm
+          ? "rgba(255, 224, 168, 0.85)"
+          : "rgba(182, 226, 255, 0.78)"
+        : "rgba(38, 58, 78, 0.9)";
+      ctx.fillRect(col * 16 + 2, row * 16 + 3, 12, 10);
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 4);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 interface True3DWorldGameProps {
   onToggleSpecs?: () => void;
 }
@@ -238,12 +308,16 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // 维度模式：'temple' 灵山寺院 | 'city' 写实街区
-  const [worldMode, setWorldMode] = useState<"temple" | "city">("temple");
-  const worldModeRef = useRef<"temple" | "city">(worldMode);
+  // 维度模式：'temple' 灵山寺院 | 'city' 写实街区 | 'splat' 3DGS 实景
+  const [worldMode, setWorldMode] = useState<"temple" | "city" | "splat">("temple");
+  const worldModeRef = useRef<"temple" | "city" | "splat">(worldMode);
   useEffect(() => {
     worldModeRef.current = worldMode;
   }, [worldMode]);
+  const [splatScene, setSplatScene] = useState<"valley" | "snow-street">("valley");
+  const loadSplatRef = useRef<((target: "valley" | "snow-street") => void) | null>(null);
+  const splatGroupRef = useRef<THREE.Group | null>(null);
+  const [splatAssetState, setSplatAssetState] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
   // 状态机
   const [meritCount, setMeritCount] = useState<number>(108);
@@ -315,11 +389,11 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     const concept = view === "buddha";
     setTempleView(concept ? "concept" : "real");
     setTempleViewRef.current?.(concept ? "concept" : "real");
-    const positions = { overview: [38, 63, 86], gate: [0, 37, 46], hall: [14, 56, 12], buddha: [0, 13, -57] };
+    const positions = { overview: [-36, 44, 78], gate: [0, 37, 46], hall: [14, 56, 12], buddha: [0, 5.5, 24] };
     const [x,y,z] = positions[view];
     playerRef.current.pos.set(x,y,z);
-    playerRef.current.yaw = view === "overview" ? .36 : view === "hall" ? .45 : 0;
-    playerRef.current.pitch = view === "overview" ? -.12 : view === "buddha" ? .18 : view === "hall" ? .1 : .18;
+    playerRef.current.yaw = view === "overview" ? -0.38 : view === "hall" ? .45 : 0;
+    playerRef.current.pitch = view === "overview" ? -.14 : view === "buddha" ? .12 : view === "hall" ? .1 : .18;
   };
 
   // 定时轮转多人广播
@@ -484,12 +558,30 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     renderer.shadowMap.type = THREE.PCFShadowMap;
     rendererRef.current = renderer;
 
-    // 2. 场景与相机（电影 54mm 黄金视场角与深邃暮色雾霭）
+    // 2. 场景与相机（电影 54mm 黄金视场角 + Three.js 官方物理大气散射 Sky）
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#b4c3c8");
-    scene.fog = new THREE.FogExp2("#b4c3c8", 0.0018);
+    scene.background = new THREE.Color("#8fb8d8");
+    scene.fog = new THREE.FogExp2("#bcd2e4", 0.00045);
     sceneRef.current = scene;
     let disposed = false;
+
+    const sky = new Sky();
+    sky.scale.setScalar(4500);
+    scene.add(sky);
+    const skyUniforms = sky.material.uniforms;
+    skyUniforms["turbidity"].value = 2.4;
+    skyUniforms["rayleigh"].value = 1.15;
+    skyUniforms["mieCoefficient"].value = 0.002;
+    skyUniforms["mieDirectionalG"].value = 0.78;
+    const sunVec = new THREE.Vector3();
+    const updateSun = (elevationDeg: number, azimuthDeg: number) => {
+      const phi = THREE.MathUtils.degToRad(90 - elevationDeg);
+      const theta = THREE.MathUtils.degToRad(azimuthDeg);
+      sunVec.setFromSphericalCoords(1, phi, theta);
+      skyUniforms["sunPosition"].value.copy(sunVec);
+    };
+    updateSun(36, 320);
+
     const environmentGenerator = new THREE.PMREMGenerator(renderer);
     const room = new RoomEnvironment();
     const fallbackEnvironment = environmentGenerator.fromScene(room);
@@ -501,44 +593,40 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       if (disposed) { texture.dispose(); return; }
       hdrEnvironment = environmentGenerator.fromEquirectangular(texture);
       scene.environment = hdrEnvironment.texture;
-      scene.environmentIntensity = 0.9;
-      // The HDR is retained by PMREM only; a neutral sky keeps the scan and
-      // authored additions under the same atmosphere.
+      scene.environmentIntensity = 0.75;
       texture.mapping = THREE.EquirectangularReflectionMapping;
       skyTexture = texture;
-      scene.background = texture;
-      scene.backgroundBlurriness = .12;
     }, undefined, () => { /* Keep the local PMREM fallback if HDR is unavailable. */ });
 
     const camera = new THREE.PerspectiveCamera(
       54,
       container.clientWidth / container.clientHeight,
       0.1,
-      600
+      1200
     );
     camera.position.set(0, 3, 65);
     cameraRef.current = camera;
 
     // 3. 全局光照系统与动态物理软阴影
-    const ambientLight = new THREE.AmbientLight(0xffeedb, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffeedb, 0.5);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffe0b5, 3.0);
-    sunLight.position.set(45, 60, 30);
+    const sunLight = new THREE.DirectionalLight(0xffe8c8, 2.2);
+    sunLight.position.set(60, 75, 45);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 180;
-    sunLight.shadow.camera.left = -45;
-    sunLight.shadow.camera.right = 45;
-    sunLight.shadow.camera.top = 45;
-    sunLight.shadow.camera.bottom = -45;
+    sunLight.shadow.camera.far = 220;
+    sunLight.shadow.camera.left = -65;
+    sunLight.shadow.camera.right = 65;
+    sunLight.shadow.camera.top = 65;
+    sunLight.shadow.camera.bottom = -65;
     sunLight.shadow.bias = -0.0004;
     sunLight.shadow.radius = 2.2;
     scene.add(sunLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xb4d2e8, 0x796958, 1.6);
+    const hemiLight = new THREE.HemisphereLight(0xb4d8f0, 0x6f6858, 1.1);
     scene.add(hemiLight);
 
     // 4. 后期处理 UnrealBloomPass 电影级辉光管线
@@ -548,15 +636,23 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(container.clientWidth, container.clientHeight),
-      0.16, // strength
-      0.4,  // radius
-      1.15  // threshold
+      0.08, // strength
+      0.25, // radius
+      3.2   // threshold (avoid blooming Sky HDR gradient)
     );
     composer.addPass(bloomPass);
 
     const outputPass = new OutputPass();
     composer.addPass(outputPass);
     composerRef.current = composer;
+
+    // 5. World Labs 开源 @sparkjsdev/spark 3D Gaussian Splatting 渲染器
+    const sparkRenderer = new SparkRenderer({ renderer });
+    scene.add(sparkRenderer);
+    const splatGroup = new THREE.Group();
+    splatGroup.visible = false;
+    splatGroupRef.current = splatGroup;
+    scene.add(splatGroup);
 
     // =========================================================================
     // 维度 1：【灵山寺院全景大世界】 (Buddha, Temple, Mountains, Clouds, NPCs)
@@ -565,16 +661,58 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     templeGroupRef.current = templeGroup;
     scene.add(templeGroup);
 
-    // Distant terrain uses smooth silhouettes and atmospheric depth, not snow cones.
+    // 1.1 长江“江中浮玉”实时反射水面 (Three.js 官方 Water 着色器)
+    const waterNormalMap = createWaterNormalTexture();
+    const waterGeo = new THREE.PlaneGeometry(1800, 1800);
+    const water = new Water(waterGeo, {
+      textureWidth: 512,
+      textureHeight: 512,
+      waterNormals: waterNormalMap,
+      sunDirection: sunVec.clone().normalize(),
+      sunColor: 0xfff0d4,
+      waterColor: 0x164c64,
+      distortionScale: 2.6,
+      fog: true,
+    });
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = -0.35;
+    templeGroup.add(water);
+
+    // 1.2 远景连绵群山环抱（多频 FBM 地形置换山脉 + 植被/岩壁高度渐变着色）
+    const templeHorizonGroup = new THREE.Group();
+    templeGroup.add(templeHorizonGroup);
     cloudsRef.current = [];
-    const mountainMaterial = new THREE.MeshStandardMaterial({ color: 0x74827a, roughness: 1 });
-    for (let i = 0; i < 12; i++) {
-      const hill = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 16), mountainMaterial);
-      const angle = (i / 12) * Math.PI * 2;
-      hill.position.set(Math.cos(angle) * 185, -18, Math.sin(angle) * 185);
-      hill.scale.set(80, 30 + (i % 4) * 10, 75);
-      templeGroup.add(hill);
+    const ridgeGeo = new THREE.RingGeometry(240, 520, 128, 12);
+    ridgeGeo.rotateX(-Math.PI / 2);
+    const rPos = ridgeGeo.attributes.position;
+    const rColors = new Float32Array(rPos.count * 3);
+    for (let i = 0; i < rPos.count; i++) {
+      const vx = rPos.getX(i);
+      const vz = rPos.getZ(i);
+      const r = Math.sqrt(vx * vx + vz * vz);
+      const angle = Math.atan2(vz, vx);
+      const radialEnv = Math.sin(Math.max(0, Math.min(1, (r - 240) / 280)) * Math.PI);
+      const fbm =
+        Math.sin(angle * 5 + 0.4) * 0.5 +
+        Math.cos(angle * 11 - 1.2) * 0.3 +
+        Math.sin(angle * 23 + r * 0.02) * 0.2;
+      const height = Math.max(-1, radialEnv * (52 + fbm * 42));
+      rPos.setY(i, height);
+      const t = Math.min(1, Math.max(0, height / 85));
+      rColors[i * 3 + 0] = 0.24 + t * 0.22;
+      rColors[i * 3 + 1] = 0.34 + t * 0.18;
+      rColors[i * 3 + 2] = 0.29 + t * 0.26;
     }
+    ridgeGeo.setAttribute("color", new THREE.BufferAttribute(rColors, 3));
+    ridgeGeo.computeVertexNormals();
+    const ridgeMat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.94,
+      metalness: 0.02,
+      side: THREE.DoubleSide,
+    });
+    const mountainRing = new THREE.Mesh(ridgeGeo, ridgeMat);
+    templeHorizonGroup.add(mountainRing);
 
     // 1.3 禅刹地面青石板广场 (接收逼真物理软阴影)
     const stoneTex = createZenStoneTexture();
@@ -664,13 +802,18 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         const s = targetH / Math.max(size.y, 0.001);
         buddha.scale.setScalar(s);
         buddha.position.set(0, 0.65, 0);
+        const gildedMat = new THREE.MeshStandardMaterial({
+          color: 0xe6b445,
+          metalness: 0.74,
+          roughness: 0.28,
+          envMapIntensity: 1.35,
+        });
         buddha.traverse((child) => {
           if ((child as THREE.Mesh).isMesh) {
             const m = child as THREE.Mesh;
             m.castShadow = true;
             m.receiveShadow = true;
-            // Preserve authored material; environment lighting provides the highlights.
-
+            m.material = gildedMat;
           }
         });
         buddhaGroup.add(buddha);
@@ -685,6 +828,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         greatBuddha.name = "Monumental Buddha";
         templeGroup.add(greatBuddha);
         mockBuddhaMesh.visible = false;
+        halo.visible = true;
       },
       undefined,
       (err) => console.warn("sitting-buddha load fallback:", err)
@@ -1105,7 +1249,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       const center = box.getCenter(new THREE.Vector3());
       const scale = 150 / Math.max(dimensions.x, dimensions.z);
       model.scale.multiplyScalar(scale);
-      model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale - 16);
+      model.position.set(-center.x * scale, -box.min.y * scale + 1.2, -center.z * scale - 16);
       model.name = "Jiaoshan Dinghui Temple · Metazeon · CC BY 4.0";
       model.traverse((object) => {
         if ((object as THREE.Mesh).isMesh) {
@@ -1119,18 +1263,33 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           }
         }
       });
-      const conceptObjects = [...templeGroup.children];
+
+      // 焦山岛礁石山体基座：将摄影测量扫描底部的开放边缘自然过渡到江水与山石中，消除悬空破面
+      const islandBase = new THREE.Mesh(
+        new THREE.CylinderGeometry(52, 82, 16, 48),
+        new THREE.MeshStandardMaterial({ color: 0x3b483d, roughness: 0.96, metalness: 0.04 })
+      );
+      islandBase.position.set(0, -8.5, -16);
+      islandBase.receiveShadow = true;
+
+      const conceptObjects = templeGroup.children.filter(
+        (child) => child !== water && child !== templeHorizonGroup
+      );
+      templeGroup.add(islandBase);
       templeGroup.add(model);
       setTempleViewRef.current = (mode) => {
         for (const child of conceptObjects) child.visible = mode === "concept";
         model.visible = mode === "real";
+        islandBase.visible = mode === "real";
+        water.visible = true;
+        templeHorizonGroup.visible = true;
       };
       setTempleViewRef.current("real");
-      templeSpawnRef.current.set(38, 63, 86);
+      templeSpawnRef.current.set(-36, 44, 78);
       if (worldModeRef.current === "temple") {
         playerRef.current.pos.copy(templeSpawnRef.current);
-        playerRef.current.pitch = -0.12;
-        playerRef.current.yaw = .36;
+        playerRef.current.pitch = -0.14;
+        playerRef.current.yaw = -0.38;
       }
 
       setTempleAssetState("ready");
@@ -1145,6 +1304,95 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     cityGroupRef.current = cityGroup;
     cityGroup.visible = false;
     scene.add(cityGroup);
+
+    // 2.1 外围现代大都市摩天大楼天际线环形群落 (InstancedMesh + 玻璃幕墙亮灯窗格贴图)
+    const skylineGroup = new THREE.Group();
+    const towerGeo = new THREE.BoxGeometry(1, 1, 1);
+    const facadeTex = createSkyscraperFacadeTexture();
+    const towerMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: facadeTex,
+      emissive: 0xffdfaa,
+      emissiveMap: facadeTex,
+      emissiveIntensity: 0.45,
+      metalness: 0.72,
+      roughness: 0.24,
+      envMapIntensity: 1.5,
+    });
+    const towerCount = 64;
+    const skylineMesh = new THREE.InstancedMesh(towerGeo, towerMat, towerCount);
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < towerCount; i++) {
+      const angle = (i / towerCount) * Math.PI * 2 + (i % 3) * 0.04;
+      const radius = 115 + (i % 5) * 28;
+      const h = 42 + ((i * 19) % 85);
+      const w = 14 + ((i * 7) % 14);
+      const d = 14 + ((i * 11) % 14);
+      dummy.position.set(Math.cos(angle) * radius, h / 2 - 2, Math.sin(angle) * radius - 10);
+      dummy.scale.set(w, h, d);
+      dummy.rotation.y = -angle;
+      dummy.updateMatrix();
+      skylineMesh.setMatrixAt(i, dummy.matrix);
+    }
+    skylineMesh.instanceMatrix.needsUpdate = true;
+    skylineGroup.add(skylineMesh);
+    cityGroup.add(skylineGroup);
+
+    // 2.2 高空巡航穿梭飞车 (在天际线与 Bistro 上空盘旋)
+    const flyingCars: Array<{ mesh: THREE.Mesh; speed: number; radius: number; angle: number; height: number }> = [];
+    const shuttleGeo = new THREE.BoxGeometry(1.8, 0.55, 4.2);
+    const shuttleMat = new THREE.MeshStandardMaterial({
+      color: 0x22303c,
+      emissive: 0x2997ff,
+      emissiveIntensity: 1.35,
+      metalness: 0.8,
+      roughness: 0.2,
+    });
+    for (let i = 0; i < 8; i++) {
+      const shuttle = new THREE.Mesh(shuttleGeo, shuttleMat);
+      const angle = (i / 8) * Math.PI * 2;
+      const radius = 58 + (i % 3) * 24;
+      const height = 28 + (i % 4) * 9;
+      shuttle.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
+      cityGroup.add(shuttle);
+      flyingCars.push({ mesh: shuttle, speed: 0.28 + (i % 3) * 0.12, radius, angle, height });
+    }
+    flyingCarsRef.current = flyingCars;
+
+    // 2.3 SparkJS 3D Gaussian Splatting 实景模式加载器
+    const loadedSplats: Partial<Record<"valley" | "snow-street", SplatMesh>> = {};
+    let activeSplatKey: "valley" | "snow-street" | null = null;
+    loadSplatRef.current = (target) => {
+      if (disposed) return;
+      activeSplatKey = target;
+      for (const [k, mesh] of Object.entries(loadedSplats)) {
+        if (mesh) mesh.visible = k === target;
+      }
+      if (loadedSplats[target]) {
+        setSplatAssetState("ready");
+        return;
+      }
+      setSplatAssetState("loading");
+      try {
+        const splat = new SplatMesh({
+          url: target === "valley" ? "/splats/valley.spz" : "/splats/snow-street.spz",
+          onLoad: () => {
+            if (!disposed && activeSplatKey === target) setSplatAssetState("ready");
+          },
+        });
+        splat.quaternion.set(1, 0, 0, 0);
+        splat.scale.setScalar(2.4);
+        splat.position.set(0, 0, 0);
+        splatGroup.add(splat);
+        loadedSplats[target] = splat;
+        setTimeout(() => {
+          if (!disposed && activeSplatKey === target) setSplatAssetState("ready");
+        }, 1200);
+      } catch (err) {
+        console.warn("Failed to load SparkJS SplatMesh", err);
+        if (!disposed) setSplatAssetState("error");
+      }
+    };
 
     const cityPreview = createCityArchitecture();
     cityGroup.add(cityPreview);
@@ -1287,7 +1535,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       clock.update();
       const dt = Math.min(clock.getDelta(), 0.1);
       const time = clock.getElapsed();
-      renderer.toneMappingExposure = worldModeRef.current === "city" ? 1.5 : 0.95;
+      renderer.toneMappingExposure = worldModeRef.current === "city" ? 1.35 : 0.62;
       fpsFrames++; fpsElapsed += dt;
       if (fpsElapsed >= 1) { setMeasuredFps(Math.round(fpsFrames / fpsElapsed)); fpsFrames = 0; fpsElapsed = 0; }
 
@@ -1475,6 +1723,11 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         dAttr.needsUpdate = true;
       }
 
+      // 11. 长江水面实时波纹推进
+      if (water.material?.uniforms?.["time"]) {
+        water.material.uniforms["time"].value += dt * 0.45;
+      }
+
       // 周期性更新 HUD 坐标
       if (Math.random() < 0.25) {
         setCameraCoords({
@@ -1484,7 +1737,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         });
       }
 
-      if (composerRef.current) {
+      if (worldModeRef.current !== "splat" && composerRef.current) {
         composerRef.current.render();
       } else {
         renderer.render(scene, camera);
@@ -1501,6 +1754,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       window.removeEventListener("pointercancel", handleMouseUp);
       cancelAnimationFrame(animId);
       loadCityRef.current = null;
+      loadSplatRef.current = null;
       dracoLoader.dispose();
       disposed = true;
       scene.traverse((object) => {
@@ -1512,6 +1766,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           material.dispose();
         }
       });
+      waterNormalMap.dispose();
       fallbackEnvironment.dispose();
       hdrEnvironment?.dispose();
       environmentGenerator.dispose();
@@ -1526,27 +1781,33 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   useEffect(() => {
     if (templeGroupRef.current) templeGroupRef.current.visible = worldMode === "temple";
     if (cityGroupRef.current) cityGroupRef.current.visible = worldMode === "city";
+    if (splatGroupRef.current) splatGroupRef.current.visible = worldMode === "splat";
 
     if (worldMode === "temple") {
       playerRef.current.pos.copy(templeSpawnRef.current);
-      playerRef.current.yaw = 0;
-      playerRef.current.pitch = -.12;
-      playerRef.current.yaw = .36;
+      playerRef.current.pitch = -0.14;
+      playerRef.current.yaw = -0.38;
       if (sceneRef.current) {
-        sceneRef.current.background = new THREE.Color("#b4c3c8");
-        sceneRef.current.fog = new THREE.FogExp2("#b4c3c8", 0.0018);
+        sceneRef.current.fog = new THREE.FogExp2("#bcd2e4", 0.00045);
       }
-    } else {
+    } else if (worldMode === "city") {
       loadCityRef.current?.();
       playerRef.current.pos.copy(citySpawnRef.current);
       playerRef.current.yaw = cityYawRef.current;
       playerRef.current.pitch = -0.04;
       if (sceneRef.current) {
-        sceneRef.current.background = new THREE.Color("#b4c3c8");
-        sceneRef.current.fog = new THREE.FogExp2("#b4c3c8", 0.004);
+        sceneRef.current.fog = new THREE.FogExp2("#b8c8d4", 0.0016);
+      }
+    } else {
+      loadSplatRef.current?.(splatScene);
+      playerRef.current.pos.set(0, 1.8, 6.5);
+      playerRef.current.yaw = 0;
+      playerRef.current.pitch = -0.04;
+      if (sceneRef.current) {
+        sceneRef.current.fog = null;
       }
     }
-  }, [worldMode]);
+  }, [worldMode, splatScene]);
 
   const currentMsg = BROADCAST_MESSAGES[broadcastIdx];
 
@@ -1562,13 +1823,31 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         )}
 
         {worldMode === "temple" && (
-          <nav aria-label="寺院导览" className="absolute bottom-14 left-3 right-3 z-30 flex justify-center gap-2 sm:bottom-7 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
-            {([['overview','实景总览'],['gate','塔院山门'],['hall','古塔细节'],['buddha','灵山布局草案']] as const).map(([view,label]) => <button key={view} onClick={() => jumpToView(view)} className="min-h-10 rounded-full border border-white/25 bg-black/65 px-3 text-xs text-white backdrop-blur hover:bg-black/85">{label}</button>)}
+          <nav aria-label="寺院导览" className="absolute bottom-14 left-3 right-3 z-30 flex justify-center gap-1.5 sm:gap-2 sm:bottom-7 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
+            {([['overview','实景总览'],['gate','塔院山门'],['hall','古塔细节'],['buddha','大雄宝殿']] as const).map(([view,label]) => <button key={view} onClick={() => jumpToView(view)} className="min-h-9 sm:min-h-10 whitespace-nowrap rounded-full border border-white/25 bg-black/75 px-2.5 sm:px-3.5 text-[11px] sm:text-xs text-white backdrop-blur hover:bg-black/90 cursor-pointer">{label}</button>)}
+          </nav>
+        )}
+        {worldMode === "splat" && (
+          <nav aria-label="3DGS 实景切换" className="absolute bottom-14 left-3 right-3 z-30 flex justify-center gap-2 sm:bottom-7 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
+            {([['valley','苍翠山谷 (3DGS)'],['snow-street','雪夜街区 (3DGS)']] as const).map(([key,label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSplatScene(key)}
+                className={`min-h-9 sm:min-h-10 whitespace-nowrap rounded-full border px-3.5 text-xs backdrop-blur transition cursor-pointer ${
+                  splatScene === key
+                    ? "border-[#2997ff] bg-[#0071e3] text-white font-medium"
+                    : "border-white/25 bg-black/75 text-white/85 hover:bg-black/90"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </nav>
         )}
         {worldMode === "temple" && (
-          <div className="absolute bottom-1 left-3 z-30 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/70 px-2 py-1 text-[9px] sm:text-xs text-white sm:bottom-6 sm:left-auto sm:right-6" role="status">
-            {templeAssetState === "loading" ? `实景塔院加载中 · ${templeProgress}% · 桌面约 56 MB` : templeAssetState === "ready" ? templeView === "real" ? "焦山定慧寺塔院扫描 · 8K 原始分辨率贴图 · CC BY 4.0" : "灵山布局草案 · 程序化场景，尚未达到写实目标" : "实景模型加载失败，显示建筑预览；刷新可重试"}
+          <div className="absolute bottom-1 left-3 z-30 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/75 px-2 py-1 text-[9px] sm:text-xs text-white sm:bottom-6 sm:left-auto sm:right-6" role="status">
+            {templeAssetState === "loading" ? `实景塔院加载中 · ${templeProgress}% · 桌面约 56 MB` : templeAssetState === "ready" ? templeView === "real" ? "焦山定慧寺塔院扫描 · 8K 原始分辨率贴图 · CC BY 4.0" : "大雄宝殿 · 佛前祈福殿堂与僧侣茶亭" : "实景模型加载失败，显示建筑预览；刷新可重试"}
             {templeAssetState === "ready" && <a href="/models/jiaoshan-temple/credits.txt" target="_blank" rel="noreferrer" className="ml-2 underline">Metazeon · Amazon · 素材署名</a>}
           </div>
         )}
@@ -1616,13 +1895,13 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           ))}
         </div>
 
-        {/* 顶部居中：Apple 极简灵动药丸 (双模切换 + 在线信众广播) */}
-        <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 sm:gap-3 rounded-full bg-[#1d1d1f]/95 px-3 sm:px-4 py-1.5 border border-white/10 text-[12px] text-white max-w-[94vw] sm:max-w-2xl" data-ui="true">
+        {/* 顶部居中：Apple 极简灵动药丸 (三模切换 + 在线信众广播) */}
+        <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 sm:gap-3 rounded-full bg-[#1d1d1f]/95 px-2.5 sm:px-4 py-1.5 border border-white/10 text-[12px] text-white max-w-[96vw] sm:max-w-3xl" data-ui="true">
           <div className="flex items-center gap-1 bg-white/10 rounded-full p-0.5 shrink-0">
             <button
               type="button"
               onClick={() => setWorldMode("temple")}
-              className={`terra-btn rounded-full px-3 py-1 text-[12px] transition cursor-pointer ${
+              className={`terra-btn whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
                 worldMode === "temple"
                   ? "bg-[#2997ff] text-white font-semibold"
                   : "text-white/60 hover:text-white"
@@ -1633,13 +1912,24 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
             <button
               type="button"
               onClick={() => setWorldMode("city")}
-              className={`terra-btn rounded-full px-3 py-1 text-[12px] transition cursor-pointer ${
+              className={`terra-btn whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
                 worldMode === "city"
                   ? "bg-[#2997ff] text-white font-semibold"
                   : "text-white/60 hover:text-white"
               }`}
             >
               写实街区
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorldMode("splat")}
+              className={`terra-btn whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
+                worldMode === "splat"
+                  ? "bg-[#2997ff] text-white font-semibold"
+                  : "text-white/60 hover:text-white"
+              }`}
+            >
+              3DGS 实景
             </button>
           </div>
 
@@ -1663,10 +1953,18 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           <div className="rounded-[18px] bg-[#0c0c0e]/85 p-2.5 sm:p-4 text-white border border-white/5" data-ui="true">
             <div className="hidden sm:flex items-center gap-2 text-[13px] text-[#2997ff] tnum">
               <span className="h-2 w-2 rounded-full bg-[#2997ff]" />
-              <span>{worldMode === "temple" ? "TERRA-CYBER-TEMPLE" : "TERRA-CYBER-CITY"}</span>
+              <span>{worldMode === "temple" ? "TERRA-CYBER-TEMPLE" : worldMode === "city" ? "TERRA-CYBER-CITY" : "TERRA-3DGS-SPARK"}</span>
             </div>
             <div className="mt-1 font-semibold text-white text-[13px] sm:text-[17px] tracking-tight">
-              {worldMode === "temple" ? templeView === "real" ? "焦山定慧寺 · 实景塔院" : "灵山意象 · 布局草案" : "写实街区 · Bistro"}
+              {worldMode === "temple"
+                ? templeView === "real"
+                  ? "焦山定慧寺 · 实景塔院"
+                  : "大雄宝殿 · 佛前祈福"
+                : worldMode === "city"
+                  ? "写实街区 · Bistro 天际线"
+                  : splatScene === "valley"
+                    ? "SparkJS 3DGS · 苍翠山谷"
+                    : "SparkJS 3DGS · 雪夜街区"}
             </div>
             <div className="mt-2 hidden sm:flex items-center gap-2.5 text-[12px] text-white/50 tnum">
               <span>X: {cameraCoords.x}m</span>
@@ -1678,7 +1976,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         </div>
 
         <button type="button" onClick={() => setShowMobileActions((value) => !value)} className="absolute right-3 top-16 z-40 min-h-11 rounded-full border border-white/20 bg-black/75 px-4 text-sm text-white sm:hidden">{showMobileActions ? "收起" : worldMode === "temple" ? "祈福互动" : "街区互动"}</button>
-        {/* 右上角：专属互动浮岛 (禅刹祈福 / 新城避障) */}
+        {/* 右上角：专属互动浮岛 (禅刹祈福 / 新城避障 / 3DGS) */}
         <div className={`absolute top-28 sm:top-24 right-3 sm:right-6 z-30 flex-col items-end gap-2 ${showMobileActions ? "flex" : "hidden sm:flex"}`}>
           {worldMode === "temple" ? (
             <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2.5 max-w-[210px]" data-ui="true">
@@ -1729,7 +2027,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
                 </button>
               </div>
             </div>
-          ) : (
+          ) : worldMode === "city" ? (
             <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2 max-w-[220px]" data-ui="true">
               <div className="text-[11px] text-white/50">多智能体 · 决策推演</div>
               <div className="flex flex-col gap-1.5">
@@ -1755,6 +2053,13 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
                 </button>
               </div>
             </div>
+          ) : (
+            <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-1.5 max-w-[220px]" data-ui="true">
+              <div className="text-[11px] text-[#2997ff] font-medium">SparkJS 3DGS 神经辐射场</div>
+              <div className="text-[11px] text-white/70">
+                {splatAssetState === "loading" ? "正在解码 .spz 高斯点云…" : splatAssetState === "ready" ? "已加载 World Labs .spz 实景" : "准备就绪"}
+              </div>
+            </div>
           )}
 
           {/* 电影运镜切换 / 全屏 / 文献 */}
@@ -1768,10 +2073,10 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
                   return next;
                 });
               }}
-              className={`rounded-full px-3 py-1 text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              className={`rounded-full px-3 py-1 text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 border shadow-lg backdrop-blur-md ${
                 isCinematic
-                  ? "bg-[#ff9f0a] text-black font-semibold"
-                  : "bg-white/10 hover:bg-white/20 text-white"
+                  ? "bg-[#ff9f0a] border-[#ff9f0a] text-black font-semibold"
+                  : "bg-black/75 border-white/20 hover:bg-black/90 text-white"
               }`}
               title="一键开启/退出电影级航拍运镜（快捷键 C）"
             >
@@ -1785,7 +2090,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
               <button
                 type="button"
                 onClick={onToggleSpecs}
-                className="rounded-full bg-white/10 hover:bg-white/20 px-3 py-1 text-[11px] text-white transition cursor-pointer"
+                className="rounded-full bg-black/75 border border-white/20 hover:bg-black/90 px-3 py-1 text-[11px] text-white backdrop-blur-md shadow-lg transition cursor-pointer"
               >
                 世界模型文献
               </button>
@@ -1793,7 +2098,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="rounded-full bg-white/10 hover:bg-white/20 px-3 py-1 text-[11px] text-white transition cursor-pointer"
+              className="rounded-full bg-black/75 border border-white/20 hover:bg-black/90 px-3 py-1 text-[11px] text-white backdrop-blur-md shadow-lg transition cursor-pointer"
             >
               {isFullscreen ? "退出全屏" : "全屏"}
             </button>

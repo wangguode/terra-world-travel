@@ -72,12 +72,16 @@ try {
   await page.waitForTimeout(500);
   if (result.requests.length !== loadedRequests) throw new Error("Returning to temple reloaded assets");
   result.checks.cachedModeSwitch = true;
-  for (const name of ["全寺总览", "山门", "大雄宝殿", "如来巨佛"]) {
+  for (const name of ["实景总览", "塔院山门", "古塔细节", "大雄宝殿"]) {
     await page.getByRole("button", { name, exact: true }).click();
     await page.waitForTimeout(200);
   }
   result.checks.templeNavigation = true;
   await screenshot("buddha-desktop-1440.png");
+  await page.getByRole("button", { name: "3DGS 实景", exact: true }).click();
+  await page.waitForTimeout(2500);
+  await screenshot("splat-desktop-1440.png");
+  result.checks.splatReady = true;
   if (result.checks.mobileOverflow) throw new Error("Mobile page overflows horizontally");
   if (result.errors.length) throw new Error(`Browser errors: ${result.errors.join("; ")}`);
   result.passed = true;
