@@ -25,9 +25,9 @@ try {
     };
   });
   await page.goto(result.url, { waitUntil: "domcontentloaded", timeout: 60000 });
-  const templeReady = page.getByRole("status").filter({ hasText: "焦山定慧寺塔院扫描" });
-  await expect(templeReady).toBeVisible({ timeout: 90000 });
-  result.checks.templeReady = true;
+  const chongqingReady = page.getByRole("status").filter({ hasText: "8D 魔幻重庆" });
+  await expect(chongqingReady).toBeVisible({ timeout: 25000 });
+  result.checks.chongqingReady = true;
   await page.evaluate(() => { window.__worldCanvas = document.querySelector("canvas"); });
   const screenshot = async (name) => {
     await page.waitForTimeout(1500);
@@ -35,7 +35,7 @@ try {
     await page.screenshot({ path: file });
     result.screenshots.push(file);
   };
-  await screenshot("temple-desktop-1440.png");
+  await screenshot("chongqing-desktop-1440.png");
   const zHud = page.locator("span").filter({ hasText: /^Z: -?[\d.]+m$/ }).first();
   const beforeZ = await zHud.innerText();
   const beforeRequests = result.requests.length;
@@ -52,16 +52,22 @@ try {
   if (result.requests.length !== beforeRequests) throw new Error("Movement reloaded model assets");
   if (result.warnings.slice(beforeWarnings).some((warning) => /context|initializ|WebGL/i.test(warning))) throw new Error("Movement produced WebGL warnings");
   result.checks.noReloadOnMovement = true;
+  await page.setViewportSize({ width: 375, height: 812 });
+  await screenshot("chongqing-mobile-375.png");
+  result.checks.mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  await page.getByRole("button", { name: "灵山寺院", exact: true }).click();
+  const templeReady = page.getByRole("status").filter({ hasText: "焦山定慧寺塔院扫描" });
+  await expect(templeReady).toBeVisible({ timeout: 90000 });
+  result.checks.templeReady = true;
+  await screenshot("temple-desktop-1440.png");
   const meritPanel = page.getByText("赛博禅修 · 功德积攒", { exact: true }).first().locator("..");
   const beforeMerit = Number((await meritPanel.innerText()).match(/\d+/)?.[0]);
   await page.getByRole("button", { name: "敲木鱼", exact: true }).first().click();
   await expect.poll(async () => Number((await meritPanel.innerText()).match(/\d+/)?.[0])).toBe(beforeMerit + 1);
   result.checks.merit = true;
-  await page.waitForTimeout(2200);
-  await page.setViewportSize({ width: 375, height: 812 });
-  await screenshot("temple-mobile-375.png");
-  result.checks.mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(1200);
   await page.getByRole("button", { name: "写实街区", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Amazon Lumberyard Bistro" })).toBeVisible({ timeout: 120000 });
   result.checks.cityReady = true;

@@ -15,6 +15,14 @@ import { Water } from "three/examples/jsm/objects/Water.js";
 import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import { createTempleArchitecture } from "@/lib/temple-architecture";
 import { createCityArchitecture } from "@/lib/city-architecture";
+import {
+  buildChongqingWorld,
+  CHONGQING_CHECKPOINTS,
+  ChongqingOsmData,
+  ChongqingVehicleController,
+  ChongqingWorldBundle,
+  getChongqingElevation,
+} from "@/lib/chongqing-world";
 
 // ---------------------------------------------------------------------------
 // 纯净 Web Audio 原生声学引擎（零外部网络依赖，毫秒级即发即响）
@@ -308,9 +316,9 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // 维度模式：'temple' 灵山寺院 | 'city' 写实街区 | 'splat' 3DGS 实景
-  const [worldMode, setWorldMode] = useState<"temple" | "city" | "splat">("temple");
-  const worldModeRef = useRef<"temple" | "city" | "splat">(worldMode);
+  // 维度模式：'chongqing' 8D重庆GTA | 'temple' 灵山寺院 | 'city' 写实街区 | 'splat' 3DGS 实景
+  const [worldMode, setWorldMode] = useState<"chongqing" | "temple" | "city" | "splat">("chongqing");
+  const worldModeRef = useRef<"chongqing" | "temple" | "city" | "splat">(worldMode);
   useEffect(() => {
     worldModeRef.current = worldMode;
   }, [worldMode]);
@@ -318,6 +326,28 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const loadSplatRef = useRef<((target: "valley" | "snow-street") => void) | null>(null);
   const splatGroupRef = useRef<THREE.Group | null>(null);
   const [splatAssetState, setSplatAssetState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+
+  // 8D 重庆 GTA 驾驶与任务状态
+  const chongqingGroupRef = useRef<THREE.Group | null>(null);
+  const chongqingBundleRef = useRef<ChongqingWorldBundle | null>(null);
+  const vehicleCtrlRef = useRef<ChongqingVehicleController | null>(null);
+  const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [chongqingAssetState, setChongqingAssetState] = useState<"loading" | "ready" | "error">("loading");
+  const [isDriving, setIsDriving] = useState(true);
+  const isDrivingRef = useRef(true);
+  useEffect(() => {
+    isDrivingRef.current = isDriving;
+  }, [isDriving]);
+  const [carSpeedKmh, setCarSpeedKmh] = useState(0);
+  const carSpeedKmhRef = useRef(0);
+  const [checkpointIdx, setCheckpointIdx] = useState(0);
+  const checkpointIdxRef = useRef(0);
+  useEffect(() => {
+    checkpointIdxRef.current = checkpointIdx;
+  }, [checkpointIdx]);
+  const [checkpointDist, setCheckpointDist] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+  const loadTempleRef = useRef<(() => void) | null>(null);
 
   // 状态机
   const [meritCount, setMeritCount] = useState<number>(108);
@@ -417,6 +447,10 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       setFloatingTexts((prev) => prev.filter((item) => item.id !== id));
     }, 1800);
   }, []);
+  const spawnFloatingTextRef = useRef(spawnFloatingText);
+  useEffect(() => {
+    spawnFloatingTextRef.current = spawnFloatingText;
+  }, [spawnFloatingText]);
 
   // 敲木鱼
   const handleKnockWoodenFish = useCallback(() => {
@@ -450,7 +484,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     const fortune = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
     setActiveFortune(fortune);
     spawnFloatingText("感召灵签 · 天地同频");
-  }, [spawnFloatingText]);
+  }, [spawnFloatingText, setActiveFortune]);
 
   // 写实街区突发避障
   const handleTriggerAvoidance = useCallback(() => {
@@ -480,6 +514,8 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       if (key === " " || key === "space") {
         if (worldMode === "temple") {
           handleKnockWoodenFish();
+        } else if (worldMode === "chongqing" && isDrivingRef.current) {
+          // 驾驶模式 Space 为手刹漂移，不触发跳跃
         } else {
           zenAudio.playCyberPulse();
           if (playerRef.current.isGrounded) {
@@ -493,8 +529,22 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         } else {
           handleTriggerAvoidance();
         }
-      } else if (key === "f" && worldMode === "temple") {
-        handleBurnIncense();
+      } else if (key === "f") {
+        if (worldMode === "temple") {
+          handleBurnIncense();
+        } else if (worldMode === "chongqing") {
+          setIsDriving((prev) => {
+            const next = !prev;
+            zenAudio.playCyberPulse();
+            spawnFloatingText(next ? "已上车 · WASD 驾驶 / Space 漂移" : "已下车 · 步行漫游 8D 山城");
+            if (!next && vehicleCtrlRef.current) {
+              const p = vehicleCtrlRef.current.carBody.position;
+              playerRef.current.pos.set(p.x + 3.2, p.y + 1.8, p.z);
+              playerRef.current.yaw = vehicleCtrlRef.current.heading;
+            }
+            return next;
+          });
+        }
       } else if (key === "t" && worldMode === "temple") {
         handleDrinkTea();
       } else if (key === "c") {
@@ -602,7 +652,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       54,
       container.clientWidth / container.clientHeight,
       0.1,
-      1200
+      2800
     );
     camera.position.set(0, 3, 65);
     cameraRef.current = camera;
@@ -655,14 +705,50 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     scene.add(splatGroup);
 
     // =========================================================================
+    // 维度 0：【8D 魔幻重庆 · GTA 山城开放世界】 (OSM 真实路网 + 502 栋建筑 + 载具物理)
+    // =========================================================================
+    const waterNormalMap = createWaterNormalTexture();
+    const chongqingFacadeTex = createSkyscraperFacadeTexture();
+    const chongqingGroup = new THREE.Group();
+    chongqingGroup.visible = worldModeRef.current === "chongqing";
+    chongqingGroupRef.current = chongqingGroup;
+    scene.add(chongqingGroup);
+
+    fetch("/data/chongqing-yuzhong.json")
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<ChongqingOsmData>;
+      })
+      .then((osmData) => {
+        if (disposed) return;
+        const bundle = buildChongqingWorld(osmData, chongqingFacadeTex, waterNormalMap, sunVec);
+        chongqingGroup.add(bundle.group);
+        chongqingBundleRef.current = bundle;
+        const ctrl = new ChongqingVehicleController(bundle.colliders, 155, -480, 0);
+        vehicleCtrlRef.current = ctrl;
+        const cp0 = CHONGQING_CHECKPOINTS[0];
+        bundle.beaconGroup.position.set(cp0.x, getChongqingElevation(cp0.x, cp0.z), cp0.z);
+        if (worldModeRef.current === "chongqing") {
+          playerRef.current.pos.set(155, 20.8, -491.5);
+          playerRef.current.yaw = Math.PI;
+          playerRef.current.pitch = -0.14;
+        }
+        setChongqingAssetState("ready");
+      })
+      .catch((err) => {
+        console.warn("Chongqing OSM load failed", err);
+        if (!disposed) setChongqingAssetState("error");
+      });
+
+    // =========================================================================
     // 维度 1：【灵山寺院全景大世界】 (Buddha, Temple, Mountains, Clouds, NPCs)
     // =========================================================================
     const templeGroup = new THREE.Group();
+    templeGroup.visible = worldModeRef.current === "temple";
     templeGroupRef.current = templeGroup;
     scene.add(templeGroup);
 
     // 1.1 长江“江中浮玉”实时反射水面 (Three.js 官方 Water 着色器)
-    const waterNormalMap = createWaterNormalTexture();
     const waterGeo = new THREE.PlaneGeometry(1800, 1800);
     const water = new Water(waterGeo, {
       textureWidth: 512,
@@ -1233,69 +1319,74 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     bellMeshRef.current = bellMesh;
     templeGroup.add(bellMesh);
 
-    // Load the complete photographed Chinese temple; the architectural preview
-    // remains usable while its geometry/atlas arrive from this same origin.
+    // 焦山定慧寺摄影测量扫描按需懒加载，保证首屏 8D 重庆极速秒开
+    let templeRequested = false;
     const templeManager = new THREE.LoadingManager();
     templeManager.setURLModifier((url) => renderer.capabilities.maxTextureSize < 8192 || window.innerWidth < 640 ? url.replace("temple-atlas-8k.jpg", "temple-atlas-4k.jpg") : url);
     templeManager.onProgress = (_url, loaded, total) => {
       if (!disposed) setTempleProgress(Math.round(loaded / total * 100));
     };
     const templeLoader = new GLTFLoader(templeManager);
-    templeLoader.load("/models/jiaoshan-temple/temple.gltf", (gltf) => {
-      if (disposed) return;
-      const model = gltf.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const dimensions = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      const scale = 150 / Math.max(dimensions.x, dimensions.z);
-      model.scale.multiplyScalar(scale);
-      model.position.set(-center.x * scale, -box.min.y * scale + 1.2, -center.z * scale - 16);
-      model.name = "Jiaoshan Dinghui Temple · Metazeon · CC BY 4.0";
-      model.traverse((object) => {
-        if ((object as THREE.Mesh).isMesh) {
-          object.castShadow = true;
-          object.receiveShadow = true;
-          const mesh = object as THREE.Mesh;
-          const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-          if (material instanceof THREE.MeshStandardMaterial) {
-            mesh.material = new THREE.MeshBasicMaterial({ map: material.map, color: 0xffffff, side: THREE.DoubleSide });
-            material.dispose();
+    loadTempleRef.current = () => {
+      if (templeRequested || disposed) return;
+      templeRequested = true;
+      setTempleAssetState("loading");
+      templeLoader.load("/models/jiaoshan-temple/temple.gltf", (gltf) => {
+        if (disposed) return;
+        const model = gltf.scene;
+        const box = new THREE.Box3().setFromObject(model);
+        const dimensions = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const scale = 150 / Math.max(dimensions.x, dimensions.z);
+        model.scale.multiplyScalar(scale);
+        model.position.set(-center.x * scale, -box.min.y * scale + 1.2, -center.z * scale - 16);
+        model.name = "Jiaoshan Dinghui Temple · Metazeon · CC BY 4.0";
+        model.traverse((object) => {
+          if ((object as THREE.Mesh).isMesh) {
+            object.castShadow = true;
+            object.receiveShadow = true;
+            const mesh = object as THREE.Mesh;
+            const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+            if (material instanceof THREE.MeshStandardMaterial) {
+              mesh.material = new THREE.MeshBasicMaterial({ map: material.map, color: 0xffffff, side: THREE.DoubleSide });
+              material.dispose();
+            }
           }
+        });
+
+        // 焦山岛礁石山体基座：将摄影测量扫描底部的开放边缘自然过渡到江水与山石中，消除悬空破面
+        const islandBase = new THREE.Mesh(
+          new THREE.CylinderGeometry(52, 82, 16, 48),
+          new THREE.MeshStandardMaterial({ color: 0x3b483d, roughness: 0.96, metalness: 0.04 })
+        );
+        islandBase.position.set(0, -8.5, -16);
+        islandBase.receiveShadow = true;
+
+        const conceptObjects = templeGroup.children.filter(
+          (child) => child !== water && child !== templeHorizonGroup
+        );
+        templeGroup.add(islandBase);
+        templeGroup.add(model);
+        setTempleViewRef.current = (mode) => {
+          for (const child of conceptObjects) child.visible = mode === "concept";
+          model.visible = mode === "real";
+          islandBase.visible = mode === "real";
+          water.visible = true;
+          templeHorizonGroup.visible = true;
+        };
+        setTempleViewRef.current("real");
+        templeSpawnRef.current.set(-36, 44, 78);
+        if (worldModeRef.current === "temple") {
+          playerRef.current.pos.copy(templeSpawnRef.current);
+          playerRef.current.pitch = -0.14;
+          playerRef.current.yaw = -0.38;
         }
+
+        setTempleAssetState("ready");
+      }, undefined, (error) => {
+        if (!disposed) { console.warn("Scanned temple unavailable; keeping architectural preview", error); setTempleAssetState("error"); }
       });
-
-      // 焦山岛礁石山体基座：将摄影测量扫描底部的开放边缘自然过渡到江水与山石中，消除悬空破面
-      const islandBase = new THREE.Mesh(
-        new THREE.CylinderGeometry(52, 82, 16, 48),
-        new THREE.MeshStandardMaterial({ color: 0x3b483d, roughness: 0.96, metalness: 0.04 })
-      );
-      islandBase.position.set(0, -8.5, -16);
-      islandBase.receiveShadow = true;
-
-      const conceptObjects = templeGroup.children.filter(
-        (child) => child !== water && child !== templeHorizonGroup
-      );
-      templeGroup.add(islandBase);
-      templeGroup.add(model);
-      setTempleViewRef.current = (mode) => {
-        for (const child of conceptObjects) child.visible = mode === "concept";
-        model.visible = mode === "real";
-        islandBase.visible = mode === "real";
-        water.visible = true;
-        templeHorizonGroup.visible = true;
-      };
-      setTempleViewRef.current("real");
-      templeSpawnRef.current.set(-36, 44, 78);
-      if (worldModeRef.current === "temple") {
-        playerRef.current.pos.copy(templeSpawnRef.current);
-        playerRef.current.pitch = -0.14;
-        playerRef.current.yaw = -0.38;
-      }
-
-      setTempleAssetState("ready");
-    }, undefined, (error) => {
-      if (!disposed) { console.warn("Scanned temple unavailable; keeping architectural preview", error); setTempleAssetState("error"); }
-    });
+    };
 
     // =========================================================================
     // 维度 2：【未来中枢 · 赛博立体都市与霓虹天际线】 (Cyber City 3D)
@@ -1535,82 +1626,249 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       clock.update();
       const dt = Math.min(clock.getDelta(), 0.1);
       const time = clock.getElapsed();
-      renderer.toneMappingExposure = worldModeRef.current === "city" ? 1.35 : 0.62;
+      renderer.toneMappingExposure =
+        worldModeRef.current === "city"
+          ? 1.35
+          : worldModeRef.current === "chongqing"
+            ? 0.92
+            : 0.62;
       fpsFrames++; fpsElapsed += dt;
       if (fpsElapsed >= 1) { setMeasuredFps(Math.round(fpsFrames / fpsElapsed)); fpsFrames = 0; fpsElapsed = 0; }
 
-      // 1. 真实人物行走与物理运动 (WASD Smooth Walk & Sprint)
-      const forward = new THREE.Vector3(
-        -Math.sin(playerRef.current.yaw),
-        0,
-        -Math.cos(playerRef.current.yaw)
-      );
-      const right = new THREE.Vector3(
-        Math.cos(playerRef.current.yaw),
-        0,
-        -Math.sin(playerRef.current.yaw)
-      );
-
       const keys = activeKeysRef.current;
-      const moveSpeed = (keys["shift"] ? 11.0 : 5.8) * dt;
-      const moveDir = new THREE.Vector3(0, 0, 0);
 
-      if (keys["w"] || keys["arrowup"]) moveDir.add(forward);
-      if (keys["s"] || keys["arrowdown"]) moveDir.addScaledVector(forward, -1);
-      if (keys["a"] || keys["arrowleft"]) moveDir.addScaledVector(right, -1);
-      if (keys["d"] || keys["arrowright"]) moveDir.add(right);
-
-      const isWalking = moveDir.lengthSq() > 0.001;
-      if (isWalking) {
-        moveDir.normalize();
-        playerRef.current.pos.addScaledVector(moveDir, moveSpeed);
-        playerRef.current.bobbing += dt * 9.5;
-      }
-
-      // 重力跳跃与下落
-      if (!playerRef.current.isGrounded) {
-        playerRef.current.vel.y -= 22.0 * dt;
-        playerRef.current.pos.y += playerRef.current.vel.y * dt;
-        if (playerRef.current.pos.y <= 1.8) {
-          playerRef.current.pos.y = 1.8;
-          playerRef.current.vel.y = 0;
-          playerRef.current.isGrounded = true;
+      // 0. 8D 重庆 GTA 载具物理与雷达小地图更新
+      if (worldModeRef.current === "chongqing" && chongqingBundleRef.current && vehicleCtrlRef.current) {
+        const bundle = chongqingBundleRef.current;
+        const ctrl = vehicleCtrlRef.current;
+        if (bundle.water.material?.uniforms?.["time"]) {
+          bundle.water.material.uniforms["time"].value += dt * 0.45;
         }
-      }
+        if (isDrivingRef.current) {
+          ctrl.step(dt, {
+            forward: !!(keys["w"] || keys["arrowup"]),
+            backward: !!(keys["s"] || keys["arrowdown"]),
+            left: !!(keys["a"] || keys["arrowleft"]),
+            right: !!(keys["d"] || keys["arrowright"]),
+            brake: !!(keys[" "] || keys["space"]),
+            boost: !!keys["shift"],
+          });
+          const p = ctrl.carBody.position;
+          bundle.carMesh.position.set(p.x, p.y, p.z);
+          bundle.carMesh.rotation.set(0, ctrl.heading, 0);
+          bundle.carWheels.forEach((w) => {
+            w.rotation.x += ctrl.speed * dt * 2.4;
+          });
+          playerRef.current.pos.set(p.x, p.y + 1.8, p.z);
+          playerRef.current.yaw = ctrl.heading + Math.PI;
 
-      // 电影级运镜 vs 第一人称自由漫游
-      if (isCinematicRef.current) {
-        // 电影级航拍环绕运镜 (Cinematic Director Crane/Drone Shot)
-        const orbitRadius = worldModeRef.current === "temple" ? 100 : 35;
-        const orbitSpeed = 0.12;
-        const cx = Math.sin(time * orbitSpeed) * orbitRadius;
-        const cz = Math.cos(time * orbitSpeed) * orbitRadius + (worldModeRef.current === "temple" ? -1.0 : 4.0);
-        const cy = worldModeRef.current === "temple" ? 65 + Math.sin(time * .1) * 12 : 12;
-        camera.position.set(cx, cy, cz);
-        if (worldModeRef.current === "temple") {
-          camera.lookAt(0, 55, -16);
+          if (!isCinematicRef.current) {
+            const camDist = 11.5 + Math.abs(ctrl.speed) * 0.08;
+            const targetCamX = p.x - Math.sin(ctrl.heading) * camDist;
+            const targetCamZ = p.z - Math.cos(ctrl.heading) * camDist;
+            const targetCamY = p.y + 4.4;
+            camera.position.lerp(new THREE.Vector3(targetCamX, targetCamY, targetCamZ), Math.min(1, dt * 7.5));
+            camera.lookAt(p.x + Math.sin(ctrl.heading) * 6, p.y + 1.4, p.z + Math.cos(ctrl.heading) * 6);
+          }
+          if (Math.random() < 0.35) {
+            const kmh = Math.round(Math.abs(ctrl.speed) * 3.6);
+            carSpeedKmhRef.current = kmh;
+            setCarSpeedKmh(kmh);
+          }
         } else {
-          camera.lookAt(0, 3.8, 0);
-        }
-      } else {
-        // 第一人称自由漫游头部呼吸晃动
-        const bobOffset = isWalking ? Math.sin(playerRef.current.bobbing) * 0.045 : 0;
-        camera.position.set(
-          playerRef.current.pos.x,
-          playerRef.current.pos.y + bobOffset,
-          playerRef.current.pos.z
-        );
-
-        const targetLook = new THREE.Vector3()
-          .copy(camera.position)
-          .add(
-            new THREE.Vector3(
+          // 下车步行模式：贴合重庆 8D 地形高度
+          const forward = new THREE.Vector3(-Math.sin(playerRef.current.yaw), 0, -Math.cos(playerRef.current.yaw));
+          const right = new THREE.Vector3(Math.cos(playerRef.current.yaw), 0, -Math.sin(playerRef.current.yaw));
+          const moveSpeed = (keys["shift"] ? 14.0 : 7.0) * dt;
+          const moveDir = new THREE.Vector3();
+          if (keys["w"] || keys["arrowup"]) moveDir.add(forward);
+          if (keys["s"] || keys["arrowdown"]) moveDir.addScaledVector(forward, -1);
+          if (keys["a"] || keys["arrowleft"]) moveDir.addScaledVector(right, -1);
+          if (keys["d"] || keys["arrowright"]) moveDir.add(right);
+          if (moveDir.lengthSq() > 0.001) {
+            moveDir.normalize();
+            playerRef.current.pos.addScaledVector(moveDir, moveSpeed);
+            playerRef.current.bobbing += dt * 9.5;
+          }
+          const groundY = Math.max(0.2, getChongqingElevation(playerRef.current.pos.x, playerRef.current.pos.z)) + 1.8;
+          playerRef.current.pos.y += (groundY - playerRef.current.pos.y) * Math.min(1, dt * 10);
+          if (!isCinematicRef.current) {
+            camera.position.copy(playerRef.current.pos);
+            const lookVec = new THREE.Vector3(
               -Math.sin(playerRef.current.yaw) * Math.cos(playerRef.current.pitch),
               Math.sin(playerRef.current.pitch),
               -Math.cos(playerRef.current.yaw) * Math.cos(playerRef.current.pitch)
-            )
+            );
+            camera.lookAt(camera.position.clone().add(lookVec));
+          }
+          if (carSpeedKmhRef.current !== 0) {
+            carSpeedKmhRef.current = 0;
+            setCarSpeedKmh(0);
+          }
+        }
+
+        if (isCinematicRef.current) {
+          const cp = CHONGQING_CHECKPOINTS[checkpointIdxRef.current];
+          const r = 130;
+          camera.position.set(
+            cp.x + Math.sin(time * 0.16) * r,
+            88 + Math.sin(time * 0.2) * 14,
+            cp.z + Math.cos(time * 0.16) * r
           );
-        camera.lookAt(targetLook);
+          camera.lookAt(cp.x, getChongqingElevation(cp.x, cp.z) + 12, cp.z);
+        }
+
+        // 检查打卡任务距离与光柱旋转
+        const activeCp = CHONGQING_CHECKPOINTS[checkpointIdxRef.current];
+        const dx = playerRef.current.pos.x - activeCp.x;
+        const dz = playerRef.current.pos.z - activeCp.z;
+        const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
+        if (Math.random() < 0.25) setCheckpointDist(dist);
+        bundle.beaconGroup.rotation.y += dt * 1.4;
+        if (dist < 28) {
+          zenAudio.playBell();
+          spawnFloatingTextRef.current(`打卡成功 · ${activeCp.name}！`);
+          const nextIdx = (checkpointIdxRef.current + 1) % CHONGQING_CHECKPOINTS.length;
+          checkpointIdxRef.current = nextIdx;
+          setCheckpointIdx(nextIdx);
+          setCompletedCount((c) => c + 1);
+          const nextCp = CHONGQING_CHECKPOINTS[nextIdx];
+          bundle.beaconGroup.position.set(nextCp.x, getChongqingElevation(nextCp.x, nextCp.z), nextCp.z);
+        }
+
+        // 绘制 GTA 圆形雷达小地图
+        const mm = minimapCanvasRef.current;
+        if (mm) {
+          const ctx = mm.getContext("2d");
+          if (ctx) {
+            const w = mm.width;
+            const h = mm.height;
+            const cx = w * 0.5;
+            const cy = h * 0.5;
+            const scale = 0.18;
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = "rgba(10, 14, 22, 0.88)";
+            ctx.beginPath();
+            ctx.arc(cx, cy, cx - 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, cx - 3, 0, Math.PI * 2);
+            ctx.clip();
+
+            const px = playerRef.current.pos.x;
+            const pz = playerRef.current.pos.z;
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.55)";
+            ctx.lineWidth = 1.6;
+            for (const road of bundle.roads) {
+              ctx.beginPath();
+              road.p.forEach(([rx, rz], idx) => {
+                const mx = cx + (rx - px) * scale;
+                const my = cy + (rz - pz) * scale;
+                if (idx === 0) ctx.moveTo(mx, my);
+                else ctx.lineTo(mx, my);
+              });
+              ctx.stroke();
+            }
+
+            // 目标光点
+            const tx = cx + (activeCp.x - px) * scale;
+            const ty = cy + (activeCp.z - pz) * scale;
+            ctx.fillStyle = "#ffd60a";
+            ctx.beginPath();
+            ctx.arc(tx, ty, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 玩家三角箭头
+            const arrowRot = isDrivingRef.current ? -ctrl.heading + Math.PI : playerRef.current.yaw;
+            ctx.translate(cx, cy);
+            ctx.rotate(-arrowRot);
+            ctx.fillStyle = "#2997ff";
+            ctx.beginPath();
+            ctx.moveTo(0, -6);
+            ctx.lineTo(4.5, 5);
+            ctx.lineTo(-4.5, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+
+      // 1. 真实人物行走与物理运动 (其余模式 WASD Smooth Walk & Sprint)
+      if (worldModeRef.current !== "chongqing") {
+        const forward = new THREE.Vector3(
+          -Math.sin(playerRef.current.yaw),
+          0,
+          -Math.cos(playerRef.current.yaw)
+        );
+        const right = new THREE.Vector3(
+          Math.cos(playerRef.current.yaw),
+          0,
+          -Math.sin(playerRef.current.yaw)
+        );
+
+        const moveSpeed = (keys["shift"] ? 11.0 : 5.8) * dt;
+        const moveDir = new THREE.Vector3(0, 0, 0);
+
+        if (keys["w"] || keys["arrowup"]) moveDir.add(forward);
+        if (keys["s"] || keys["arrowdown"]) moveDir.addScaledVector(forward, -1);
+        if (keys["a"] || keys["arrowleft"]) moveDir.addScaledVector(right, -1);
+        if (keys["d"] || keys["arrowright"]) moveDir.add(right);
+
+        const isWalking = moveDir.lengthSq() > 0.001;
+        if (isWalking) {
+          moveDir.normalize();
+          playerRef.current.pos.addScaledVector(moveDir, moveSpeed);
+          playerRef.current.bobbing += dt * 9.5;
+        }
+
+        // 重力跳跃与下落
+        if (!playerRef.current.isGrounded) {
+          playerRef.current.vel.y -= 22.0 * dt;
+          playerRef.current.pos.y += playerRef.current.vel.y * dt;
+          if (playerRef.current.pos.y <= 1.8) {
+            playerRef.current.pos.y = 1.8;
+            playerRef.current.vel.y = 0;
+            playerRef.current.isGrounded = true;
+          }
+        }
+
+        // 电影级运镜 vs 第一人称自由漫游
+        if (isCinematicRef.current) {
+          // 电影级航拍环绕运镜 (Cinematic Director Crane/Drone Shot)
+          const orbitRadius = worldModeRef.current === "temple" ? 100 : 35;
+          const orbitSpeed = 0.12;
+          const cx = Math.sin(time * orbitSpeed) * orbitRadius;
+          const cz = Math.cos(time * orbitSpeed) * orbitRadius + (worldModeRef.current === "temple" ? -1.0 : 4.0);
+          const cy = worldModeRef.current === "temple" ? 65 + Math.sin(time * .1) * 12 : 12;
+          camera.position.set(cx, cy, cz);
+          if (worldModeRef.current === "temple") {
+            camera.lookAt(0, 55, -16);
+          } else {
+            camera.lookAt(0, 3.8, 0);
+          }
+        } else {
+          // 第一人称自由漫游头部呼吸晃动
+          const bobOffset = isWalking ? Math.sin(playerRef.current.bobbing) * 0.045 : 0;
+          camera.position.set(
+            playerRef.current.pos.x,
+            playerRef.current.pos.y + bobOffset,
+            playerRef.current.pos.z
+          );
+
+          const targetLook = new THREE.Vector3()
+            .copy(camera.position)
+            .add(
+              new THREE.Vector3(
+                -Math.sin(playerRef.current.yaw) * Math.cos(playerRef.current.pitch),
+                Math.sin(playerRef.current.pitch),
+                -Math.cos(playerRef.current.yaw) * Math.cos(playerRef.current.pitch)
+              )
+            );
+          camera.lookAt(targetLook);
+        }
       }
 
       // 2. 白云随风飘移系统
@@ -1754,6 +2012,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       window.removeEventListener("pointercancel", handleMouseUp);
       cancelAnimationFrame(animId);
       loadCityRef.current = null;
+      loadTempleRef.current = null;
       loadSplatRef.current = null;
       dracoLoader.dispose();
       disposed = true;
@@ -1766,6 +2025,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           material.dispose();
         }
       });
+      chongqingFacadeTex.dispose();
       waterNormalMap.dispose();
       fallbackEnvironment.dispose();
       hdrEnvironment?.dispose();
@@ -1779,11 +2039,26 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
   // 响应维度切换
   useEffect(() => {
+    if (chongqingGroupRef.current) chongqingGroupRef.current.visible = worldMode === "chongqing";
     if (templeGroupRef.current) templeGroupRef.current.visible = worldMode === "temple";
     if (cityGroupRef.current) cityGroupRef.current.visible = worldMode === "city";
     if (splatGroupRef.current) splatGroupRef.current.visible = worldMode === "splat";
 
-    if (worldMode === "temple") {
+    if (worldMode === "chongqing") {
+      if (vehicleCtrlRef.current) {
+        const p = vehicleCtrlRef.current.carBody.position;
+        playerRef.current.pos.set(p.x, p.y + 1.8, p.z);
+        playerRef.current.yaw = vehicleCtrlRef.current.heading + Math.PI;
+      } else {
+        playerRef.current.pos.set(-115, 28, 24);
+        playerRef.current.yaw = Math.PI;
+      }
+      playerRef.current.pitch = -0.14;
+      if (sceneRef.current) {
+        sceneRef.current.fog = new THREE.FogExp2("#b9c8d8", 0.00038);
+      }
+    } else if (worldMode === "temple") {
+      loadTempleRef.current?.();
       playerRef.current.pos.copy(templeSpawnRef.current);
       playerRef.current.pitch = -0.14;
       playerRef.current.yaw = -0.38;
@@ -1851,6 +2126,15 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
             {templeAssetState === "ready" && <a href="/models/jiaoshan-temple/credits.txt" target="_blank" rel="noreferrer" className="ml-2 underline">Metazeon · Amazon · 素材署名</a>}
           </div>
         )}
+        {worldMode === "chongqing" && (
+          <div className="absolute bottom-1 left-3 z-30 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/75 px-2.5 py-1 text-[9px] sm:text-xs text-white sm:bottom-6 sm:left-auto sm:right-6" role="status">
+            {chongqingAssetState === "loading"
+              ? "8D 重庆渝中半岛 OSM 数据加载中…"
+              : chongqingAssetState === "ready"
+                ? "8D 魔幻重庆 · OpenStreetMap 502 栋实景建筑 · 271 条路网 · Cannon-es 载具物理"
+                : "重庆地图加载失败，请刷新重试"}
+          </div>
+        )}
         {worldMode === "city" && (
           <div className="absolute bottom-1 left-3 z-30 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/70 px-2 py-1 text-[9px] sm:text-xs text-white sm:bottom-6 sm:left-auto sm:right-6" role="status">
             {cityAssetState === "loading" ? `写实街区加载中 · ${cityProgress}% · 首次约 80 MB` : cityAssetState === "ready" ? "Amazon Lumberyard Bistro · CC BY 4.0 · 写实示范街区" : cityAssetState === "error" ? "精细场景加载失败，正在显示轻量街区；刷新可重试" : "轻量街区预览"}
@@ -1895,9 +2179,20 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           ))}
         </div>
 
-        {/* 顶部居中：Apple 极简灵动药丸 (三模切换 + 在线信众广播) */}
-        <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 sm:gap-3 rounded-full bg-[#1d1d1f]/95 px-2.5 sm:px-4 py-1.5 border border-white/10 text-[12px] text-white max-w-[96vw] sm:max-w-3xl" data-ui="true">
+        {/* 顶部居中：Apple 极简灵动药丸 (四模切换 + 在线广播) */}
+        <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 sm:gap-3 rounded-full bg-[#1d1d1f]/95 px-2 sm:px-4 py-1.5 border border-white/10 text-[12px] text-white max-w-[96vw] sm:max-w-4xl" data-ui="true">
           <div className="flex items-center gap-1 bg-white/10 rounded-full p-0.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setWorldMode("chongqing")}
+              className={`terra-btn whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
+                worldMode === "chongqing"
+                  ? "bg-[#ff3b30] text-white font-semibold"
+                  : "text-white/70 hover:text-white"
+              }`}
+            >
+              8D 重庆
+            </button>
             <button
               type="button"
               onClick={() => setWorldMode("temple")}
@@ -1952,21 +2247,34 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         <div className="pointer-events-none absolute top-16 sm:top-6 left-3 sm:left-6 z-30 max-w-xs">
           <div className="rounded-[18px] bg-[#0c0c0e]/85 p-2.5 sm:p-4 text-white border border-white/5" data-ui="true">
             <div className="hidden sm:flex items-center gap-2 text-[13px] text-[#2997ff] tnum">
-              <span className="h-2 w-2 rounded-full bg-[#2997ff]" />
-              <span>{worldMode === "temple" ? "TERRA-CYBER-TEMPLE" : worldMode === "city" ? "TERRA-CYBER-CITY" : "TERRA-3DGS-SPARK"}</span>
+              <span className={`h-2 w-2 rounded-full ${worldMode === "chongqing" ? "bg-[#ff3b30]" : "bg-[#2997ff]"}`} />
+              <span>
+                {worldMode === "chongqing"
+                  ? "TERRA-CHONGQING-8D"
+                  : worldMode === "temple"
+                    ? "TERRA-CYBER-TEMPLE"
+                    : worldMode === "city"
+                      ? "TERRA-CYBER-CITY"
+                      : "TERRA-3DGS-SPARK"}
+              </span>
             </div>
             <div className="mt-1 font-semibold text-white text-[13px] sm:text-[17px] tracking-tight">
-              {worldMode === "temple"
-                ? templeView === "real"
-                  ? "焦山定慧寺 · 实景塔院"
-                  : "大雄宝殿 · 佛前祈福"
-                : worldMode === "city"
-                  ? "写实街区 · Bistro 天际线"
-                  : splatScene === "valley"
-                    ? "SparkJS 3DGS · 苍翠山谷"
-                    : "SparkJS 3DGS · 雪夜街区"}
+              {worldMode === "chongqing"
+                ? "8D 魔幻重庆 · GTA 山城"
+                : worldMode === "temple"
+                  ? templeView === "real"
+                    ? "焦山定慧寺 · 实景塔院"
+                    : "大雄宝殿 · 佛前祈福"
+                  : worldMode === "city"
+                    ? "写实街区 · Bistro 天际线"
+                    : splatScene === "valley"
+                      ? "SparkJS 3DGS · 苍翠山谷"
+                      : "SparkJS 3DGS · 雪夜街区"}
             </div>
             <div className="mt-2 hidden sm:flex items-center gap-2.5 text-[12px] text-white/50 tnum">
+              {worldMode === "chongqing" && (
+                <span className="text-[#ffd60a] font-semibold">{carSpeedKmh} KM/H</span>
+              )}
               <span>X: {cameraCoords.x}m</span>
               <span>Y: {cameraCoords.y}m</span>
               <span>Z: {cameraCoords.z}m</span>
@@ -1975,10 +2283,70 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           </div>
         </div>
 
-        <button type="button" onClick={() => setShowMobileActions((value) => !value)} className="absolute right-3 top-16 z-40 min-h-11 rounded-full border border-white/20 bg-black/75 px-4 text-sm text-white sm:hidden">{showMobileActions ? "收起" : worldMode === "temple" ? "祈福互动" : "街区互动"}</button>
-        {/* 右上角：专属互动浮岛 (禅刹祈福 / 新城避障 / 3DGS) */}
+        <button type="button" onClick={() => setShowMobileActions((value) => !value)} className="absolute right-3 top-16 z-40 min-h-11 rounded-full border border-white/20 bg-black/75 px-4 text-sm text-white sm:hidden">{showMobileActions ? "收起" : worldMode === "chongqing" ? "山城任务" : worldMode === "temple" ? "祈福互动" : "街区互动"}</button>
+        {/* 右上角：专属互动浮岛 */}
         <div className={`absolute top-28 sm:top-24 right-3 sm:right-6 z-30 flex-col items-end gap-2 ${showMobileActions ? "flex" : "hidden sm:flex"}`}>
-          {worldMode === "temple" ? (
+          {worldMode === "chongqing" ? (
+            <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2.5 max-w-[235px]" data-ui="true">
+              <div className="flex items-center justify-between text-[11px] text-white/50">
+                <span>山城打卡任务</span>
+                <span className="text-[#ffd60a] font-semibold tnum">{completedCount} 站已打卡</span>
+              </div>
+              <div className="rounded-[12px] bg-white/5 px-2.5 py-2 border border-white/10">
+                <div className="text-[12px] font-semibold text-[#ffd60a]">
+                  目标：{CHONGQING_CHECKPOINTS[checkpointIdx]?.name}
+                </div>
+                <div className="text-[10px] text-white/60 mt-0.5">
+                  {CHONGQING_CHECKPOINTS[checkpointIdx]?.subtitle} · 距 {checkpointDist}m
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDriving((prev) => {
+                      const next = !prev;
+                      zenAudio.playCyberPulse();
+                      spawnFloatingText(next ? "已上车 · WASD 驾驶 / Space 漂移" : "已下车 · 步行漫游");
+                      if (!next && vehicleCtrlRef.current) {
+                        const p = vehicleCtrlRef.current.carBody.position;
+                        playerRef.current.pos.set(p.x + 3.2, p.y + 1.8, p.z);
+                        playerRef.current.yaw = vehicleCtrlRef.current.heading;
+                      }
+                      return next;
+                    });
+                  }}
+                  className={`rounded-[10px] py-2 px-3 text-left text-[12px] font-medium transition cursor-pointer flex items-center justify-between ${
+                    isDriving ? "bg-[#ff3b30]/25 text-[#ff6961] hover:bg-[#ff3b30]/35" : "bg-[#2997ff]/25 text-[#2997ff] hover:bg-[#2997ff]/35"
+                  }`}
+                >
+                  <span>{isDriving ? "下车步行 (F)" : "上车驾驶 (F)"}</span>
+                  <span className="text-[10px] opacity-80">{isDriving ? "驾驶中" : "步行中"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextIdx = (checkpointIdx + 1) % CHONGQING_CHECKPOINTS.length;
+                    const cp = CHONGQING_CHECKPOINTS[nextIdx];
+                    setCheckpointIdx(nextIdx);
+                    if (vehicleCtrlRef.current && chongqingBundleRef.current) {
+                      const y = getChongqingElevation(cp.x - 38, cp.z + 18);
+                      vehicleCtrlRef.current.carBody.position.set(cp.x - 38, Math.max(0.5, y), cp.z + 18);
+                      vehicleCtrlRef.current.speed = 0;
+                      vehicleCtrlRef.current.heading = 0;
+                      chongqingBundleRef.current.beaconGroup.position.set(cp.x, getChongqingElevation(cp.x, cp.z), cp.z);
+                    }
+                    zenAudio.playCyberPulse();
+                    spawnFloatingText(`已传送至 ${cp.name} 附近`);
+                  }}
+                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-3 text-left text-[12px] font-medium text-white transition cursor-pointer flex items-center justify-between"
+                >
+                  <span>切换并传送下一地标</span>
+                  <span className="text-[10px] text-white/50">瞬移</span>
+                </button>
+              </div>
+            </div>
+          ) : worldMode === "temple" ? (
             <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2.5 max-w-[210px]" data-ui="true">
               <div className="flex items-center justify-between text-[11px] text-white/50">
                 <span>赛博禅修 · 功德积攒</span>
@@ -2105,13 +2473,20 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           </div>
         </div>
 
-        {/* 左下角：WASD 平滑行走控制盘与触控响应 */}
-        <div className="absolute bottom-28 sm:bottom-6 left-3 sm:left-8 z-30 flex items-center gap-3">
+        {/* 左下角：GTA 圆形雷达小地图 + WASD 控制盘 */}
+        <div className="absolute bottom-28 sm:bottom-6 left-3 sm:left-8 z-30 flex items-end gap-3">
+          {worldMode === "chongqing" && (
+            <div className="hidden sm:flex flex-col items-center gap-1 rounded-full p-1 bg-[#1d1d1f]/90 border-2 border-white/20 shadow-2xl" data-ui="true">
+              <canvas ref={minimapCanvasRef} width={128} height={128} className="rounded-full block" />
+            </div>
+          )}
           <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 text-white border border-white/5" data-ui="true">
             <div className="text-[11px] text-white/50 mb-2 font-medium hidden sm:block tracking-wide">
-              {worldMode === "temple"
-                ? "WASD 漫游 · Space 敲木鱼 · F 敬香 · T 品茶 · E 撞钟"
-                : "WASD 驾驶 · Shift 加速 · Space 跳跃 · E 避障"}
+              {worldMode === "chongqing"
+                ? "WASD 驾驶 · Space 漂移 · Shift 氮气 · F 上/下车"
+                : worldMode === "temple"
+                  ? "WASD 漫游 · Space 敲木鱼 · F 敬香 · T 品茶 · E 撞钟"
+                  : "WASD 漫游 · Shift 加速 · Space 跳跃 · E 避障"}
             </div>
             <div className="flex flex-col items-center gap-1.5">
               <button
