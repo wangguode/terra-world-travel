@@ -1,312 +1,21 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { Sky } from "three/examples/jsm/objects/Sky.js";
-import { Water } from "three/examples/jsm/objects/Water.js";
-import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
-import { createTempleArchitecture } from "@/lib/temple-architecture";
-import { createCityArchitecture } from "@/lib/city-architecture";
 import {
-  buildChongqingWorld,
-  CHONGQING_CHECKPOINTS,
-  ChongqingOsmData,
-  ChongqingVehicleController,
-  ChongqingWorldBundle,
-  getChongqingElevation,
-} from "@/lib/chongqing-world";
-
-// ---------------------------------------------------------------------------
-// 纯净 Web Audio 原生声学引擎（零外部网络依赖，毫秒级即发即响）
-// ---------------------------------------------------------------------------
-class ZenSoundEngine {
-  private ctx: AudioContext | null = null;
-
-  private getContext(): AudioContext | null {
-    if (typeof window === "undefined") return null;
-    if (!this.ctx) {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
-      }
-    }
-    if (this.ctx && this.ctx.state === "suspended") {
-      this.ctx.resume().catch(() => {});
-    }
-    return this.ctx;
-  }
-
-  // 敲击木鱼：木质瞬态衰减共振波
-  playWoodenFish() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(580, now);
-      osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
-
-      gain.gain.setValueAtTime(0.85, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.085);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.085);
-    } catch {
-      // 容错降级
-    }
-  }
-
-  // 撞响古钟：大殿晨钟空灵四重非谐泛音长共振
-  playBell() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const freqs = [216, 324, 432, 648];
-      const gains = [0.4, 0.25, 0.15, 0.08];
-
-      freqs.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now);
-
-        gain.gain.setValueAtTime(gains[i], now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start(now);
-        osc.stop(now + 3.0);
-      });
-    } catch {
-      // 容错降级
-    }
-  }
-
-  // 禅茶清润水流音
-  playTeaPour() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(820, now);
-      osc.frequency.exponentialRampToValueAtTime(1240, now + 0.2);
-
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.22);
-    } catch {
-      // 容错降级
-    }
-  }
-
-  // 赛博新城推进音
-  playCyberPulse() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(340, now);
-      osc.frequency.exponentialRampToValueAtTime(780, now + 0.15);
-
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.18);
-    } catch {
-      // 容错降级
-    }
-  }
-}
-
-const zenAudio = new ZenSoundEngine();
-
-// ---------------------------------------------------------------------------
-// 灵签文库与信众广播
-// ---------------------------------------------------------------------------
-interface FortuneCard {
-  id: number;
-  grade: string;
-  title: string;
-  poem: string;
-  meaning: string;
-}
-
-const FORTUNES: FortuneCard[] = [
-  {
-    id: 1,
-    grade: "第 42 签 · 上上大吉",
-    title: "金尊佛光 · 潜龙出渊",
-    poem: "晨钟初叩净尘嚣，潜象千重自泛潮。自回归途无碍阻，万般吉兆入云霄。",
-    meaning: "当前自回归神经潜空间极度平稳自洽，梯度流向顺畅，所求之事必得圆满成就。",
-  },
-  {
-    id: 2,
-    grade: "第 18 签 · 乾元亨利",
-    title: "禅茶一味 · 佛光初照",
-    poem: "宝鼎炉香烟袅袅，祈年殿外露华浓。心灯长照三千界，春水生波遇惠风。",
-    meaning: "心念纯澈，因果自洽。多智能体协同无间，反事实分支推演迎刃而解。",
-  },
-  {
-    id: 3,
-    grade: "第 88 签 · 万象更新",
-    title: "空谷回音 · 暮鼓归真",
-    poem: "古刹清泉涤俗念，虚灵方寸见菩提。繁花落尽秋将去，月满西楼晓日齐。",
-    meaning: "时空视界宽广无垠，潜流暗动即是新生，专注当下因果，必有长远福报。",
-  },
-];
-
-const BROADCAST_MESSAGES = [
-  { user: "信众·若雪", action: "在佛前焚香祈福", detail: "香火袅袅 · 功德+1", time: "刚刚" },
-  { user: "僧人·慧明", action: "大殿内撞响晨钟", detail: "钟鸣梵音 · 涤荡万象", time: "2秒前" },
-  { user: "漫游者·Cypher", action: "写实街区高架避障", detail: "反事实无损变道成功", time: "4秒前" },
-  { user: "探索者·子墨", action: "茶馆小憩品茗禅思", detail: "心神澄澈 · 福慧双增", time: "7秒前" },
-  { user: "信众·无尘", action: "连续敲击电子木鱼", detail: "功德累积达 108 遍", time: "9秒前" },
-  { user: "智能体·Agent-09", action: "立体空中交通巡航", detail: "超视距协同零碰撞", time: "14秒前" },
-];
-
-interface FloatingText {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-}
-
-// ---------------------------------------------------------------------------
-// 辅助纹理生成器 (纯程序化 Canvas，零网络加载依赖)
-// ---------------------------------------------------------------------------
-
-function createZenStoneTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return new THREE.CanvasTexture(canvas);
-
-  ctx.fillStyle = "#323740";
-  ctx.fillRect(0, 0, 256, 256);
-
-  ctx.strokeStyle = "#20242b";
-  ctx.lineWidth = 3;
-  for (let i = 0; i <= 256; i += 64) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i, 256);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, i);
-    ctx.lineTo(256, i);
-    ctx.stroke();
-  }
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(16, 16);
-  return tex;
-}
-
-/**
- * 生成程序化水波法线贴图（供 Three.js 官方 Water 着色器使用，零外链依赖）
- */
-function createWaterNormalTexture(): THREE.DataTexture {
-  const size = 256;
-  const data = new Uint8Array(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = (x / size) * Math.PI * 2;
-      const v = (y / size) * Math.PI * 2;
-      const dx =
-        Math.cos(u * 3 + Math.sin(v * 2)) * 0.45 +
-        Math.cos(u * 7 - v * 5) * 0.25 +
-        Math.cos(u * 13 + v * 11) * 0.12;
-      const dy =
-        Math.sin(v * 4 + Math.cos(u * 3)) * 0.45 +
-        Math.sin(v * 6 + u * 5) * 0.25 +
-        Math.sin(v * 11 - u * 9) * 0.12;
-      const len = Math.sqrt(dx * dx + dy * dy + 1);
-      const idx = (y * size + x) * 4;
-      data[idx] = Math.round(((dx / len) * 0.5 + 0.5) * 255);
-      data[idx + 1] = Math.round(((dy / len) * 0.5 + 0.5) * 255);
-      data[idx + 2] = Math.round(((1 / len) * 0.5 + 0.5) * 255);
-      data[idx + 3] = 255;
-    }
-  }
-  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.needsUpdate = true;
-  return tex;
-}
-
-/**
- * 生成现代摩天大楼玻璃幕墙与夜灯窗格贴图
- */
-function createSkyscraperFacadeTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 512;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return new THREE.CanvasTexture(canvas);
-
-  ctx.fillStyle = "#14202c";
-  ctx.fillRect(0, 0, 256, 512);
-
-  for (let row = 0; row < 32; row++) {
-    for (let col = 0; col < 16; col++) {
-      const lit = (row * 7 + col * 13) % 5 === 0;
-      const warm = (row + col) % 3 === 0;
-      ctx.fillStyle = lit
-        ? warm
-          ? "rgba(255, 224, 168, 0.85)"
-          : "rgba(182, 226, 255, 0.78)"
-        : "rgba(38, 58, 78, 0.9)";
-      ctx.fillRect(col * 16 + 2, row * 16 + 3, 12, 10);
-    }
-  }
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(2, 4);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
+  createCliffTexture,
+  createCloudSpriteTexture,
+  createGlowSpriteTexture,
+  createWaterfallTexture,
+} from "@/world/textures";
+import { createSkyAtmosphere } from "@/world/atmosphere";
+import { buildSkySanctuaryWorld } from "@/world/environment";
+import { createSkyGlider } from "@/world/glider";
+import { SkySoundEngine } from "@/world/audio";
 
 interface True3DWorldGameProps {
   onToggleSpecs?: () => void;
@@ -316,183 +25,316 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // 维度模式：'chongqing' 8D重庆GTA | 'temple' 灵山寺院 | 'city' 写实街区 | 'splat' 3DGS 实景
-  const [worldMode, setWorldMode] = useState<"chongqing" | "temple" | "city" | "splat">("chongqing");
-  const worldModeRef = useRef<"chongqing" | "temple" | "city" | "splat">(worldMode);
-  useEffect(() => {
-    worldModeRef.current = worldMode;
-  }, [worldMode]);
-  const [splatScene, setSplatScene] = useState<"valley" | "snow-street">("valley");
-  const loadSplatRef = useRef<((target: "valley" | "snow-street") => void) | null>(null);
-  const splatGroupRef = useRef<THREE.Group | null>(null);
-  const [splatAssetState, setSplatAssetState] = useState<"idle" | "loading" | "ready" | "error">("idle");
-
-  // 8D 重庆 GTA 驾驶与任务状态
-  const chongqingGroupRef = useRef<THREE.Group | null>(null);
-  const chongqingBundleRef = useRef<ChongqingWorldBundle | null>(null);
-  const vehicleCtrlRef = useRef<ChongqingVehicleController | null>(null);
-  const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [chongqingAssetState, setChongqingAssetState] = useState<"loading" | "ready" | "error">("loading");
-  const [isDriving, setIsDriving] = useState(true);
-  const isDrivingRef = useRef(true);
-  useEffect(() => {
-    isDrivingRef.current = isDriving;
-  }, [isDriving]);
-  const [carSpeedKmh, setCarSpeedKmh] = useState(0);
-  const carSpeedKmhRef = useRef(0);
-  const [checkpointIdx, setCheckpointIdx] = useState(0);
-  const checkpointIdxRef = useRef(0);
-  useEffect(() => {
-    checkpointIdxRef.current = checkpointIdx;
-  }, [checkpointIdx]);
-  const [checkpointDist, setCheckpointDist] = useState(0);
-  const [completedCount, setCompletedCount] = useState(0);
-  const loadTempleRef = useRef<(() => void) | null>(null);
-
-  // 状态机
-  const [meritCount, setMeritCount] = useState<number>(108);
-  const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
-  const [activeFortune, setActiveFortune] = useState<FortuneCard | null>(null);
-  const [onlineCount, setOnlineCount] = useState<number>(3842);
-  const [broadcastIdx, setBroadcastIdx] = useState<number>(0);
-  const [activeKeys, setActiveKeys] = useState<Record<string, boolean>>({});
-  const activeKeysRef = useRef<Record<string, boolean>>({});
+  const [ready, setReady] = useState(false);
   const [renderError, setRenderError] = useState(false);
-  const [showMobileActions, setShowMobileActions] = useState(false);
-  const [cameraCoords, setCameraCoords] = useState({ x: 0, y: 1.8, z: 12.0 });
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isCinematic, setIsCinematic] = useState(false);
-  const isCinematicRef = useRef(false);
+  const [isAutopilot, setIsAutopilot] = useState(false);
+  const isAutopilotRef = useRef(false);
   useEffect(() => {
-    isCinematicRef.current = isCinematic;
-  }, [isCinematic]);
+    isAutopilotRef.current = isAutopilot;
+  }, [isAutopilot]);
 
-  // 3D 引用追踪
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const composerRef = useRef<EffectComposer | null>(null);
-  const dustParticlesRef = useRef<THREE.Points | null>(null);
-  const templeGroupRef = useRef<THREE.Group | null>(null);
-  const cityGroupRef = useRef<THREE.Group | null>(null);
-  const smokeParticlesRef = useRef<THREE.Points | null>(null);
-  const teaSmokeRef = useRef<THREE.Points | null>(null);
-  const petalParticlesRef = useRef<THREE.Points | null>(null);
-  const cloudsRef = useRef<THREE.Group[]>([]);
-  const buddhaHaloRef = useRef<THREE.Mesh | null>(null);
-  const bellMeshRef = useRef<THREE.Mesh | null>(null);
-  const bellSwingRef = useRef(0);
-  const woodenFishMeshRef = useRef<THREE.Mesh | null>(null);
-  const woodenFishBounceRef = useRef(0);
-  const monkGroupRef = useRef<THREE.Group | null>(null);
-  const maidenGroupRef = useRef<THREE.Group | null>(null);
-  const [templeAssetState, setTempleAssetState] = useState<"loading" | "ready" | "error">("loading");
-  const [templeProgress, setTempleProgress] = useState(0);
-  const [templeView, setTempleView] = useState<"real" | "concept">("real");
-  const setTempleViewRef = useRef<((mode: "real" | "concept") => void) | null>(null);
-  const [measuredFps, setMeasuredFps] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const soundRef = useRef<SkySoundEngine | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [ringsPassed, setRingsPassed] = useState(0);
+  const [hudStats, setHudStats] = useState({ alt: 36, spd: 26, fps: 60 });
+  const [toast, setToast] = useState<string | null>(null);
 
-  const templeSpawnRef = useRef(new THREE.Vector3(0, 3, 65));
-  const citySpawnRef = useRef(new THREE.Vector3(0, 1.8, 14));
-  const cityYawRef = useRef(0);
-  const loadCityRef = useRef<(() => void) | null>(null);
-  const [cityAssetState, setCityAssetState] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [cityProgress, setCityProgress] = useState(0);
-  const vehiclesRef = useRef<Array<{ mesh: THREE.Mesh; speed: number; limit: number }>>([]);
-  const flyingCarsRef = useRef<Array<{ mesh: THREE.Mesh; speed: number; radius: number; angle: number; height: number }>>([]);
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
 
-  // 角色动力学控制器
-  const playerRef = useRef({
-    pos: new THREE.Vector3(0, 3, 65),
-    vel: new THREE.Vector3(0, 0, 0),
-    yaw: 0,
-    pitch: -0.06,
-    isGrounded: true,
-    bobbing: 0,
-  });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        powerPreference: "high-performance",
+      });
+    } catch {
+      queueMicrotask(() => setRenderError(true));
+      return;
+    }
 
-  const isPointerDownRef = useRef(false);
-  const lastMousePosRef = useRef({ x: 0, y: 0 });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
 
-  const jumpToView = (view: "overview" | "gate" | "hall" | "buddha") => {
-    setIsCinematic(false);
-    const concept = view === "buddha";
-    setTempleView(concept ? "concept" : "real");
-    setTempleViewRef.current?.(concept ? "concept" : "real");
-    const positions = { overview: [-36, 44, 78], gate: [0, 37, 46], hall: [14, 56, 12], buddha: [0, 5.5, 24] };
-    const [x,y,z] = positions[view];
-    playerRef.current.pos.set(x,y,z);
-    playerRef.current.yaw = view === "overview" ? -0.38 : view === "hall" ? .45 : 0;
-    playerRef.current.pitch = view === "overview" ? -.14 : view === "buddha" ? .12 : view === "hall" ? .1 : .18;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      56,
+      container.clientWidth / container.clientHeight,
+      0.5,
+      2000
+    );
+
+    // 1. 电影级黄金暮色苍穹与三点布光
+    const atmosphere = createSkyAtmosphere(scene);
+
+    // 2. 100% 程序化材质与《云海浮空仙刹》世界
+    const cliffTex = createCliffTexture();
+    const cloudTex = createCloudSpriteTexture();
+    const waterfallTex = createWaterfallTexture();
+    const glowTex = createGlowSpriteTexture();
+
+    const world = buildSkySanctuaryWorld(cliffTex, cloudTex, waterfallTex, glowTex);
+    scene.add(world.group);
+
+    // 3. 东方灵韵滑翔飞行器
+    const glider = createSkyGlider(glowTex);
+    scene.add(glider.group);
+    scene.add(glider.trailMesh);
+
+    // 4. 克制的电影级辉光后期管线（仅点亮瀑布、金顶、银杏、灵气环与尾焰）
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(container.clientWidth, container.clientHeight),
+      0.42,
+      0.55,
+      0.78
+    );
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+
+    // 5. 纯 Web Audio 声学引擎
+    const sound = new SkySoundEngine();
+    soundRef.current = sound;
+
+    // 飞行动力学状态（出生在主浮空仙岛南侧云端，正对七层金顶古塔与第 1 道灵气环）
+    const flight = {
+      pos: new THREE.Vector3(0, 36, 128),
+      yaw: 0,
+      pitch: -0.04,
+      roll: 0,
+      speed: 24,
+      boostTimer: 0,
+      camOrbitYaw: 0,
+      camOrbitPitch: 0,
+    };
+
+    const keys: Record<string, boolean> = {};
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const k = e.key.toLowerCase();
+      keys[k] = true;
+      if (k === "c") {
+        setIsAutopilot((prev) => !prev);
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      delete keys[e.key.toLowerCase()];
+    };
+    const onBlur = () => {
+      for (const k of Object.keys(keys)) delete keys[k];
+    };
+
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    const onPointerDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest("button, a")) return;
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      flight.camOrbitYaw -= (e.clientX - lastX) * 0.004;
+      flight.camOrbitPitch = Math.max(-0.45, Math.min(0.45, flight.camOrbitPitch + (e.clientY - lastY) * 0.003));
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    const onPointerUp = () => {
+      dragging = false;
+    };
+
+    const onResize = () => {
+      if (!container) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      composer.setSize(w, h);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("resize", onResize);
+    container.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
+    queueMicrotask(() => setReady(true));
+
+    let animId = 0;
+    let elapsed = 0;
+    let lastTime = performance.now();
+    let fpsFrames = 0;
+    let fpsAcc = 0;
+    let measuredFps = 60;
+    let passedCount = 0;
+
+    const camTargetPos = new THREE.Vector3();
+    const camLookTarget = new THREE.Vector3();
+    const tailWorldPos = new THREE.Vector3();
+
+    const animate = (now: number) => {
+      animId = requestAnimationFrame(animate);
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      elapsed += dt;
+
+      fpsFrames++;
+      fpsAcc += dt;
+      if (fpsAcc >= 0.5) {
+        measuredFps = Math.round(fpsFrames / fpsAcc);
+        fpsFrames = 0;
+        fpsAcc = 0;
+        setHudStats({
+          alt: Math.round(flight.pos.y + 80),
+          spd: Math.round(flight.speed * 3.6),
+          fps: measuredFps,
+        });
+      }
+
+      world.update(dt, elapsed);
+
+      const boosting = !!keys["shift"] || flight.boostTimer > 0;
+      if (flight.boostTimer > 0) flight.boostTimer = Math.max(0, flight.boostTimer - dt);
+
+      if (isAutopilotRef.current) {
+        // 电影级自动巡航：沿主塔与浮空瀑布大环线优雅盘旋
+        const orbitR = 108;
+        const a = elapsed * 0.22;
+        const nextX = Math.sin(a) * orbitR;
+        const nextZ = Math.cos(a) * orbitR;
+        const nextY = 38 + Math.sin(a * 2.0) * 14;
+        flight.yaw = Math.atan2(flight.pos.x - nextX, flight.pos.z - nextZ);
+        flight.pitch = Math.cos(a * 2.0) * 0.14;
+        flight.roll = -0.32;
+        flight.pos.set(nextX, nextY, nextZ);
+        flight.speed = 32;
+      } else {
+        const turnInput = (keys["a"] || keys["arrowleft"] ? 1 : 0) - (keys["d"] || keys["arrowright"] ? 1 : 0);
+        const pitchInput = (keys["s"] || keys["arrowdown"] ? 1 : 0) - (keys["w"] || keys["arrowup"] ? 1 : 0);
+        const climbInput = keys[" "] || keys["space"] ? 1 : 0;
+
+        flight.yaw += turnInput * 1.45 * dt;
+        const targetPitch = Math.max(-0.55, Math.min(0.55, flight.pitch + (pitchInput * 1.15 + climbInput * 0.7) * dt));
+        flight.pitch = targetPitch * (1 - dt * 0.65); // 自然回正
+        const targetRoll = turnInput * 0.58;
+        flight.roll += (targetRoll - flight.roll) * Math.min(1, dt * 6);
+
+        const targetSpeed = boosting ? 54 : 26;
+        flight.speed += (targetSpeed - flight.speed) * Math.min(1, dt * 4);
+
+        const forward = new THREE.Vector3(
+          -Math.sin(flight.yaw) * Math.cos(flight.pitch),
+          Math.sin(flight.pitch),
+          -Math.cos(flight.yaw) * Math.cos(flight.pitch)
+        );
+        flight.pos.addScaledVector(forward, flight.speed * dt);
+
+        // 柔和边界回归与云海最低高度保护
+        flight.pos.y = Math.max(-35, Math.min(175, flight.pos.y));
+        const distFromCenter = Math.hypot(flight.pos.x, flight.pos.z);
+        if (distFromCenter > 360) {
+          const pull = (360 / distFromCenter);
+          flight.pos.x *= pull;
+          flight.pos.z *= pull;
+        }
+      }
+
+      // 更新飞行器姿态与发光尾迹
+      glider.group.position.copy(flight.pos);
+      glider.group.rotation.order = "YXZ";
+      glider.group.rotation.set(flight.pitch, flight.yaw, flight.roll);
+
+      tailWorldPos.set(0, 0, 1.9).applyMatrix4(glider.group.matrixWorld);
+      glider.updateTrail(tailWorldPos, boosting);
+
+      // 动态 FOV 速度感
+      const targetFov = boosting ? 67 : 56;
+      if (Math.abs(camera.fov - targetFov) > 0.05) {
+        camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 5);
+        camera.updateProjectionMatrix();
+      }
+
+      // 丝滑弹簧追尾相机（支持鼠标拖拽临时环视）
+      if (!dragging) {
+        flight.camOrbitYaw *= Math.pow(0.92, dt * 60);
+        flight.camOrbitPitch *= Math.pow(0.92, dt * 60);
+      }
+      const camYaw = flight.yaw + flight.camOrbitYaw;
+      const camDist = boosting ? 14.5 : 12.2;
+      camTargetPos.set(
+        flight.pos.x + Math.sin(camYaw) * camDist,
+        flight.pos.y + 3.4 + flight.camOrbitPitch * 8,
+        flight.pos.z + Math.cos(camYaw) * camDist
+      );
+      camera.position.lerp(camTargetPos, Math.min(1, dt * 6.5));
+      camLookTarget.set(
+        flight.pos.x - Math.sin(flight.yaw) * 18,
+        flight.pos.y + 1.2 + Math.sin(flight.pitch) * 10,
+        flight.pos.z - Math.cos(flight.yaw) * 18
+      );
+      camera.lookAt(camLookTarget);
+
+      // 检测穿过灵气光环
+      world.rings.forEach((ring, idx) => {
+        if (!ring.passed && flight.pos.distanceTo(ring.position) < 12.5) {
+          ring.passed = true;
+          passedCount++;
+          setRingsPassed(passedCount);
+          flight.boostTimer = 1.6;
+          const mat = ring.mesh.material as THREE.MeshStandardMaterial;
+          mat.color.setHex(0x63f5b8);
+          mat.emissive.setHex(0x10b981);
+          sound.playRingChime(idx);
+          setToast(`穿过灵气光环 (${passedCount}/${world.rings.length}) · 灵风加速`);
+          setTimeout(() => setToast(null), 1800);
+        }
+      });
+
+      sound.updateFlightSpeed((flight.speed - 20) / 34);
+      composer.render();
+    };
+
+    animId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("resize", onResize);
+      container.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      sound.dispose();
+      atmosphere.dispose();
+      cliffTex.dispose();
+      cloudTex.dispose();
+      waterfallTex.dispose();
+      glowTex.dispose();
+      composer.dispose();
+      renderer.dispose();
+    };
+  }, []);
+
+  const toggleSound = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    soundRef.current?.setMuted(next);
   };
 
-  // 定时轮转多人广播
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setBroadcastIdx((i) => (i + 1) % BROADCAST_MESSAGES.length);
-      setOnlineCount((c) => c + (Math.random() > 0.5 ? 1 : -1));
-    }, 4500);
-    return () => clearInterval(timer);
-  }, []);
-
-  // 生成浮动金色文字
-  const spawnFloatingText = useCallback((text: string) => {
-    const id = `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const x = 50 + (Math.random() * 16 - 8);
-    const y = 48 + (Math.random() * 10 - 5);
-    setFloatingTexts((prev) => [...prev.slice(-5), { id, text, x, y }]);
-    setMeritCount((c) => c + 1);
-
-    setTimeout(() => {
-      setFloatingTexts((prev) => prev.filter((item) => item.id !== id));
-    }, 1800);
-  }, []);
-  const spawnFloatingTextRef = useRef(spawnFloatingText);
-  useEffect(() => {
-    spawnFloatingTextRef.current = spawnFloatingText;
-  }, [spawnFloatingText]);
-
-  // 敲木鱼
-  const handleKnockWoodenFish = useCallback(() => {
-    zenAudio.playWoodenFish();
-    woodenFishBounceRef.current = 1.0;
-    spawnFloatingText("功德 +1 · 万象澄澈");
-  }, [spawnFloatingText]);
-
-  // 撞晨钟
-  const handleRingBell = useCallback(() => {
-    zenAudio.playBell();
-    bellSwingRef.current = 1.0;
-    spawnFloatingText("晨钟长鸣 · 功德 +3");
-  }, [spawnFloatingText]);
-
-  // 敬真香
-  const handleBurnIncense = useCallback(() => {
-    zenAudio.playBell();
-    spawnFloatingText("赛博焚香 · 佛光普照");
-  }, [spawnFloatingText]);
-
-  // 品禅茶
-  const handleDrinkTea = useCallback(() => {
-    zenAudio.playTeaPour();
-    spawnFloatingText("禅茶一味 · 功德 +5");
-  }, [spawnFloatingText]);
-
-  // 抽灵签
-  const handleDrawFortune = useCallback(() => {
-    zenAudio.playBell();
-    const fortune = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
-    setActiveFortune(fortune);
-    spawnFloatingText("感召灵签 · 天地同频");
-  }, [spawnFloatingText, setActiveFortune]);
-
-  // 写实街区突发避障
-  const handleTriggerAvoidance = useCallback(() => {
-    zenAudio.playCyberPulse();
-    spawnFloatingText("反事实避障 · 无损变道推演");
-  }, [spawnFloatingText]);
-
-  // 全屏切换
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen().catch(() => {});
@@ -503,2114 +345,86 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     }
   };
 
-  // 键盘与移动控制监听
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const key = e.key.toLowerCase();
-      activeKeysRef.current = { ...activeKeysRef.current, [key]: true };
-      setActiveKeys((prev) => ({ ...prev, [key]: true }));
-
-      if (key === " " || key === "space") {
-        if (worldMode === "temple") {
-          handleKnockWoodenFish();
-        } else if (worldMode === "chongqing" && isDrivingRef.current) {
-          // 驾驶模式 Space 为手刹漂移，不触发跳跃
-        } else {
-          zenAudio.playCyberPulse();
-          if (playerRef.current.isGrounded) {
-            playerRef.current.vel.y = 8.5;
-            playerRef.current.isGrounded = false;
-          }
-        }
-      } else if (key === "e") {
-        if (worldMode === "temple") {
-          handleRingBell();
-        } else {
-          handleTriggerAvoidance();
-        }
-      } else if (key === "f") {
-        if (worldMode === "temple") {
-          handleBurnIncense();
-        } else if (worldMode === "chongqing") {
-          setIsDriving((prev) => {
-            const next = !prev;
-            zenAudio.playCyberPulse();
-            spawnFloatingText(next ? "已上车 · WASD 驾驶 / Space 漂移" : "已下车 · 步行漫游 8D 山城");
-            if (!next && vehicleCtrlRef.current) {
-              const p = vehicleCtrlRef.current.carBody.position;
-              playerRef.current.pos.set(p.x + 3.2, p.y + 1.8, p.z);
-              playerRef.current.yaw = vehicleCtrlRef.current.heading;
-            }
-            return next;
-          });
-        }
-      } else if (key === "t" && worldMode === "temple") {
-        handleDrinkTea();
-      } else if (key === "c") {
-        setIsCinematic((prev) => {
-          const next = !prev;
-          spawnFloatingText(next ? "开启电影级全景运镜" : "退出电影运镜 · 恢复自由漫游");
-          return next;
-        });
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      delete activeKeysRef.current[key];
-      setActiveKeys((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-    };
-
-    const handleBlur = () => {
-      activeKeysRef.current = {};
-      setActiveKeys({});
-    };
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [worldMode, handleKnockWoodenFish, handleRingBell, handleBurnIncense, handleDrinkTea, handleTriggerAvoidance, spawnFloatingText]);
-
-  // ---------------------------------------------------------------------------
-  // Three.js 核心 3D 世界构建（大佛、僧人、汉服美女、禅茶馆、群山与白云）
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    const container = containerRef.current;
-    const canvas = canvasRef.current;
-    if (!container || !canvas) return;
-
-    // 1. 渲染器（电影级 ACES 调色 + PCF 硬件软阴影）
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: true,
-        powerPreference: "high-performance",
-      });
-    } catch {
-      const fallbackFrame = requestAnimationFrame(() => setRenderError(true));
-      return () => cancelAnimationFrame(fallbackFrame);
-    }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.innerWidth < 640 ? 1.25 : 1.5));
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.95;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
-    rendererRef.current = renderer;
-
-    // 2. 场景与相机（电影 54mm 黄金视场角 + Three.js 官方物理大气散射 Sky）
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#8fb8d8");
-    scene.fog = new THREE.FogExp2("#bcd2e4", 0.00045);
-    sceneRef.current = scene;
-    let disposed = false;
-
-    const sky = new Sky();
-    sky.scale.setScalar(4500);
-    scene.add(sky);
-    const skyUniforms = sky.material.uniforms;
-    skyUniforms["turbidity"].value = 2.4;
-    skyUniforms["rayleigh"].value = 1.15;
-    skyUniforms["mieCoefficient"].value = 0.002;
-    skyUniforms["mieDirectionalG"].value = 0.78;
-    const sunVec = new THREE.Vector3();
-    const updateSun = (elevationDeg: number, azimuthDeg: number) => {
-      const phi = THREE.MathUtils.degToRad(90 - elevationDeg);
-      const theta = THREE.MathUtils.degToRad(azimuthDeg);
-      sunVec.setFromSphericalCoords(1, phi, theta);
-      skyUniforms["sunPosition"].value.copy(sunVec);
-    };
-    updateSun(36, 320);
-
-    const environmentGenerator = new THREE.PMREMGenerator(renderer);
-    const room = new RoomEnvironment();
-    const fallbackEnvironment = environmentGenerator.fromScene(room);
-    room.dispose();
-    scene.environment = fallbackEnvironment.texture;
-    let hdrEnvironment: THREE.WebGLRenderTarget | undefined;
-    let skyTexture: THREE.Texture | undefined;
-    new HDRLoader().load("/environments/venice-sunset-1k.hdr", (texture) => {
-      if (disposed) { texture.dispose(); return; }
-      hdrEnvironment = environmentGenerator.fromEquirectangular(texture);
-      scene.environment = hdrEnvironment.texture;
-      scene.environmentIntensity = 0.75;
-      texture.mapping = THREE.EquirectangularReflectionMapping;
-      skyTexture = texture;
-    }, undefined, () => { /* Keep the local PMREM fallback if HDR is unavailable. */ });
-
-    const camera = new THREE.PerspectiveCamera(
-      54,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      2800
-    );
-    camera.position.set(0, 3, 65);
-    cameraRef.current = camera;
-
-    // 3. 全局光照系统与动态物理软阴影
-    const ambientLight = new THREE.AmbientLight(0xffeedb, 0.5);
-    scene.add(ambientLight);
-
-    const sunLight = new THREE.DirectionalLight(0xffe8c8, 2.2);
-    sunLight.position.set(60, 75, 45);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 220;
-    sunLight.shadow.camera.left = -65;
-    sunLight.shadow.camera.right = 65;
-    sunLight.shadow.camera.top = 65;
-    sunLight.shadow.camera.bottom = -65;
-    sunLight.shadow.bias = -0.0004;
-    sunLight.shadow.radius = 2.2;
-    scene.add(sunLight);
-
-    const hemiLight = new THREE.HemisphereLight(0xb4d8f0, 0x6f6858, 1.1);
-    scene.add(hemiLight);
-
-    // 4. 后期处理 UnrealBloomPass 电影级辉光管线
-    const composer = new EffectComposer(renderer);
-    const renderPass = new RenderPass(scene, camera);
-    composer.addPass(renderPass);
-
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(container.clientWidth, container.clientHeight),
-      0.08, // strength
-      0.25, // radius
-      3.2   // threshold (avoid blooming Sky HDR gradient)
-    );
-    composer.addPass(bloomPass);
-
-    const outputPass = new OutputPass();
-    composer.addPass(outputPass);
-    composerRef.current = composer;
-
-    // 5. World Labs 开源 @sparkjsdev/spark 3D Gaussian Splatting 渲染器
-    const sparkRenderer = new SparkRenderer({ renderer });
-    scene.add(sparkRenderer);
-    const splatGroup = new THREE.Group();
-    splatGroup.visible = false;
-    splatGroupRef.current = splatGroup;
-    scene.add(splatGroup);
-
-    // =========================================================================
-    // 维度 0：【8D 魔幻重庆 · GTA 山城开放世界】 (OSM 真实路网 + 502 栋建筑 + 载具物理)
-    // =========================================================================
-    const waterNormalMap = createWaterNormalTexture();
-    const chongqingFacadeTex = createSkyscraperFacadeTexture();
-    const chongqingGroup = new THREE.Group();
-    chongqingGroup.visible = worldModeRef.current === "chongqing";
-    chongqingGroupRef.current = chongqingGroup;
-    scene.add(chongqingGroup);
-
-    fetch("/data/chongqing-yuzhong.json")
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<ChongqingOsmData>;
-      })
-      .then((osmData) => {
-        if (disposed) return;
-        const bundle = buildChongqingWorld(osmData, chongqingFacadeTex, waterNormalMap, sunVec);
-        chongqingGroup.add(bundle.group);
-        chongqingBundleRef.current = bundle;
-        const ctrl = new ChongqingVehicleController(bundle.colliders, 155, -480, 0);
-        vehicleCtrlRef.current = ctrl;
-        const cp0 = CHONGQING_CHECKPOINTS[0];
-        bundle.beaconGroup.position.set(cp0.x, getChongqingElevation(cp0.x, cp0.z), cp0.z);
-        if (worldModeRef.current === "chongqing") {
-          playerRef.current.pos.set(155, 20.8, -491.5);
-          playerRef.current.yaw = Math.PI;
-          playerRef.current.pitch = -0.14;
-        }
-        setChongqingAssetState("ready");
-      })
-      .catch((err) => {
-        console.warn("Chongqing OSM load failed", err);
-        if (!disposed) setChongqingAssetState("error");
-      });
-
-    // =========================================================================
-    // 维度 1：【灵山寺院全景大世界】 (Buddha, Temple, Mountains, Clouds, NPCs)
-    // =========================================================================
-    const templeGroup = new THREE.Group();
-    templeGroup.visible = worldModeRef.current === "temple";
-    templeGroupRef.current = templeGroup;
-    scene.add(templeGroup);
-
-    // 1.1 长江“江中浮玉”实时反射水面 (Three.js 官方 Water 着色器)
-    const waterGeo = new THREE.PlaneGeometry(1800, 1800);
-    const water = new Water(waterGeo, {
-      textureWidth: 512,
-      textureHeight: 512,
-      waterNormals: waterNormalMap,
-      sunDirection: sunVec.clone().normalize(),
-      sunColor: 0xfff0d4,
-      waterColor: 0x164c64,
-      distortionScale: 2.6,
-      fog: true,
-    });
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = -0.35;
-    templeGroup.add(water);
-
-    // 1.2 远景连绵群山环抱（多频 FBM 地形置换山脉 + 植被/岩壁高度渐变着色）
-    const templeHorizonGroup = new THREE.Group();
-    templeGroup.add(templeHorizonGroup);
-    cloudsRef.current = [];
-    const ridgeGeo = new THREE.RingGeometry(240, 520, 128, 12);
-    ridgeGeo.rotateX(-Math.PI / 2);
-    const rPos = ridgeGeo.attributes.position;
-    const rColors = new Float32Array(rPos.count * 3);
-    for (let i = 0; i < rPos.count; i++) {
-      const vx = rPos.getX(i);
-      const vz = rPos.getZ(i);
-      const r = Math.sqrt(vx * vx + vz * vz);
-      const angle = Math.atan2(vz, vx);
-      const radialEnv = Math.sin(Math.max(0, Math.min(1, (r - 240) / 280)) * Math.PI);
-      const fbm =
-        Math.sin(angle * 5 + 0.4) * 0.5 +
-        Math.cos(angle * 11 - 1.2) * 0.3 +
-        Math.sin(angle * 23 + r * 0.02) * 0.2;
-      const height = Math.max(-1, radialEnv * (52 + fbm * 42));
-      rPos.setY(i, height);
-      const t = Math.min(1, Math.max(0, height / 85));
-      rColors[i * 3 + 0] = 0.24 + t * 0.22;
-      rColors[i * 3 + 1] = 0.34 + t * 0.18;
-      rColors[i * 3 + 2] = 0.29 + t * 0.26;
-    }
-    ridgeGeo.setAttribute("color", new THREE.BufferAttribute(rColors, 3));
-    ridgeGeo.computeVertexNormals();
-    const ridgeMat = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.94,
-      metalness: 0.02,
-      side: THREE.DoubleSide,
-    });
-    const mountainRing = new THREE.Mesh(ridgeGeo, ridgeMat);
-    templeHorizonGroup.add(mountainRing);
-
-    // 1.3 禅刹地面青石板广场 (接收逼真物理软阴影)
-    const stoneTex = createZenStoneTexture();
-    const groundGeo = new THREE.PlaneGeometry(320, 360);
-    const groundMat = new THREE.MeshStandardMaterial({ map: stoneTex, roughness: 0.8, metalness: 0.1 });
-    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-    groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.receiveShadow = true;
-    templeGroup.add(groundMesh);
-
-    // Detailed timber architecture replaces the former cone-shaped hall.
-    const precinct = createTempleArchitecture();
-    templeGroup.add(precinct);
-
-    // 电影级空气神圣金光微粒 (Cinematic Golden Dust Motes / Spirit Particles)
-    const dustCount = 80;
-    const dustGeo = new THREE.BufferGeometry();
-    const dustPos = new Float32Array(dustCount * 3);
-    for (let i = 0; i < dustCount; i++) {
-      dustPos[i * 3 + 0] = (Math.random() - 0.5) * 45;
-      dustPos[i * 3 + 1] = 0.5 + Math.random() * 9.5;
-      dustPos[i * 3 + 2] = (Math.random() - 0.5) * 35;
-    }
-    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-    const dustMat = new THREE.PointsMaterial({
-      color: 0xffe680,
-      size: 0.04,
-      transparent: true,
-      opacity: 0.75,
-      blending: THREE.AdditiveBlending,
-    });
-    const dustPoints = new THREE.Points(dustGeo, dustMat);
-    dustParticlesRef.current = dustPoints;
-    templeGroup.add(dustPoints);
-
-    // =========================================================================
-    // GLTF 高保真开源大模型加载系统 (零外部依赖，本地 WASM Draco 极速解码)
-    // =========================================================================
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath("/draco/");
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.setDRACOLoader(dracoLoader);
-
-    // =========================================================================
-    // 1.6 核心圣物：【真实金尊大佛 (The Golden Buddha)】
-    // =========================================================================
-    const buddhaGroup = new THREE.Group();
-    buddhaGroup.position.set(0, 1.6, -28);
-
-    // 多层金雕莲花宝座 (Lotus Throne)
-    const lotusBase = new THREE.Mesh(
-      new THREE.CylinderGeometry(3.6, 4.2, 1.3, 24),
-      new THREE.MeshStandardMaterial({ color: 0xc98728, metalness: 0.85, roughness: 0.28 })
-    );
-    buddhaGroup.add(lotusBase);
-
-    // 默认即显几何体（极速呈现，待 GLB 加载完毕后平滑隐退）
-    const mockBuddhaMesh = new THREE.Group();
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: 0xffd23f,
-      metalness: 0.85,
-      roughness: 0.22,
-    });
-    const legs = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.9, 12), goldMat);
-    legs.position.y = 1.0;
-    mockBuddhaMesh.add(legs);
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.7, 2.6, 12), goldMat);
-    torso.position.y = 2.6;
-    mockBuddhaMesh.add(torso);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 16), goldMat);
-    head.position.y = 4.4;
-    mockBuddhaMesh.add(head);
-    const ushnisha = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), goldMat);
-    ushnisha.position.y = 5.2;
-    mockBuddhaMesh.add(ushnisha);
-    buddhaGroup.add(mockBuddhaMesh);
-
-    // 加载真实历史雕塑 3D 结跏趺坐大佛 (Sitting Buddha GLB)
-    gltfLoader.load(
-      "/models/sitting-buddha.glb",
-      (gltf) => {
-        const buddha = gltf.scene;
-        const box = new THREE.Box3().setFromObject(buddha);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const targetH = 6.8;
-        const s = targetH / Math.max(size.y, 0.001);
-        buddha.scale.setScalar(s);
-        buddha.position.set(0, 0.65, 0);
-        const gildedMat = new THREE.MeshStandardMaterial({
-          color: 0xe6b445,
-          metalness: 0.74,
-          roughness: 0.28,
-          envMapIntensity: 1.35,
-        });
-        buddha.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const m = child as THREE.Mesh;
-            m.castShadow = true;
-            m.receiveShadow = true;
-            m.material = gildedMat;
-          }
-        });
-        buddhaGroup.add(buddha);
-        // Outdoor monumental Tathagata on the north terrace, with an open vista.
-        const greatBuddha = buddha.clone(true);
-        const statueBounds = new THREE.Box3().setFromObject(greatBuddha);
-        greatBuddha.scale.multiplyScalar(40 / Math.max(statueBounds.getSize(new THREE.Vector3()).y, 0.001));
-        const raisedBounds = new THREE.Box3().setFromObject(greatBuddha);
-        const raisedCenter = raisedBounds.getCenter(new THREE.Vector3());
-        greatBuddha.rotation.y = Math.PI;
-        greatBuddha.position.set(-raisedCenter.x, 8.2 - raisedBounds.min.y, -91 - raisedCenter.z);
-        greatBuddha.name = "Monumental Buddha";
-        templeGroup.add(greatBuddha);
-        mockBuddhaMesh.visible = false;
-        halo.visible = true;
-      },
-      undefined,
-      (err) => console.warn("sitting-buddha load fallback:", err)
-    );
-
-    // 佛像脑后悬浮旋转的自发光金色佛光光环 (Latent Halo)
-    const haloGeo = new THREE.TorusGeometry(2.6, 0.06, 16, 48);
-    const haloMat = new THREE.MeshStandardMaterial({
-      color: 0xffea78,
-      emissive: 0xffd60a,
-      emissiveIntensity: 0.15,
-      roughness: 0.2,
-    });
-    const halo = new THREE.Mesh(haloGeo, haloMat);
-    halo.position.set(0, 4.6, -0.6);
-    halo.visible = false;
-    buddhaHaloRef.current = halo;
-    buddhaGroup.add(halo);
-
-    // 大佛金光点光源
-    const buddhaLight = new THREE.PointLight(0xffba3b, 4.8, 24);
-    buddhaLight.position.set(0, 4.8, 1.5);
-    buddhaGroup.add(buddhaLight);
-
-    templeGroup.add(buddhaGroup);
-
-    // =========================================================================
-    // 1.8 人文生灵：【和尚僧侣 NPC (Buddhist Monk)】
-    // =========================================================================
-    const monkGroup = new THREE.Group();
-    monkGroup.position.set(-3.2, 0, 7.8);
-    monkGroupRef.current = monkGroup;
-
-    const mockMonkMesh = new THREE.Group();
-    const monkRobe = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.36, 0.44, 1.5, 10),
-      new THREE.MeshStandardMaterial({ color: 0x8a5220, roughness: 0.8 })
-    );
-    monkRobe.position.y = 0.9;
-    mockMonkMesh.add(monkRobe);
-    const monkHead = new THREE.Mesh(
-      new THREE.SphereGeometry(0.24, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xf5cfb3, roughness: 0.5 })
-    );
-    monkHead.position.y = 1.8;
-    mockMonkMesh.add(monkHead);
-    const monkHands = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.25, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0xf5cfb3 })
-    );
-    monkHands.position.set(0, 1.15, 0.35);
-    mockMonkMesh.add(monkHands);
-    monkGroup.add(mockMonkMesh);
-
-    // 加载真实 3D 黄袍和尚僧人模型 (Monk GLB)
-    gltfLoader.load(
-      "/models/monk-kaykit.glb",
-      (gltf) => {
-        const monk = gltf.scene;
-        const box = new THREE.Box3().setFromObject(monk);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const s = 1.95 / Math.max(size.y, 0.001);
-        monk.scale.setScalar(s);
-        monk.position.set(0, 0, 0);
-        monk.rotation.y = Math.PI;
-        monk.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-        monkGroup.add(monk);
-        mockMonkMesh.visible = false;
-      },
-      undefined,
-      (err) => console.warn("monk load fallback:", err)
-    );
-
-    templeGroup.add(monkGroup);
-
-    // =========================================================================
-    // 1.9 人文生灵：【汉服美女香客 NPC (Hanfu Devotee)】
-    // =========================================================================
-    const maidenGroup = new THREE.Group();
-    maidenGroup.position.set(3.2, 0, 7.2);
-    maidenGroupRef.current = maidenGroup;
-
-    const mockMaidenMesh = new THREE.Group();
-    const maidenSkirt = new THREE.Mesh(
-      new THREE.ConeGeometry(0.52, 1.45, 12),
-      new THREE.MeshStandardMaterial({ color: 0xdb4d6d, roughness: 0.6 })
-    );
-    maidenSkirt.position.y = 0.8;
-    mockMaidenMesh.add(maidenSkirt);
-    const maidenUpper = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.26, 0.32, 0.6, 10),
-      new THREE.MeshStandardMaterial({ color: 0xfef4f4, roughness: 0.5 })
-    );
-    maidenUpper.position.y = 1.35;
-    mockMaidenMesh.add(maidenUpper);
-    const maidenHead = new THREE.Mesh(
-      new THREE.SphereGeometry(0.21, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xffdfd0, roughness: 0.4 })
-    );
-    maidenHead.position.y = 1.8;
-    mockMaidenMesh.add(maidenHead);
-    const maidenHair = new THREE.Mesh(
-      new THREE.SphereGeometry(0.23, 10, 10),
-      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 })
-    );
-    maidenHair.position.set(0, 1.9, -0.05);
-    mockMaidenMesh.add(maidenHair);
-    maidenGroup.add(mockMaidenMesh);
-
-    // 加载真实 3D 翩跹古典美女仕女塑像 (Dancing Bodhisattva / Maiden GLB)
-    gltfLoader.load(
-      "/models/bodhisattva-dancing.glb",
-      (gltf) => {
-        const maiden = gltf.scene;
-        const box = new THREE.Box3().setFromObject(maiden);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const s = 1.95 / Math.max(size.y, 0.001);
-        maiden.scale.setScalar(s);
-        maiden.position.set(0, 0, 0);
-        maiden.rotation.y = -Math.PI * 0.25;
-        maiden.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const m = child as THREE.Mesh;
-            m.castShadow = true;
-            m.receiveShadow = true;
-            m.material = new THREE.MeshStandardMaterial({
-              color: 0xfbe6d6,
-              roughness: 0.45,
-              metalness: 0.12,
-            });
-          }
-        });
-        maidenGroup.add(maiden);
-        mockMaidenMesh.visible = false;
-      },
-      undefined,
-      (err) => console.warn("maiden load fallback:", err)
-    );
-
-    templeGroup.add(maidenGroup);
-
-    // =========================================================================
-    // 1.10 自然胜境：【真实 3D 菩提古树与翠色垂柳 (Bodhi Tree & Willow)】
-    // =========================================================================
-    gltfLoader.load(
-      "/models/bodhi-tree.glb",
-      (gltf) => {
-        const tree = gltf.scene;
-        const box = new THREE.Box3().setFromObject(tree);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const s = 15.0 / Math.max(size.y, 0.001);
-        tree.scale.setScalar(s);
-        tree.position.set(22, 0, 16);
-        tree.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-        templeGroup.add(tree);
-      },
-      undefined,
-      (err) => console.warn("bodhi-tree load fallback:", err)
-    );
-
-    gltfLoader.load(
-      "/models/willow.glb",
-      (gltf) => {
-        const willow = gltf.scene;
-        const box = new THREE.Box3().setFromObject(willow);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const s = 12.0 / Math.max(size.y, 0.001);
-        willow.scale.setScalar(s);
-        willow.position.set(-18, 0, 16);
-        willow.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-        templeGroup.add(willow);
-      },
-      undefined,
-      (err) => console.warn("willow load fallback:", err)
-    );
-
-    // =========================================================================
-    // 1.11 人文景观：【古韵禅茶馆 (Zen Teahouse)】
-    // =========================================================================
-    const teahouseGroup = new THREE.Group();
-    teahouseGroup.position.set(18, 0, 8);
-
-    // 茶亭木质地板台基与柱廊
-    const teaFloor = new THREE.Mesh(
-      new THREE.BoxGeometry(10, 0.5, 9),
-      new THREE.MeshStandardMaterial({ color: 0x4a2e1b, roughness: 0.8 })
-    );
-    teaFloor.position.y = 0.25;
-    teahouseGroup.add(teaFloor);
-
-    // 茶亭攒尖顶
-    const teaRoof = new THREE.Mesh(
-      new THREE.ConeGeometry(7.5, 3.2, 6),
-      new THREE.MeshStandardMaterial({ color: 0x3d424a, roughness: 0.6 })
-    );
-    teaRoof.position.y = 4.8;
-    teahouseGroup.add(teaRoof);
-
-    // 默认茶亭案几与真实 3D 茶桌模型加载
-    const mockTeaTable = new THREE.Mesh(
-      new THREE.BoxGeometry(3.4, 0.85, 1.6),
-      new THREE.MeshStandardMaterial({ color: 0x2e1a0e, roughness: 0.7 })
-    );
-    mockTeaTable.position.set(0, 0.85, 0);
-    teahouseGroup.add(mockTeaTable);
-
-    gltfLoader.load(
-      "/models/table.glb",
-      (gltf) => {
-        const table = gltf.scene;
-        const box = new THREE.Box3().setFromObject(table);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const s = 1.4 / Math.max(size.y, 0.001);
-        table.scale.setScalar(s);
-        table.position.set(0, 0.35, 0);
-        table.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-        teahouseGroup.add(table);
-        mockTeaTable.visible = false;
-      },
-      undefined,
-      (err) => console.warn("table load fallback:", err)
-    );
-
-    // 案几上的紫砂茶壶
-    const teapot = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2, 10, 10),
-      new THREE.MeshStandardMaterial({ color: 0x6e2c16, roughness: 0.4, metalness: 0.2 })
-    );
-    teapot.position.set(-0.5, 1.45, 0);
-    teahouseGroup.add(teapot);
-
-    // 品茗茶盏
-    for (let c = 0; c < 2; c++) {
-      const teacup = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.05, 0.1, 8),
-        new THREE.MeshStandardMaterial({ color: 0x7da494, roughness: 0.3 })
-      );
-      teacup.position.set(0.2 + c * 0.4, 1.35, 0);
-      teahouseGroup.add(teacup);
-    }
-
-    // 茶香袅袅升腾热气粒子 (Tea Steam Particles)
-    const teaSmokeCount = 45;
-    const teaSmokeGeo = new THREE.BufferGeometry();
-    const teaSmokePos = new Float32Array(teaSmokeCount * 3);
-    for (let i = 0; i < teaSmokeCount; i++) {
-      teaSmokePos[i * 3 + 0] = (Math.random() - 0.5) * 0.2;
-      teaSmokePos[i * 3 + 1] = 1.5 + Math.random() * 1.5;
-      teaSmokePos[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
-    }
-    teaSmokeGeo.setAttribute("position", new THREE.BufferAttribute(teaSmokePos, 3));
-    const teaSmokeMat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.14,
-      transparent: true,
-      opacity: 0.55,
-    });
-    const teaSmokePoints = new THREE.Points(teaSmokeGeo, teaSmokeMat);
-    teaSmokeRef.current = teaSmokePoints;
-    teahouseGroup.add(teaSmokePoints);
-
-    templeGroup.add(teahouseGroup);
-
-    // 1.10 殿前青铜大香炉 (带真香与香火青烟)
-    const censerGeo = new THREE.CylinderGeometry(1.4, 1.0, 1.6, 16);
-    const censerMat = new THREE.MeshStandardMaterial({ color: 0x3d4e42, metalness: 0.85, roughness: 0.35 });
-    const censer = new THREE.Mesh(censerGeo, censerMat);
-    censer.position.set(0, 2.0, -17.0);
-    templeGroup.add(censer);
-
-    for (let i = -1; i <= 1; i++) {
-      const stick = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.035, 0.035, 1.8, 8),
-        new THREE.MeshBasicMaterial({ color: 0xff3b30 })
-      );
-      stick.position.set(i * 0.3, 2.9, -17.0);
-      templeGroup.add(stick);
-    }
-
-    // 香炉青烟粒子
-    const smokeCount = 140;
-    const smokeGeo = new THREE.BufferGeometry();
-    const smokePos = new Float32Array(smokeCount * 3);
-    for (let i = 0; i < smokeCount; i++) {
-      smokePos[i * 3 + 0] = (Math.random() - 0.5) * 0.5;
-      smokePos[i * 3 + 1] = 2.8 + Math.random() * 4.5;
-      smokePos[i * 3 + 2] = -17.0 + (Math.random() - 0.5) * 0.5;
-    }
-    smokeGeo.setAttribute("position", new THREE.BufferAttribute(smokePos, 3));
-    const smokeMat = new THREE.PointsMaterial({
-      color: 0xbfd8f5,
-      size: 0.08,
-      transparent: true,
-      opacity: 0.25,
-    });
-    const smokePoints = new THREE.Points(smokeGeo, smokeMat);
-    smokeParticlesRef.current = smokePoints;
-    templeGroup.add(smokePoints);
-
-    // 1.11 飘零落花粒子
-    const petalCount = 45;
-    const petalGeo = new THREE.BufferGeometry();
-    const petalPos = new Float32Array(petalCount * 3);
-    for (let i = 0; i < petalCount; i++) {
-      petalPos[i * 3 + 0] = (Math.random() - 0.5) * 80;
-      petalPos[i * 3 + 1] = 0.5 + Math.random() * 18;
-      petalPos[i * 3 + 2] = (Math.random() - 0.5) * 80;
-    }
-    petalGeo.setAttribute("position", new THREE.BufferAttribute(petalPos, 3));
-    const petalMat = new THREE.PointsMaterial({
-      color: 0xffb7c5,
-      size: 0.035,
-      transparent: true,
-      opacity: 0.85,
-    });
-    const petalPoints = new THREE.Points(petalGeo, petalMat);
-    petalParticlesRef.current = petalPoints;
-    templeGroup.add(petalPoints);
-
-    // 1.12 迎客松树林与石灯长廊
-    const treeTrunkGeo = new THREE.CylinderGeometry(0.32, 0.58, 4.8, 8);
-    const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2516, roughness: 0.9 });
-    const treeLeavesGeo = new THREE.IcosahedronGeometry(2.6, 2);
-    const treeLeavesMat = new THREE.MeshStandardMaterial({ color: 0x1b4a28, roughness: 0.6 });
-
-    const treePositions = [
-      [-15, 2.4, 10], [-19, 2.4, 0], [-16, 2.4, -10],
-      [15, 2.4, 16], [22, 2.4, 0], [16, 2.4, -10],
-      [-9, 2.4, 24], [9, 2.4, 24],
-    ];
-    treePositions.forEach(([tx, ty, tz]) => {
-      const trunk = new THREE.Mesh(treeTrunkGeo, treeTrunkMat);
-      trunk.position.set(tx, ty, tz);
-      const leaves = new THREE.Mesh(treeLeavesGeo, treeLeavesMat);
-      leaves.position.set(tx, ty + 3.4, tz);
-      templeGroup.add(trunk);
-      templeGroup.add(leaves);
-    });
-
-    // 石灯笼
-    const lanternGeo = new THREE.CylinderGeometry(0.25, 0.35, 1.6, 6);
-    const lanternMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.6 });
-    const lanternPositions = [
-      [-4.5, 0.8, 12], [4.5, 0.8, 12],
-      [-4.5, 0.8, 6], [4.5, 0.8, 6],
-      [-4.5, 0.8, 0], [4.5, 0.8, 0],
-    ];
-    lanternPositions.forEach(([lx, ly, lz]) => {
-      const lantern = new THREE.Mesh(lanternGeo, lanternMat);
-      lantern.position.set(lx, ly, lz);
-      const lanternLight = new THREE.PointLight(0xffa834, 1.2, 4.5);
-      lanternLight.position.set(lx, ly + 0.9, lz);
-      templeGroup.add(lantern);
-      templeGroup.add(lanternLight);
-    });
-
-    // 1.13 中央紫檀木鱼台与立体 3D 电子木鱼
-    const tableGeo = new THREE.BoxGeometry(2.2, 1.2, 1.4);
-    const tableMat = new THREE.MeshStandardMaterial({ color: 0x382012, roughness: 0.7 });
-    const tableMesh = new THREE.Mesh(tableGeo, tableMat);
-    tableMesh.position.set(0, 1.8, 8.2);
-    templeGroup.add(tableMesh);
-
-    const fishGeo = new THREE.SphereGeometry(0.42, 16, 12);
-    fishGeo.scale(1.25, 0.78, 1.05);
-    const fishMat = new THREE.MeshStandardMaterial({ color: 0xd4873b, roughness: 0.35, metalness: 0.25 });
-    const fishMesh = new THREE.Mesh(fishGeo, fishMat);
-    fishMesh.position.set(0, 2.55, 8.2);
-    woodenFishMeshRef.current = fishMesh;
-    templeGroup.add(fishMesh);
-
-    // 1.14 悬挂天坛晨钟
-    const bellGeo = new THREE.CylinderGeometry(0.55, 0.95, 2.1, 16);
-    const bellMat = new THREE.MeshStandardMaterial({ color: 0x8a6e35, metalness: 0.85, roughness: 0.3 });
-    const bellMesh = new THREE.Mesh(bellGeo, bellMat);
-    bellMesh.position.set(-7.5, 5.2, 3.5);
-    bellMeshRef.current = bellMesh;
-    templeGroup.add(bellMesh);
-
-    // 焦山定慧寺摄影测量扫描按需懒加载，保证首屏 8D 重庆极速秒开
-    let templeRequested = false;
-    const templeManager = new THREE.LoadingManager();
-    templeManager.setURLModifier((url) => renderer.capabilities.maxTextureSize < 8192 || window.innerWidth < 640 ? url.replace("temple-atlas-8k.jpg", "temple-atlas-4k.jpg") : url);
-    templeManager.onProgress = (_url, loaded, total) => {
-      if (!disposed) setTempleProgress(Math.round(loaded / total * 100));
-    };
-    const templeLoader = new GLTFLoader(templeManager);
-    loadTempleRef.current = () => {
-      if (templeRequested || disposed) return;
-      templeRequested = true;
-      setTempleAssetState("loading");
-      templeLoader.load("/models/jiaoshan-temple/temple.gltf", (gltf) => {
-        if (disposed) return;
-        const model = gltf.scene;
-        const box = new THREE.Box3().setFromObject(model);
-        const dimensions = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        const scale = 150 / Math.max(dimensions.x, dimensions.z);
-        model.scale.multiplyScalar(scale);
-        model.position.set(-center.x * scale, -box.min.y * scale + 1.2, -center.z * scale - 16);
-        model.name = "Jiaoshan Dinghui Temple · Metazeon · CC BY 4.0";
-        model.traverse((object) => {
-          if ((object as THREE.Mesh).isMesh) {
-            object.castShadow = true;
-            object.receiveShadow = true;
-            const mesh = object as THREE.Mesh;
-            const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-            if (material instanceof THREE.MeshStandardMaterial) {
-              mesh.material = new THREE.MeshBasicMaterial({ map: material.map, color: 0xffffff, side: THREE.DoubleSide });
-              material.dispose();
-            }
-          }
-        });
-
-        // 焦山岛礁石山体基座：将摄影测量扫描底部的开放边缘自然过渡到江水与山石中，消除悬空破面
-        const islandBase = new THREE.Mesh(
-          new THREE.CylinderGeometry(52, 82, 16, 48),
-          new THREE.MeshStandardMaterial({ color: 0x3b483d, roughness: 0.96, metalness: 0.04 })
-        );
-        islandBase.position.set(0, -8.5, -16);
-        islandBase.receiveShadow = true;
-
-        const conceptObjects = templeGroup.children.filter(
-          (child) => child !== water && child !== templeHorizonGroup
-        );
-        templeGroup.add(islandBase);
-        templeGroup.add(model);
-        setTempleViewRef.current = (mode) => {
-          for (const child of conceptObjects) child.visible = mode === "concept";
-          model.visible = mode === "real";
-          islandBase.visible = mode === "real";
-          water.visible = true;
-          templeHorizonGroup.visible = true;
-        };
-        setTempleViewRef.current("real");
-        templeSpawnRef.current.set(-36, 44, 78);
-        if (worldModeRef.current === "temple") {
-          playerRef.current.pos.copy(templeSpawnRef.current);
-          playerRef.current.pitch = -0.14;
-          playerRef.current.yaw = -0.38;
-        }
-
-        setTempleAssetState("ready");
-      }, undefined, (error) => {
-        if (!disposed) { console.warn("Scanned temple unavailable; keeping architectural preview", error); setTempleAssetState("error"); }
-      });
-    };
-
-    // =========================================================================
-    // 维度 2：【未来中枢 · 赛博立体都市与霓虹天际线】 (Cyber City 3D)
-    // =========================================================================
-    const cityGroup = new THREE.Group();
-    cityGroupRef.current = cityGroup;
-    cityGroup.visible = false;
-    scene.add(cityGroup);
-
-    // 2.1 外围现代大都市摩天大楼天际线环形群落 (InstancedMesh + 玻璃幕墙亮灯窗格贴图)
-    const skylineGroup = new THREE.Group();
-    const towerGeo = new THREE.BoxGeometry(1, 1, 1);
-    const facadeTex = createSkyscraperFacadeTexture();
-    const towerMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      map: facadeTex,
-      emissive: 0xffdfaa,
-      emissiveMap: facadeTex,
-      emissiveIntensity: 0.45,
-      metalness: 0.72,
-      roughness: 0.24,
-      envMapIntensity: 1.5,
-    });
-    const towerCount = 64;
-    const skylineMesh = new THREE.InstancedMesh(towerGeo, towerMat, towerCount);
-    const dummy = new THREE.Object3D();
-    for (let i = 0; i < towerCount; i++) {
-      const angle = (i / towerCount) * Math.PI * 2 + (i % 3) * 0.04;
-      const radius = 115 + (i % 5) * 28;
-      const h = 42 + ((i * 19) % 85);
-      const w = 14 + ((i * 7) % 14);
-      const d = 14 + ((i * 11) % 14);
-      dummy.position.set(Math.cos(angle) * radius, h / 2 - 2, Math.sin(angle) * radius - 10);
-      dummy.scale.set(w, h, d);
-      dummy.rotation.y = -angle;
-      dummy.updateMatrix();
-      skylineMesh.setMatrixAt(i, dummy.matrix);
-    }
-    skylineMesh.instanceMatrix.needsUpdate = true;
-    skylineGroup.add(skylineMesh);
-    cityGroup.add(skylineGroup);
-
-    // 2.2 高空巡航穿梭飞车 (在天际线与 Bistro 上空盘旋)
-    const flyingCars: Array<{ mesh: THREE.Mesh; speed: number; radius: number; angle: number; height: number }> = [];
-    const shuttleGeo = new THREE.BoxGeometry(1.8, 0.55, 4.2);
-    const shuttleMat = new THREE.MeshStandardMaterial({
-      color: 0x22303c,
-      emissive: 0x2997ff,
-      emissiveIntensity: 1.35,
-      metalness: 0.8,
-      roughness: 0.2,
-    });
-    for (let i = 0; i < 8; i++) {
-      const shuttle = new THREE.Mesh(shuttleGeo, shuttleMat);
-      const angle = (i / 8) * Math.PI * 2;
-      const radius = 58 + (i % 3) * 24;
-      const height = 28 + (i % 4) * 9;
-      shuttle.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
-      cityGroup.add(shuttle);
-      flyingCars.push({ mesh: shuttle, speed: 0.28 + (i % 3) * 0.12, radius, angle, height });
-    }
-    flyingCarsRef.current = flyingCars;
-
-    // 2.3 SparkJS 3D Gaussian Splatting 实景模式加载器
-    const loadedSplats: Partial<Record<"valley" | "snow-street", SplatMesh>> = {};
-    let activeSplatKey: "valley" | "snow-street" | null = null;
-    loadSplatRef.current = (target) => {
-      if (disposed) return;
-      activeSplatKey = target;
-      for (const [k, mesh] of Object.entries(loadedSplats)) {
-        if (mesh) mesh.visible = k === target;
-      }
-      if (loadedSplats[target]) {
-        setSplatAssetState("ready");
-        return;
-      }
-      setSplatAssetState("loading");
-      try {
-        const splat = new SplatMesh({
-          url: target === "valley" ? "/splats/valley.spz" : "/splats/snow-street.spz",
-          onLoad: () => {
-            if (!disposed && activeSplatKey === target) setSplatAssetState("ready");
-          },
-        });
-        splat.quaternion.set(1, 0, 0, 0);
-        splat.scale.setScalar(2.4);
-        splat.position.set(0, 0, 0);
-        splatGroup.add(splat);
-        loadedSplats[target] = splat;
-        setTimeout(() => {
-          if (!disposed && activeSplatKey === target) setSplatAssetState("ready");
-        }, 1200);
-      } catch (err) {
-        console.warn("Failed to load SparkJS SplatMesh", err);
-        if (!disposed) setSplatAssetState("error");
-      }
-    };
-
-    const cityPreview = createCityArchitecture();
-    cityGroup.add(cityPreview);
-    let cityRequested = false;
-    const cityManager = new THREE.LoadingManager();
-    cityManager.onProgress = (_url, loaded, total) => {
-      if (!disposed) setCityProgress(Math.round(loaded / total * 100));
-    };
-    const cityLoader = new GLTFLoader(cityManager).setDRACOLoader(dracoLoader);
-    loadCityRef.current = () => {
-      if (cityRequested || disposed) return;
-      cityRequested = true;
-      setCityAssetState("loading");
-      cityLoader.load("/models/bistro/Bistro.gltf", (gltf) => {
-        if (disposed) {
-          gltf.scene.traverse((object) => {
-            const mesh = object as THREE.Mesh;
-            mesh.geometry?.dispose();
-            const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
-            for (const material of materials) {
-              for (const value of Object.values(material)) if (value instanceof THREE.Texture) value.dispose();
-              material.dispose();
-            }
-          });
-          return;
-        }
-        const model = gltf.scenes.find((candidate) => candidate.name === "Exterior") ?? gltf.scene;
-        const bounds = new THREE.Box3().setFromObject(model);
-        const center = bounds.getCenter(new THREE.Vector3());
-
-        const scale = 1;
-        model.scale.multiplyScalar(scale);
-        model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale - 4);
-        const interior = model.getObjectByName("BistroInterior");
-        if (interior) interior.visible = false;
-        model.updateMatrixWorld(true);
-        const authoredCamera = model.getObjectByName("Camera");
-        if (authoredCamera) {
-          authoredCamera.getWorldPosition(citySpawnRef.current);
-          const view = authoredCamera.getWorldDirection(new THREE.Vector3());
-          cityYawRef.current = Math.atan2(-view.x, -view.z);
-        } else citySpawnRef.current.set(0, 1.8, 14);
-        if (worldModeRef.current === "city") {
-          playerRef.current.pos.copy(citySpawnRef.current); playerRef.current.yaw = cityYawRef.current;
-        }
-        model.traverse((object) => {
-          if ((object as THREE.Light).isLight) (object as THREE.Light).intensity = 0;
-          if ((object as THREE.Mesh).isMesh) {
-            object.castShadow = true;
-            object.receiveShadow = true;
-            const mesh = object as THREE.Mesh;
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            for (const material of materials) if (material instanceof THREE.MeshStandardMaterial) {
-              material.aoMapIntensity = 0.12;
-              material.envMapIntensity = 1.8;
-              material.metalness = Math.min(material.metalness, 0.45);
-            }
-          }
-        });
-        model.name = "Amazon Bistro · CC BY 4.0";
-        cityGroup.add(model);
-        cityPreview.visible = false;
-        vehiclesRef.current.forEach(({mesh}) => { mesh.visible = false; });
-        setCityAssetState("ready");
-      }, undefined, (error) => {
-        if (!disposed) { console.warn("Bistro unavailable; keeping lightweight street", error); setCityAssetState("error"); }
-      });
-    };
-
-    // 地面高速穿行光轨车流
-    const vehicles: Array<{ mesh: THREE.Mesh; speed: number; limit: number }> = [];
-    const carGeo = new THREE.BoxGeometry(1.2, 0.5, 2.4);
-
-    for (let i = 0; i < 12; i++) {
-      const isRed = i % 2 === 0;
-      const carMat = new THREE.MeshStandardMaterial({ color: isRed ? 0x6b2526 : 0x7f898f, metalness: 0.65, roughness: 0.28 });
-      const car = new THREE.Mesh(carGeo, carMat);
-      const lane = isRed ? -10 : 10;
-      car.position.set(lane, 0.3, (Math.random() - 0.5) * 160);
-      cityGroup.add(car);
-      vehicles.push({
-        mesh: car,
-        speed: (12 + Math.random() * 16) * (isRed ? -1 : 1),
-        limit: 85,
-      });
-    }
-    vehiclesRef.current = vehicles;
-
-    flyingCarsRef.current = [];
-
-    // 视口尺寸响应
-    const handleResize = () => {
-      if (!container || !renderer || !camera) return;
-      const width = container.clientWidth;
-      const height = container.clientHeight;
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
-      if (composerRef.current) {
-        composerRef.current.setSize(width, height);
-      }
-    };
-    window.addEventListener("resize", handleResize);
-
-    // 鼠标与触控 360° 自由旋转视角
-    const handleMouseDown = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest("button, a, input, [data-ui]")) return;
-      isPointerDownRef.current = true;
-      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-    };
-
-    const handleMouseMove = (e: PointerEvent) => {
-      if (!isPointerDownRef.current) return;
-      const dx = e.clientX - lastMousePosRef.current.x;
-      const dy = e.clientY - lastMousePosRef.current.y;
-      playerRef.current.yaw -= dx * 0.0035;
-      playerRef.current.pitch = Math.max(-0.65, Math.min(0.65, playerRef.current.pitch - dy * 0.0035));
-      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-    };
-
-    const handleMouseUp = () => {
-      isPointerDownRef.current = false;
-    };
-
-    container.addEventListener("pointerdown", handleMouseDown);
-    window.addEventListener("pointermove", handleMouseMove);
-    window.addEventListener("pointerup", handleMouseUp);
-    window.addEventListener("pointercancel", handleMouseUp);
-
-    // -------------------------------------------------------------------------
-    // 渲染主循环 (60 FPS 完整角色漫游物理、白云飘移、佛光旋转)
-    // -------------------------------------------------------------------------
-    let animId: number;
-    const clock = new THREE.Timer();
-
-    let fpsFrames = 0;
-    let fpsElapsed = 0;
-    const animate = () => {
-      animId = requestAnimationFrame(animate);
-      clock.update();
-      const dt = Math.min(clock.getDelta(), 0.1);
-      const time = clock.getElapsed();
-      renderer.toneMappingExposure =
-        worldModeRef.current === "city"
-          ? 1.35
-          : worldModeRef.current === "chongqing"
-            ? 0.92
-            : 0.62;
-      fpsFrames++; fpsElapsed += dt;
-      if (fpsElapsed >= 1) { setMeasuredFps(Math.round(fpsFrames / fpsElapsed)); fpsFrames = 0; fpsElapsed = 0; }
-
-      const keys = activeKeysRef.current;
-
-      // 0. 8D 重庆 GTA 载具物理与雷达小地图更新
-      if (worldModeRef.current === "chongqing" && chongqingBundleRef.current && vehicleCtrlRef.current) {
-        const bundle = chongqingBundleRef.current;
-        const ctrl = vehicleCtrlRef.current;
-        if (bundle.water.material?.uniforms?.["time"]) {
-          bundle.water.material.uniforms["time"].value += dt * 0.45;
-        }
-        if (isDrivingRef.current) {
-          ctrl.step(dt, {
-            forward: !!(keys["w"] || keys["arrowup"]),
-            backward: !!(keys["s"] || keys["arrowdown"]),
-            left: !!(keys["a"] || keys["arrowleft"]),
-            right: !!(keys["d"] || keys["arrowright"]),
-            brake: !!(keys[" "] || keys["space"]),
-            boost: !!keys["shift"],
-          });
-          const p = ctrl.carBody.position;
-          bundle.carMesh.position.set(p.x, p.y, p.z);
-          bundle.carMesh.rotation.set(0, ctrl.heading, 0);
-          bundle.carWheels.forEach((w) => {
-            w.rotation.x += ctrl.speed * dt * 2.4;
-          });
-          playerRef.current.pos.set(p.x, p.y + 1.8, p.z);
-          playerRef.current.yaw = ctrl.heading + Math.PI;
-
-          if (!isCinematicRef.current) {
-            const camDist = 11.5 + Math.abs(ctrl.speed) * 0.08;
-            const targetCamX = p.x - Math.sin(ctrl.heading) * camDist;
-            const targetCamZ = p.z - Math.cos(ctrl.heading) * camDist;
-            const targetCamY = p.y + 4.4;
-            camera.position.lerp(new THREE.Vector3(targetCamX, targetCamY, targetCamZ), Math.min(1, dt * 7.5));
-            camera.lookAt(p.x + Math.sin(ctrl.heading) * 6, p.y + 1.4, p.z + Math.cos(ctrl.heading) * 6);
-          }
-          if (Math.random() < 0.35) {
-            const kmh = Math.round(Math.abs(ctrl.speed) * 3.6);
-            carSpeedKmhRef.current = kmh;
-            setCarSpeedKmh(kmh);
-          }
-        } else {
-          // 下车步行模式：贴合重庆 8D 地形高度
-          const forward = new THREE.Vector3(-Math.sin(playerRef.current.yaw), 0, -Math.cos(playerRef.current.yaw));
-          const right = new THREE.Vector3(Math.cos(playerRef.current.yaw), 0, -Math.sin(playerRef.current.yaw));
-          const moveSpeed = (keys["shift"] ? 14.0 : 7.0) * dt;
-          const moveDir = new THREE.Vector3();
-          if (keys["w"] || keys["arrowup"]) moveDir.add(forward);
-          if (keys["s"] || keys["arrowdown"]) moveDir.addScaledVector(forward, -1);
-          if (keys["a"] || keys["arrowleft"]) moveDir.addScaledVector(right, -1);
-          if (keys["d"] || keys["arrowright"]) moveDir.add(right);
-          if (moveDir.lengthSq() > 0.001) {
-            moveDir.normalize();
-            playerRef.current.pos.addScaledVector(moveDir, moveSpeed);
-            playerRef.current.bobbing += dt * 9.5;
-          }
-          const groundY = Math.max(0.2, getChongqingElevation(playerRef.current.pos.x, playerRef.current.pos.z)) + 1.8;
-          playerRef.current.pos.y += (groundY - playerRef.current.pos.y) * Math.min(1, dt * 10);
-          if (!isCinematicRef.current) {
-            camera.position.copy(playerRef.current.pos);
-            const lookVec = new THREE.Vector3(
-              -Math.sin(playerRef.current.yaw) * Math.cos(playerRef.current.pitch),
-              Math.sin(playerRef.current.pitch),
-              -Math.cos(playerRef.current.yaw) * Math.cos(playerRef.current.pitch)
-            );
-            camera.lookAt(camera.position.clone().add(lookVec));
-          }
-          if (carSpeedKmhRef.current !== 0) {
-            carSpeedKmhRef.current = 0;
-            setCarSpeedKmh(0);
-          }
-        }
-
-        if (isCinematicRef.current) {
-          const cp = CHONGQING_CHECKPOINTS[checkpointIdxRef.current];
-          const r = 130;
-          camera.position.set(
-            cp.x + Math.sin(time * 0.16) * r,
-            88 + Math.sin(time * 0.2) * 14,
-            cp.z + Math.cos(time * 0.16) * r
-          );
-          camera.lookAt(cp.x, getChongqingElevation(cp.x, cp.z) + 12, cp.z);
-        }
-
-        // 检查打卡任务距离与光柱旋转
-        const activeCp = CHONGQING_CHECKPOINTS[checkpointIdxRef.current];
-        const dx = playerRef.current.pos.x - activeCp.x;
-        const dz = playerRef.current.pos.z - activeCp.z;
-        const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
-        if (Math.random() < 0.25) setCheckpointDist(dist);
-        bundle.beaconGroup.rotation.y += dt * 1.4;
-        if (dist < 28) {
-          zenAudio.playBell();
-          spawnFloatingTextRef.current(`打卡成功 · ${activeCp.name}！`);
-          const nextIdx = (checkpointIdxRef.current + 1) % CHONGQING_CHECKPOINTS.length;
-          checkpointIdxRef.current = nextIdx;
-          setCheckpointIdx(nextIdx);
-          setCompletedCount((c) => c + 1);
-          const nextCp = CHONGQING_CHECKPOINTS[nextIdx];
-          bundle.beaconGroup.position.set(nextCp.x, getChongqingElevation(nextCp.x, nextCp.z), nextCp.z);
-        }
-
-        // 绘制 GTA 圆形雷达小地图
-        const mm = minimapCanvasRef.current;
-        if (mm) {
-          const ctx = mm.getContext("2d");
-          if (ctx) {
-            const w = mm.width;
-            const h = mm.height;
-            const cx = w * 0.5;
-            const cy = h * 0.5;
-            const scale = 0.18;
-            ctx.clearRect(0, 0, w, h);
-            ctx.fillStyle = "rgba(10, 14, 22, 0.88)";
-            ctx.beginPath();
-            ctx.arc(cx, cy, cx - 1, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(cx, cy, cx - 3, 0, Math.PI * 2);
-            ctx.clip();
-
-            const px = playerRef.current.pos.x;
-            const pz = playerRef.current.pos.z;
-            ctx.strokeStyle = "rgba(148, 163, 184, 0.55)";
-            ctx.lineWidth = 1.6;
-            for (const road of bundle.roads) {
-              ctx.beginPath();
-              road.p.forEach(([rx, rz], idx) => {
-                const mx = cx + (rx - px) * scale;
-                const my = cy + (rz - pz) * scale;
-                if (idx === 0) ctx.moveTo(mx, my);
-                else ctx.lineTo(mx, my);
-              });
-              ctx.stroke();
-            }
-
-            // 目标光点
-            const tx = cx + (activeCp.x - px) * scale;
-            const ty = cy + (activeCp.z - pz) * scale;
-            ctx.fillStyle = "#ffd60a";
-            ctx.beginPath();
-            ctx.arc(tx, ty, 4.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // 玩家三角箭头
-            const arrowRot = isDrivingRef.current ? -ctrl.heading + Math.PI : playerRef.current.yaw;
-            ctx.translate(cx, cy);
-            ctx.rotate(-arrowRot);
-            ctx.fillStyle = "#2997ff";
-            ctx.beginPath();
-            ctx.moveTo(0, -6);
-            ctx.lineTo(4.5, 5);
-            ctx.lineTo(-4.5, 5);
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-          }
-        }
-      }
-
-      // 1. 真实人物行走与物理运动 (其余模式 WASD Smooth Walk & Sprint)
-      if (worldModeRef.current !== "chongqing") {
-        const forward = new THREE.Vector3(
-          -Math.sin(playerRef.current.yaw),
-          0,
-          -Math.cos(playerRef.current.yaw)
-        );
-        const right = new THREE.Vector3(
-          Math.cos(playerRef.current.yaw),
-          0,
-          -Math.sin(playerRef.current.yaw)
-        );
-
-        const moveSpeed = (keys["shift"] ? 11.0 : 5.8) * dt;
-        const moveDir = new THREE.Vector3(0, 0, 0);
-
-        if (keys["w"] || keys["arrowup"]) moveDir.add(forward);
-        if (keys["s"] || keys["arrowdown"]) moveDir.addScaledVector(forward, -1);
-        if (keys["a"] || keys["arrowleft"]) moveDir.addScaledVector(right, -1);
-        if (keys["d"] || keys["arrowright"]) moveDir.add(right);
-
-        const isWalking = moveDir.lengthSq() > 0.001;
-        if (isWalking) {
-          moveDir.normalize();
-          playerRef.current.pos.addScaledVector(moveDir, moveSpeed);
-          playerRef.current.bobbing += dt * 9.5;
-        }
-
-        // 重力跳跃与下落
-        if (!playerRef.current.isGrounded) {
-          playerRef.current.vel.y -= 22.0 * dt;
-          playerRef.current.pos.y += playerRef.current.vel.y * dt;
-          if (playerRef.current.pos.y <= 1.8) {
-            playerRef.current.pos.y = 1.8;
-            playerRef.current.vel.y = 0;
-            playerRef.current.isGrounded = true;
-          }
-        }
-
-        // 电影级运镜 vs 第一人称自由漫游
-        if (isCinematicRef.current) {
-          // 电影级航拍环绕运镜 (Cinematic Director Crane/Drone Shot)
-          const orbitRadius = worldModeRef.current === "temple" ? 100 : 35;
-          const orbitSpeed = 0.12;
-          const cx = Math.sin(time * orbitSpeed) * orbitRadius;
-          const cz = Math.cos(time * orbitSpeed) * orbitRadius + (worldModeRef.current === "temple" ? -1.0 : 4.0);
-          const cy = worldModeRef.current === "temple" ? 65 + Math.sin(time * .1) * 12 : 12;
-          camera.position.set(cx, cy, cz);
-          if (worldModeRef.current === "temple") {
-            camera.lookAt(0, 55, -16);
-          } else {
-            camera.lookAt(0, 3.8, 0);
-          }
-        } else {
-          // 第一人称自由漫游头部呼吸晃动
-          const bobOffset = isWalking ? Math.sin(playerRef.current.bobbing) * 0.045 : 0;
-          camera.position.set(
-            playerRef.current.pos.x,
-            playerRef.current.pos.y + bobOffset,
-            playerRef.current.pos.z
-          );
-
-          const targetLook = new THREE.Vector3()
-            .copy(camera.position)
-            .add(
-              new THREE.Vector3(
-                -Math.sin(playerRef.current.yaw) * Math.cos(playerRef.current.pitch),
-                Math.sin(playerRef.current.pitch),
-                -Math.cos(playerRef.current.yaw) * Math.cos(playerRef.current.pitch)
-              )
-            );
-          camera.lookAt(targetLook);
-        }
-      }
-
-      // 2. 白云随风飘移系统
-      cloudsRef.current.forEach((cloud, idx) => {
-        cloud.position.x += dt * (1.2 + (idx % 3) * 0.4);
-        if (cloud.position.x > 90) {
-          cloud.position.x = -90;
-        }
-      });
-
-      // 3. 佛光光环缓缓自转与呼吸发光
-      if (buddhaHaloRef.current) {
-        buddhaHaloRef.current.rotation.z += dt * 0.35;
-      }
-
-      // 4. 和尚与仕女自然呼吸与轻微摆动
-      if (monkGroupRef.current) {
-        monkGroupRef.current.position.y = Math.sin(time * 2.2) * 0.03;
-      }
-      if (maidenGroupRef.current) {
-        maidenGroupRef.current.position.y = Math.sin(time * 2.4 + 1.0) * 0.035;
-      }
-
-      // 5. 香炉青烟与茶香水汽粒子
-      if (smokeParticlesRef.current) {
-        const posAttr = smokeParticlesRef.current.geometry.attributes.position;
-        const arr = posAttr.array as Float32Array;
-        for (let i = 0; i < smokeCount; i++) {
-          arr[i * 3 + 1] += dt * 0.95;
-          arr[i * 3 + 0] += Math.sin(arr[i * 3 + 1] * 2.2) * dt * 0.28;
-          if (arr[i * 3 + 1] > 7.5) {
-            arr[i * 3 + 1] = 2.8;
-            arr[i * 3 + 0] = (Math.random() - 0.5) * 0.35;
-          }
-        }
-        posAttr.needsUpdate = true;
-      }
-
-      if (teaSmokeRef.current) {
-        const tAttr = teaSmokeRef.current.geometry.attributes.position;
-        const tArr = tAttr.array as Float32Array;
-        for (let i = 0; i < teaSmokeCount; i++) {
-          tArr[i * 3 + 1] += dt * 0.6;
-          tArr[i * 3 + 0] += Math.sin(tArr[i * 3 + 1] * 3.0) * dt * 0.15;
-          if (tArr[i * 3 + 1] > 2.8) {
-            tArr[i * 3 + 1] = 1.45;
-            tArr[i * 3 + 0] = (Math.random() - 0.5) * 0.15;
-          }
-        }
-        tAttr.needsUpdate = true;
-      }
-
-      // 6. 飘零落花
-      if (petalParticlesRef.current) {
-        const pAttr = petalParticlesRef.current.geometry.attributes.position;
-        const pArr = pAttr.array as Float32Array;
-        for (let i = 0; i < petalCount; i++) {
-          pArr[i * 3 + 1] -= dt * 0.8;
-          pArr[i * 3 + 0] += Math.sin(time + i) * dt * 0.4;
-          if (pArr[i * 3 + 1] < 0.2) {
-            pArr[i * 3 + 1] = 16.0;
-            pArr[i * 3 + 0] = (Math.random() - 0.5) * 80;
-          }
-        }
-        pAttr.needsUpdate = true;
-      }
-
-      // 7. 木鱼与晨钟动效
-      if (woodenFishMeshRef.current && woodenFishBounceRef.current > 0) {
-        woodenFishBounceRef.current = Math.max(0, woodenFishBounceRef.current - dt * 6.5);
-        const s = 1.0 - woodenFishBounceRef.current * 0.2;
-        woodenFishMeshRef.current.scale.set(1.25 * s, 0.78 * s, 1.05 * s);
-      }
-
-      if (bellMeshRef.current && bellSwingRef.current > 0) {
-        bellSwingRef.current = Math.max(0, bellSwingRef.current - dt * 1.6);
-        bellMeshRef.current.rotation.z = Math.sin(time * 12.0) * bellSwingRef.current * 0.22;
-      }
-
-      // 8. 赛博城市车流与高空飞车
-      vehiclesRef.current.forEach((car) => {
-        car.mesh.position.z += car.speed * dt;
-        if (car.mesh.position.z > car.limit) car.mesh.position.z = -car.limit;
-        if (car.mesh.position.z < -car.limit) car.mesh.position.z = car.limit;
-      });
-
-      flyingCarsRef.current.forEach((fc) => {
-        fc.angle += fc.speed * dt * 0.5;
-        fc.mesh.position.set(
-          Math.cos(fc.angle) * fc.radius,
-          fc.height + Math.sin(fc.angle * 2.0) * 1.5,
-          Math.sin(fc.angle) * fc.radius
-        );
-        fc.mesh.rotation.y = -fc.angle + Math.PI / 2;
-      });
-
-      // 10. 电影级神圣空气浮尘微粒轻柔涌动
-      if (dustParticlesRef.current) {
-        const dAttr = dustParticlesRef.current.geometry.attributes.position;
-        const dArr = dAttr.array as Float32Array;
-        const dCount = 80;
-        for (let i = 0; i < dCount; i++) {
-          dArr[i * 3 + 1] -= dt * 0.16;
-          dArr[i * 3 + 0] += Math.sin(time * 0.5 + i) * dt * 0.16;
-          if (dArr[i * 3 + 1] < 0.25) {
-            dArr[i * 3 + 1] = 9.5;
-            dArr[i * 3 + 0] = (Math.random() - 0.5) * 45;
-          }
-        }
-        dAttr.needsUpdate = true;
-      }
-
-      // 11. 长江水面实时波纹推进
-      if (water.material?.uniforms?.["time"]) {
-        water.material.uniforms["time"].value += dt * 0.45;
-      }
-
-      // 周期性更新 HUD 坐标
-      if (Math.random() < 0.25) {
-        setCameraCoords({
-          x: parseFloat(playerRef.current.pos.x.toFixed(1)),
-          y: parseFloat(playerRef.current.pos.y.toFixed(1)),
-          z: parseFloat(playerRef.current.pos.z.toFixed(1)),
-        });
-      }
-
-      if (worldModeRef.current !== "splat" && composerRef.current) {
-        composerRef.current.render();
-      } else {
-        renderer.render(scene, camera);
-      }
-    };
-
-    animate();
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      container.removeEventListener("pointerdown", handleMouseDown);
-      window.removeEventListener("pointermove", handleMouseMove);
-      window.removeEventListener("pointerup", handleMouseUp);
-      window.removeEventListener("pointercancel", handleMouseUp);
-      cancelAnimationFrame(animId);
-      loadCityRef.current = null;
-      loadTempleRef.current = null;
-      loadSplatRef.current = null;
-      dracoLoader.dispose();
-      disposed = true;
-      scene.traverse((object) => {
-        const mesh = object as THREE.Mesh;
-        mesh.geometry?.dispose();
-        const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
-        for (const material of materials) {
-          for (const value of Object.values(material)) if (value instanceof THREE.Texture) value.dispose();
-          material.dispose();
-        }
-      });
-      chongqingFacadeTex.dispose();
-      waterNormalMap.dispose();
-      fallbackEnvironment.dispose();
-      hdrEnvironment?.dispose();
-      environmentGenerator.dispose();
-      skyTexture?.dispose();
-      setTempleViewRef.current = null;
-      composer.dispose();
-      renderer.dispose();
-    };
-  }, []);
-
-  // 响应维度切换
-  useEffect(() => {
-    if (chongqingGroupRef.current) chongqingGroupRef.current.visible = worldMode === "chongqing";
-    if (templeGroupRef.current) templeGroupRef.current.visible = worldMode === "temple";
-    if (cityGroupRef.current) cityGroupRef.current.visible = worldMode === "city";
-    if (splatGroupRef.current) splatGroupRef.current.visible = worldMode === "splat";
-
-    if (worldMode === "chongqing") {
-      if (vehicleCtrlRef.current) {
-        const p = vehicleCtrlRef.current.carBody.position;
-        playerRef.current.pos.set(p.x, p.y + 1.8, p.z);
-        playerRef.current.yaw = vehicleCtrlRef.current.heading + Math.PI;
-      } else {
-        playerRef.current.pos.set(-115, 28, 24);
-        playerRef.current.yaw = Math.PI;
-      }
-      playerRef.current.pitch = -0.14;
-      if (sceneRef.current) {
-        sceneRef.current.fog = new THREE.FogExp2("#b9c8d8", 0.00038);
-      }
-    } else if (worldMode === "temple") {
-      loadTempleRef.current?.();
-      playerRef.current.pos.copy(templeSpawnRef.current);
-      playerRef.current.pitch = -0.14;
-      playerRef.current.yaw = -0.38;
-      if (sceneRef.current) {
-        sceneRef.current.fog = new THREE.FogExp2("#bcd2e4", 0.00045);
-      }
-    } else if (worldMode === "city") {
-      loadCityRef.current?.();
-      playerRef.current.pos.copy(citySpawnRef.current);
-      playerRef.current.yaw = cityYawRef.current;
-      playerRef.current.pitch = -0.04;
-      if (sceneRef.current) {
-        sceneRef.current.fog = new THREE.FogExp2("#b8c8d4", 0.0016);
-      }
-    } else {
-      loadSplatRef.current?.(splatScene);
-      playerRef.current.pos.set(0, 1.8, 6.5);
-      playerRef.current.yaw = 0;
-      playerRef.current.pitch = -0.04;
-      if (sceneRef.current) {
-        sceneRef.current.fog = null;
-      }
-    }
-  }, [worldMode, splatScene]);
-
-  const currentMsg = BROADCAST_MESSAGES[broadcastIdx];
-
   return (
-    <div className="relative h-[calc(100dvh-48px)] min-h-[600px] w-full overflow-hidden select-none bg-[#070707] font-sans">
-      {/* 3D 渲染主画布 */}
-      <div ref={containerRef} className="relative h-full w-full cursor-grab active:cursor-grabbing">
-        <canvas ref={canvasRef} className="h-full w-full touch-none object-cover" />
-        {renderError && (
-          <div role="alert" className="absolute inset-0 z-50 flex items-center justify-center bg-[#111] p-8 text-center text-white">
-            <p>无法启动三维场景。请在浏览器设置中启用硬件加速，或使用支持 WebGL 2 的新版 Chrome、Edge 或 Safari 后重试。</p>
-          </div>
-        )}
+    <div
+      ref={containerRef}
+      className="relative h-[calc(100dvh-48px)] min-h-[580px] w-full overflow-hidden select-none bg-[#0e1c3a] font-sans"
+    >
+      <canvas ref={canvasRef} className="h-full w-full cursor-grab active:cursor-grabbing touch-none block" />
 
-        {worldMode === "temple" && (
-          <nav aria-label="寺院导览" className="absolute bottom-14 left-3 right-3 z-30 flex justify-center gap-1.5 sm:gap-2 sm:bottom-7 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
-            {([['overview','实景总览'],['gate','塔院山门'],['hall','古塔细节'],['buddha','大雄宝殿']] as const).map(([view,label]) => <button key={view} onClick={() => jumpToView(view)} className="min-h-9 sm:min-h-10 whitespace-nowrap rounded-full border border-white/25 bg-black/75 px-2.5 sm:px-3.5 text-[11px] sm:text-xs text-white backdrop-blur hover:bg-black/90 cursor-pointer">{label}</button>)}
-          </nav>
-        )}
-        {worldMode === "splat" && (
-          <nav aria-label="3DGS 实景切换" className="absolute bottom-14 left-3 right-3 z-30 flex justify-center gap-2 sm:bottom-7 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
-            {([['valley','苍翠山谷 (3DGS)'],['snow-street','雪夜街区 (3DGS)']] as const).map(([key,label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSplatScene(key)}
-                className={`min-h-9 sm:min-h-10 whitespace-nowrap rounded-full border px-3.5 text-xs backdrop-blur transition cursor-pointer ${
-                  splatScene === key
-                    ? "border-[#2997ff] bg-[#0071e3] text-white font-medium"
-                    : "border-white/25 bg-black/75 text-white/85 hover:bg-black/90"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-        )}
-        {worldMode === "temple" && (
-          <div className="absolute bottom-1 left-3 z-30 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/75 px-2 py-1 text-[9px] sm:text-xs text-white sm:bottom-6 sm:left-auto sm:right-6" role="status">
-            {templeAssetState === "loading" ? `实景塔院加载中 · ${templeProgress}% · 桌面约 56 MB` : templeAssetState === "ready" ? templeView === "real" ? "焦山定慧寺塔院扫描 · 8K 原始分辨率贴图 · CC BY 4.0" : "大雄宝殿 · 佛前祈福殿堂与僧侣茶亭" : "实景模型加载失败，显示建筑预览；刷新可重试"}
-            {templeAssetState === "ready" && <a href="/models/jiaoshan-temple/credits.txt" target="_blank" rel="noreferrer" className="ml-2 underline">Metazeon · Amazon · 素材署名</a>}
-          </div>
-        )}
-        {worldMode === "chongqing" && (
-          <div className="absolute bottom-1 left-3 z-30 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/75 px-2.5 py-1 text-[9px] sm:text-xs text-white sm:bottom-6 sm:left-auto sm:right-6" role="status">
-            {chongqingAssetState === "loading"
-              ? "8D 重庆渝中半岛 OSM 数据加载中…"
-              : chongqingAssetState === "ready"
-                ? "8D 魔幻重庆 · OpenStreetMap 502 栋实景建筑 · 271 条路网 · Cannon-es 载具物理"
-                : "重庆地图加载失败，请刷新重试"}
-          </div>
-        )}
-        {worldMode === "city" && (
-          <div className="absolute bottom-1 left-3 z-30 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/70 px-2 py-1 text-[9px] sm:text-xs text-white sm:bottom-6 sm:left-auto sm:right-6" role="status">
-            {cityAssetState === "loading" ? `写实街区加载中 · ${cityProgress}% · 首次约 80 MB` : cityAssetState === "ready" ? "Amazon Lumberyard Bistro · CC BY 4.0 · 写实示范街区" : cityAssetState === "error" ? "精细场景加载失败，正在显示轻量街区；刷新可重试" : "轻量街区预览"}
-            {cityAssetState === "ready" && <a href="https://github.com/neftaly/bistro-gltf" target="_blank" rel="noreferrer" className="ml-2 underline">素材署名</a>}
-          </div>
-        )}
+      {renderError && (
+        <div role="alert" className="absolute inset-0 z-50 flex items-center justify-center bg-[#0e1c3a] p-8 text-center text-white">
+          <p>无法启动 WebGL 3D 渲染器，请启用浏览器硬件加速后重试。</p>
+        </div>
+      )}
 
-        {/* 电影级镜头边缘暗角与焦外晕影 (Radial Vignette) */}
-        {/* taste-skill-ignore */}<div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_center,transparent_45%,rgba(0,0,0,0.22)_100%)]" />
+      {/* 左上角：极简克制标题与遥测 */}
+      <div
+        role="status"
+        className="pointer-events-none absolute top-3 left-3 sm:top-4 sm:left-4 z-20 rounded-2xl border border-white/15 bg-slate-950/55 px-3 py-2 sm:px-4 sm:py-2.5 text-white backdrop-blur-md"
+      >
+        <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-medium tracking-widest text-amber-300/90 uppercase">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span>{ready ? "TERRA-OASIS · 云海浮空仙刹" : "正在构建云海世界…"}</span>
+        </div>
+        <div className="mt-1 hidden sm:flex items-center gap-3 text-[12px] text-white/75 tabular-nums">
+          <span>ALT {hudStats.alt}m</span>
+          <span>SPD {hudStats.spd} km/h</span>
+          <span className="text-emerald-400">{hudStats.fps} FPS</span>
+        </div>
+      </div>
 
-        {/* 电影宽银幕上下遮幅 (Cinematic 2.39:1 Letterbox) */}
-        <div
-          className={`pointer-events-none absolute inset-x-0 top-0 z-20 bg-black/95 transition-[height] duration-700 ease-out ${
-            isCinematic ? "h-8 sm:h-12" : "h-0"
+      {/* 右上角：精简功能胶囊 + 光环计数（移动端下移避免与左上角重叠） */}
+      <div className="absolute top-14 left-3 sm:left-auto sm:top-4 sm:right-4 z-20 flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="rounded-full border border-amber-300/30 bg-slate-950/60 px-3 py-1.5 text-[12px] font-medium text-amber-200 backdrop-blur-md tabular-nums">
+          灵环 {ringsPassed}/7
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsAutopilot((v) => !v)}
+          className={`rounded-full border px-3 py-1.5 text-[12px] font-medium backdrop-blur-md transition cursor-pointer ${
+            isAutopilot
+              ? "border-amber-400 bg-amber-400 text-slate-950"
+              : "border-white/20 bg-slate-950/60 text-white hover:bg-slate-900/80"
           }`}
-        />
-        <div
-          className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-black/95 transition-[height] duration-700 ease-out ${
-            isCinematic ? "h-8 sm:h-12" : "h-0"
-          }`}
-        />
-
-        {/* 屏幕准星（电影运镜时自动淡出） */}
-        {!isCinematic && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-500">
-            <div className="h-4 w-[1px] bg-white/60" />
-            <div className="absolute h-[1px] w-4 bg-white/60" />
-            <div className="absolute h-2 w-2 rounded-full border border-[#2997ff]/80" />
-          </div>
+        >
+          {isAutopilot ? "电影巡航中" : "电影巡航"}
+        </button>
+        <button
+          type="button"
+          onClick={toggleSound}
+          className="rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
+        >
+          {isMuted ? "音效关" : "音效开"}
+        </button>
+        {onToggleSpecs && (
+          <button
+            type="button"
+            onClick={onToggleSpecs}
+            className="hidden sm:inline-flex rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
+          >
+            世界模型文献
+          </button>
         )}
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
+        >
+          {isFullscreen ? "退出" : "全屏"}
+        </button>
+      </div>
 
-        {/* 浮动金色功德文字 */}
-        <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden">
-          {floatingTexts.map((item) => (
-            <div
-              key={item.id}
-              style={{ left: `${item.x}%`, top: `${item.y}%` }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 animate-float-fade font-semibold text-[#ffd60a] text-[20px] sm:text-[24px] tracking-tight whitespace-nowrap"
-            >
-              {item.text}
-            </div>
-          ))}
+      {/* 穿过光环极简提示 */}
+      {toast && (
+        <div className="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 z-30 rounded-full border border-amber-300/40 bg-slate-950/75 px-4 py-1.5 text-sm font-medium text-amber-200 backdrop-blur-md shadow-lg">
+          {toast}
         </div>
+      )}
 
-        {/* 顶部居中：Apple 极简灵动药丸 (四模切换 + 在线广播) */}
-        <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 sm:gap-3 rounded-full bg-[#1d1d1f]/95 px-2 sm:px-4 py-1.5 border border-white/10 text-[12px] text-white max-w-[96vw] sm:max-w-4xl" data-ui="true">
-          <div className="flex items-center gap-1 bg-white/10 rounded-full p-0.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setWorldMode("chongqing")}
-              className={`terra-btn whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
-                worldMode === "chongqing"
-                  ? "bg-[#ff3b30] text-white font-semibold"
-                  : "text-white/70 hover:text-white"
-              }`}
-            >
-              8D 重庆
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorldMode("temple")}
-              className={`terra-btn whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
-                worldMode === "temple"
-                  ? "bg-[#2997ff] text-white font-semibold"
-                  : "text-white/60 hover:text-white"
-              }`}
-            >
-              灵山寺院
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorldMode("city")}
-              className={`terra-btn whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
-                worldMode === "city"
-                  ? "bg-[#2997ff] text-white font-semibold"
-                  : "text-white/60 hover:text-white"
-              }`}
-            >
-              写实街区
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorldMode("splat")}
-              className={`terra-btn whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
-                worldMode === "splat"
-                  ? "bg-[#2997ff] text-white font-semibold"
-                  : "text-white/60 hover:text-white"
-              }`}
-            >
-              3DGS 实景
-            </button>
-          </div>
-
-          <span className="text-white/20 hidden sm:inline">|</span>
-
-          {/* 在线人数与动作广播 */}
-          <div className="hidden sm:flex items-center gap-2 truncate text-[12px]">
-            <span className="h-2 w-2 rounded-full bg-[#34c759] shrink-0" />
-            <span className="text-white/50 shrink-0 tnum">{onlineCount} 在线</span>
-            <span className="text-white/30 hidden md:inline">·</span>
-            <div className="truncate hidden md:block">
-              <span className="text-[#2997ff] font-medium mr-1.5">{currentMsg.user}</span>
-              <span className="text-white/80">{currentMsg.action}</span>
-              <span className="text-white/40 ml-1.5">({currentMsg.detail})</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 左上角：世界维度与 3D 摄像机坐标 */}
-        <div className="pointer-events-none absolute top-16 sm:top-6 left-3 sm:left-6 z-30 max-w-xs">
-          <div className="rounded-[18px] bg-[#0c0c0e]/85 p-2.5 sm:p-4 text-white border border-white/5" data-ui="true">
-            <div className="hidden sm:flex items-center gap-2 text-[13px] text-[#2997ff] tnum">
-              <span className={`h-2 w-2 rounded-full ${worldMode === "chongqing" ? "bg-[#ff3b30]" : "bg-[#2997ff]"}`} />
-              <span>
-                {worldMode === "chongqing"
-                  ? "TERRA-CHONGQING-8D"
-                  : worldMode === "temple"
-                    ? "TERRA-CYBER-TEMPLE"
-                    : worldMode === "city"
-                      ? "TERRA-CYBER-CITY"
-                      : "TERRA-3DGS-SPARK"}
-              </span>
-            </div>
-            <div className="mt-1 font-semibold text-white text-[13px] sm:text-[17px] tracking-tight">
-              {worldMode === "chongqing"
-                ? "8D 魔幻重庆 · GTA 山城"
-                : worldMode === "temple"
-                  ? templeView === "real"
-                    ? "焦山定慧寺 · 实景塔院"
-                    : "大雄宝殿 · 佛前祈福"
-                  : worldMode === "city"
-                    ? "写实街区 · Bistro 天际线"
-                    : splatScene === "valley"
-                      ? "SparkJS 3DGS · 苍翠山谷"
-                      : "SparkJS 3DGS · 雪夜街区"}
-            </div>
-            <div className="mt-2 hidden sm:flex items-center gap-2.5 text-[12px] text-white/50 tnum">
-              {worldMode === "chongqing" && (
-                <span className="text-[#ffd60a] font-semibold">{carSpeedKmh} KM/H</span>
-              )}
-              <span>X: {cameraCoords.x}m</span>
-              <span>Y: {cameraCoords.y}m</span>
-              <span>Z: {cameraCoords.z}m</span>
-              <span className="text-[#34c759]">{measuredFps || "—"} FPS</span>
-            </div>
-          </div>
-        </div>
-
-        <button type="button" onClick={() => setShowMobileActions((value) => !value)} className="absolute right-3 top-16 z-40 min-h-11 rounded-full border border-white/20 bg-black/75 px-4 text-sm text-white sm:hidden">{showMobileActions ? "收起" : worldMode === "chongqing" ? "山城任务" : worldMode === "temple" ? "祈福互动" : "街区互动"}</button>
-        {/* 右上角：专属互动浮岛 */}
-        <div className={`absolute top-28 sm:top-24 right-3 sm:right-6 z-30 flex-col items-end gap-2 ${showMobileActions ? "flex" : "hidden sm:flex"}`}>
-          {worldMode === "chongqing" ? (
-            <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2.5 max-w-[235px]" data-ui="true">
-              <div className="flex items-center justify-between text-[11px] text-white/50">
-                <span>山城打卡任务</span>
-                <span className="text-[#ffd60a] font-semibold tnum">{completedCount} 站已打卡</span>
-              </div>
-              <div className="rounded-[12px] bg-white/5 px-2.5 py-2 border border-white/10">
-                <div className="text-[12px] font-semibold text-[#ffd60a]">
-                  目标：{CHONGQING_CHECKPOINTS[checkpointIdx]?.name}
-                </div>
-                <div className="text-[10px] text-white/60 mt-0.5">
-                  {CHONGQING_CHECKPOINTS[checkpointIdx]?.subtitle} · 距 {checkpointDist}m
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDriving((prev) => {
-                      const next = !prev;
-                      zenAudio.playCyberPulse();
-                      spawnFloatingText(next ? "已上车 · WASD 驾驶 / Space 漂移" : "已下车 · 步行漫游");
-                      if (!next && vehicleCtrlRef.current) {
-                        const p = vehicleCtrlRef.current.carBody.position;
-                        playerRef.current.pos.set(p.x + 3.2, p.y + 1.8, p.z);
-                        playerRef.current.yaw = vehicleCtrlRef.current.heading;
-                      }
-                      return next;
-                    });
-                  }}
-                  className={`rounded-[10px] py-2 px-3 text-left text-[12px] font-medium transition cursor-pointer flex items-center justify-between ${
-                    isDriving ? "bg-[#ff3b30]/25 text-[#ff6961] hover:bg-[#ff3b30]/35" : "bg-[#2997ff]/25 text-[#2997ff] hover:bg-[#2997ff]/35"
-                  }`}
-                >
-                  <span>{isDriving ? "下车步行 (F)" : "上车驾驶 (F)"}</span>
-                  <span className="text-[10px] opacity-80">{isDriving ? "驾驶中" : "步行中"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextIdx = (checkpointIdx + 1) % CHONGQING_CHECKPOINTS.length;
-                    const cp = CHONGQING_CHECKPOINTS[nextIdx];
-                    setCheckpointIdx(nextIdx);
-                    if (vehicleCtrlRef.current && chongqingBundleRef.current) {
-                      const y = getChongqingElevation(cp.x - 38, cp.z + 18);
-                      vehicleCtrlRef.current.carBody.position.set(cp.x - 38, Math.max(0.5, y), cp.z + 18);
-                      vehicleCtrlRef.current.speed = 0;
-                      vehicleCtrlRef.current.heading = 0;
-                      chongqingBundleRef.current.beaconGroup.position.set(cp.x, getChongqingElevation(cp.x, cp.z), cp.z);
-                    }
-                    zenAudio.playCyberPulse();
-                    spawnFloatingText(`已传送至 ${cp.name} 附近`);
-                  }}
-                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-3 text-left text-[12px] font-medium text-white transition cursor-pointer flex items-center justify-between"
-                >
-                  <span>切换并传送下一地标</span>
-                  <span className="text-[10px] text-white/50">瞬移</span>
-                </button>
-              </div>
-            </div>
-          ) : worldMode === "temple" ? (
-            <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2.5 max-w-[210px]" data-ui="true">
-              <div className="flex items-center justify-between text-[11px] text-white/50">
-                <span>赛博禅修 · 功德积攒</span>
-                <span className="text-[#ffd60a] font-semibold tnum">{meritCount}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
-                  type="button"
-                  onClick={handleKnockWoodenFish}
-                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-white transition cursor-pointer"
-                  title="敲击电子木鱼（Space / 点击）"
-                >
-                  敲木鱼
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRingBell}
-                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-white transition cursor-pointer"
-                  title="撞响天坛晨钟（E 键）"
-                >
-                  撞晨钟
-                </button>
-                <button
-                  type="button"
-                  onClick={handleBurnIncense}
-                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-[#ffd60a] transition cursor-pointer"
-                  title="敬奉赛博真香（F 键）"
-                >
-                  敬真香
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDrinkTea}
-                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-[#34c759] transition cursor-pointer"
-                  title="禅茶馆品茗（T 键）"
-                >
-                  品禅茶
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDrawFortune}
-                  className="col-span-2 rounded-[10px] bg-[#2997ff]/20 hover:bg-[#2997ff]/30 active:scale-95 py-2 px-2 text-center text-[12px] font-medium text-[#2997ff] transition cursor-pointer"
-                  title="感召灵签"
-                >
-                  佛前感召灵签
-                </button>
-              </div>
-            </div>
-          ) : worldMode === "city" ? (
-            <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-2 max-w-[220px]" data-ui="true">
-              <div className="text-[11px] text-white/50">多智能体 · 决策推演</div>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  type="button"
-                  onClick={handleTriggerAvoidance}
-                  className="rounded-[10px] bg-[#2997ff]/20 hover:bg-[#2997ff]/30 active:scale-95 py-2 px-3 text-left text-[12px] font-medium text-[#2997ff] transition cursor-pointer flex items-center justify-between"
-                >
-                  <span>注入突发避障 (E)</span>
-                  <span className="text-[10px] text-[#2997ff]/70">反事实</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    zenAudio.playCyberPulse();
-                    playerRef.current.pos.y = 28.0;
-                    playerRef.current.pitch = -0.55;
-                  }}
-                  className="rounded-[10px] bg-white/10 hover:bg-white/20 active:scale-95 py-2 px-3 text-left text-[12px] font-medium text-white transition cursor-pointer flex items-center justify-between"
-                >
-                  <span>无人机俯瞰 (Space)</span>
-                  <span className="text-[10px] text-white/50">高空</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 sm:p-3.5 border border-white/10 text-white space-y-1.5 max-w-[220px]" data-ui="true">
-              <div className="text-[11px] text-[#2997ff] font-medium">SparkJS 3DGS 神经辐射场</div>
-              <div className="text-[11px] text-white/70">
-                {splatAssetState === "loading" ? "正在解码 .spz 高斯点云…" : splatAssetState === "ready" ? "已加载 World Labs .spz 实景" : "准备就绪"}
-              </div>
-            </div>
-          )}
-
-          {/* 电影运镜切换 / 全屏 / 文献 */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsCinematic((prev) => {
-                  const next = !prev;
-                  spawnFloatingText(next ? "开启电影级全景运镜 (按 C 切换)" : "恢复自由漫游 (按 C 切换)");
-                  return next;
-                });
-              }}
-              className={`rounded-full px-3 py-1 text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 border shadow-lg backdrop-blur-md ${
-                isCinematic
-                  ? "bg-[#ff9f0a] border-[#ff9f0a] text-black font-semibold"
-                  : "bg-black/75 border-white/20 hover:bg-black/90 text-white"
-              }`}
-              title="一键开启/退出电影级航拍运镜（快捷键 C）"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-              <span>{isCinematic ? "电影运镜中" : "电影运镜"}</span>
-            </button>
-            {onToggleSpecs && (
-              <button
-                type="button"
-                onClick={onToggleSpecs}
-                className="rounded-full bg-black/75 border border-white/20 hover:bg-black/90 px-3 py-1 text-[11px] text-white backdrop-blur-md shadow-lg transition cursor-pointer"
-              >
-                世界模型文献
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="rounded-full bg-black/75 border border-white/20 hover:bg-black/90 px-3 py-1 text-[11px] text-white backdrop-blur-md shadow-lg transition cursor-pointer"
-            >
-              {isFullscreen ? "退出全屏" : "全屏"}
-            </button>
-          </div>
-        </div>
-
-        {/* 左下角：GTA 圆形雷达小地图 + WASD 控制盘 */}
-        <div className="absolute bottom-28 sm:bottom-6 left-3 sm:left-8 z-30 flex items-end gap-3">
-          {worldMode === "chongqing" && (
-            <div className="hidden sm:flex flex-col items-center gap-1 rounded-full p-1 bg-[#1d1d1f]/90 border-2 border-white/20 shadow-2xl" data-ui="true">
-              <canvas ref={minimapCanvasRef} width={128} height={128} className="rounded-full block" />
-            </div>
-          )}
-          <div className="rounded-[20px] bg-[#1d1d1f]/95 p-3 text-white border border-white/5" data-ui="true">
-            <div className="text-[11px] text-white/50 mb-2 font-medium hidden sm:block tracking-wide">
-              {worldMode === "chongqing"
-                ? "WASD 驾驶 · Space 漂移 · Shift 氮气 · F 上/下车"
-                : worldMode === "temple"
-                  ? "WASD 漫游 · Space 敲木鱼 · F 敬香 · T 品茶 · E 撞钟"
-                  : "WASD 漫游 · Shift 加速 · Space 跳跃 · E 避障"}
-            </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  const fwd = new THREE.Vector3(
-                    -Math.sin(playerRef.current.yaw),
-                    0,
-                    -Math.cos(playerRef.current.yaw)
-                  );
-                  playerRef.current.pos.addScaledVector(fwd, 1.8);
-                }}
-                className={`terra-btn h-8 w-11 rounded-[8px] text-[13px] font-semibold transition cursor-pointer ${
-                  activeKeys["w"] || activeKeys["arrowup"] ? "bg-[#2997ff] text-white" : "bg-white/10 text-white/70"
-                }`}
-              >
-                W
-              </button>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const right = new THREE.Vector3(
-                      Math.cos(playerRef.current.yaw),
-                      0,
-                      -Math.sin(playerRef.current.yaw)
-                    );
-                    playerRef.current.pos.addScaledVector(right, -1.8);
-                  }}
-                  className={`terra-btn h-8 w-11 rounded-[8px] text-[13px] font-semibold transition cursor-pointer ${
-                    activeKeys["a"] || activeKeys["arrowleft"] ? "bg-[#2997ff] text-white" : "bg-white/10 text-white/70"
-                  }`}
-                >
-                  A
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const fwd = new THREE.Vector3(
-                      -Math.sin(playerRef.current.yaw),
-                      0,
-                      -Math.cos(playerRef.current.yaw)
-                    );
-                    playerRef.current.pos.addScaledVector(fwd, -1.8);
-                  }}
-                  className={`terra-btn h-8 w-11 rounded-[8px] text-[13px] font-semibold transition cursor-pointer ${
-                    activeKeys["s"] || activeKeys["arrowdown"] ? "bg-[#2997ff] text-white" : "bg-white/10 text-white/70"
-                  }`}
-                >
-                  S
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const right = new THREE.Vector3(
-                      Math.cos(playerRef.current.yaw),
-                      0,
-                      -Math.sin(playerRef.current.yaw)
-                    );
-                    playerRef.current.pos.addScaledVector(right, 1.8);
-                  }}
-                  className={`terra-btn h-8 w-11 rounded-[8px] text-[13px] font-semibold transition cursor-pointer ${
-                    activeKeys["d"] || activeKeys["arrowright"] ? "bg-[#2997ff] text-white" : "bg-white/10 text-white/70"
-                  }`}
-                >
-                  D
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 灵签弹窗 (Apple 极简磨砂卡片) */}
-        {activeFortune && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-            <div
-              className="w-full max-w-md rounded-[28px] bg-[#1d1d1f] p-6 sm:p-8 text-white space-y-5 border border-white/10 animate-fade-in"
-              data-ui="true"
-            >
-              <div className="flex items-center justify-between">
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#ffd60a]/15 px-3 py-1 text-[12px] font-semibold text-[#ffd60a]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffd60a]" />
-                  <span>{activeFortune.grade}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveFortune(null)}
-                  className="rounded-full bg-white/10 h-7 px-3 flex items-center justify-center text-[12px] text-white/70 hover:bg-white/20 hover:text-white transition cursor-pointer"
-                >
-                  关闭
-                </button>
-              </div>
-
-              <div className="space-y-1 text-center py-2">
-                <div className="text-[13px] text-[#2997ff] font-medium tracking-widest">
-                  大雄宝殿 · 金佛灵签推演
-                </div>
-                <h3 className="text-[26px] font-semibold text-white tracking-tight">
-                  {activeFortune.title}
-                </h3>
-              </div>
-
-              <div className="rounded-[18px] bg-white/5 p-4 text-center leading-relaxed text-[#ffd60a] text-[15px] font-medium">
-                “{activeFortune.poem}”
-              </div>
-
-              <div className="space-y-2 text-[14px] text-white/70 leading-relaxed">
-                <div className="text-white/40 text-[12px]">【卦象解析】</div>
-                <div>{activeFortune.meaning}</div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-[12px] text-white/40">累计功德：{meritCount}</span>
-                <button
-                  type="button"
-                  onClick={handleDrawFortune}
-                  className="rounded-full bg-[#2997ff] px-5 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer"
-                >
-                  再求一签
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* 底部居中：极简一行操作提示 */}
+      <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap rounded-full border border-white/15 bg-slate-950/50 px-4 py-1.5 text-[11px] sm:text-[12px] text-white/80 backdrop-blur-md">
+        W/S 俯仰 · A/D 转向 · Space 爬升 · Shift 灵气加速 · C 巡航 · 鼠标拖拽环视
       </div>
     </div>
   );

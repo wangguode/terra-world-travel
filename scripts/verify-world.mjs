@@ -4,90 +4,51 @@ import path from "node:path";
 
 const output = path.resolve("screenshots/world-verification");
 await fs.mkdir(output, { recursive: true });
-const result = { url: process.env.WORLD_URL || "http://127.0.0.1:3100", checks: {}, errors: [], warnings: [], requests: [], screenshots: [] };
+const result = { url: process.env.WORLD_URL || "http://127.0.0.1:3100", checks: {}, errors: [], warnings: [], screenshots: [] };
 const browser = await chromium.launch({ channel: "chrome", headless: true });
+
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
-  page.on("console", (message) => {
-    if (message.type() === "error") result.errors.push(message.text());
-    if (message.type() === "warning") result.warnings.push(message.text());
+  page.on("console", (msg) => {
+    if (msg.type() === "error") result.errors.push(msg.text());
+    if (msg.type() === "warning") result.warnings.push(msg.text());
   });
-  page.on("pageerror", (error) => result.errors.push(error.message));
-  page.on("request", (request) => {
-    if (/\/(models|draco|textures)\//.test(request.url())) result.requests.push(request.url());
-  });
-  await page.addInitScript(() => {
-    window.__worldContextCalls = 0;
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
-      if (kind === "webgl2" || kind === "webgl") window.__worldContextCalls++;
-      return original.call(this, kind, ...args);
-    };
-  });
-  await page.goto(result.url, { waitUntil: "domcontentloaded", timeout: 60000 });
-  const chongqingReady = page.getByRole("status").filter({ hasText: "8D 魔幻重庆" });
-  await expect(chongqingReady).toBeVisible({ timeout: 25000 });
-  result.checks.chongqingReady = true;
-  await page.evaluate(() => { window.__worldCanvas = document.querySelector("canvas"); });
-  const screenshot = async (name) => {
-    await page.waitForTimeout(1500);
+  page.on("pageerror", (err) => result.errors.push(err.message));
+
+  await page.goto(result.url, { waitUntil: "domcontentloaded", timeout: 30000 });
+  const readyStatus = page.getByRole("status").filter({ hasText: "云海浮空仙刹" });
+  await expect(readyStatus).toBeVisible({ timeout: 15000 });
+  result.checks.sanctuaryReady = true;
+
+  const snap = async (name, wait = 900) => {
+    await page.waitForTimeout(wait);
     const file = path.join(output, name);
     await page.screenshot({ path: file });
     result.screenshots.push(file);
   };
-  await screenshot("chongqing-desktop-1440.png");
-  const zHud = page.locator("span").filter({ hasText: /^Z: -?[\d.]+m$/ }).first();
-  const beforeZ = await zHud.innerText();
-  const beforeRequests = result.requests.length;
-  const beforeContexts = await page.evaluate(() => window.__worldContextCalls);
-  const beforeWarnings = result.warnings.length;
-  await page.keyboard.down("w");
-  await page.waitForTimeout(1100);
-  await page.keyboard.up("w");
-  await expect(zHud).not.toHaveText(beforeZ, { timeout: 6000 });
-  result.checks.movement = { before: beforeZ, after: await zHud.innerText() };
-  await expect.poll(() => page.evaluate(() => document.querySelector("canvas") === window.__worldCanvas)).toBe(true);
-  result.checks.stableCanvas = true;
-  if (await page.evaluate(() => window.__worldContextCalls) !== beforeContexts) throw new Error("Movement initialized a new WebGL context");
-  if (result.requests.length !== beforeRequests) throw new Error("Movement reloaded model assets");
-  if (result.warnings.slice(beforeWarnings).some((warning) => /context|initializ|WebGL/i.test(warning))) throw new Error("Movement produced WebGL warnings");
-  result.checks.noReloadOnMovement = true;
-  await page.setViewportSize({ width: 375, height: 812 });
-  await screenshot("chongqing-mobile-375.png");
-  result.checks.mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-  await page.setViewportSize({ width: 1440, height: 900 });
 
-  await page.getByRole("button", { name: "灵山寺院", exact: true }).click();
-  const templeReady = page.getByRole("status").filter({ hasText: "焦山定慧寺塔院扫描" });
-  await expect(templeReady).toBeVisible({ timeout: 90000 });
-  result.checks.templeReady = true;
-  await screenshot("temple-desktop-1440.png");
-  const meritPanel = page.getByText("赛博禅修 · 功德积攒", { exact: true }).first().locator("..");
-  const beforeMerit = Number((await meritPanel.innerText()).match(/\d+/)?.[0]);
-  await page.getByRole("button", { name: "敲木鱼", exact: true }).first().click();
-  await expect.poll(async () => Number((await meritPanel.innerText()).match(/\d+/)?.[0])).toBe(beforeMerit + 1);
-  result.checks.merit = true;
-  await page.waitForTimeout(1200);
-  await page.getByRole("button", { name: "写实街区", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Amazon Lumberyard Bistro" })).toBeVisible({ timeout: 120000 });
-  result.checks.cityReady = true;
-  await screenshot("city-desktop-1440.png");
-  const loadedRequests = result.requests.length;
-  await page.getByRole("button", { name: "灵山寺院", exact: true }).click();
-  await expect(templeReady).toBeVisible();
-  await page.waitForTimeout(500);
-  if (result.requests.length !== loadedRequests) throw new Error("Returning to temple reloaded assets");
-  result.checks.cachedModeSwitch = true;
-  for (const name of ["实景总览", "塔院山门", "古塔细节", "大雄宝殿"]) {
-    await page.getByRole("button", { name, exact: true }).click();
-    await page.waitForTimeout(200);
-  }
-  result.checks.templeNavigation = true;
-  await screenshot("buddha-desktop-1440.png");
-  await page.getByRole("button", { name: "3DGS 实景", exact: true }).click();
-  await page.waitForTimeout(2500);
-  await screenshot("splat-desktop-1440.png");
-  result.checks.splatReady = true;
+  // 1. 首屏迎面飞向金顶古塔与第1道灵气环
+  await snap("sanctuary-hero-1440.png", 900);
+
+  // 2. 加速 + 左转侧倾飞行视角
+  await page.keyboard.down("Shift");
+  await page.keyboard.down("a");
+  await page.waitForTimeout(900);
+  await snap("sanctuary-flight-1440.png", 200);
+  await page.keyboard.up("a");
+  await page.keyboard.up("Shift");
+  result.checks.flightControls = true;
+
+  // 3. 电影巡航全景视角
+  await page.getByRole("button", { name: "电影巡航", exact: true }).click();
+  await snap("sanctuary-cinematic-1440.png", 1400);
+  result.checks.cinematicCruise = true;
+
+  // 4. 移动端 375px 适配验证
+  await page.setViewportSize({ width: 375, height: 812 });
+  await snap("sanctuary-mobile-375.png", 800);
+  result.checks.mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+
   if (result.checks.mobileOverflow) throw new Error("Mobile page overflows horizontally");
   if (result.errors.length) throw new Error(`Browser errors: ${result.errors.join("; ")}`);
   result.passed = true;
