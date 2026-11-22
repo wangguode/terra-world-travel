@@ -2,43 +2,76 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import {
-  createCliffTexture,
-  createCloudSpriteTexture,
-  createGlowSpriteTexture,
-  createWaterfallTexture,
-} from "@/world/textures";
-import { createSkyAtmosphere } from "@/world/atmosphere";
-import { buildSkySanctuaryWorld } from "@/world/environment";
-import { createSkyGlider } from "@/world/glider";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import { SkySoundEngine } from "@/world/audio";
 
 interface True3DWorldGameProps {
   onToggleSpecs?: () => void;
 }
 
+interface SplatPreset {
+  id: string;
+  label: string;
+  title: string;
+  url: string;
+  scale: number;
+  spawn: [number, number, number];
+  yaw: number;
+  pitch: number;
+  orbitCenter: [number, number, number];
+  orbitRadius: number;
+}
+
+const SPLAT_PRESETS: SplatPreset[] = [
+  {
+    id: "valley",
+    label: "雪山溪谷",
+    title: "3DGS 光场 · 阿尔卑斯雪山溪谷",
+    url: "/splats/valley.spz",
+    scale: 2.6,
+    spawn: [0, 0.8, 5.2],
+    yaw: 0,
+    pitch: -0.02,
+    orbitCenter: [0, 0.6, 0],
+    orbitRadius: 4.8,
+  },
+  {
+    id: "transit",
+    label: "实景铁路",
+    title: "3DGS 实景扫描 · 真实铁路机车与轨道",
+    url: "/splats/transit-platform.splat",
+    scale: 1.8,
+    spawn: [0, 0.6, 4.8],
+    yaw: 0,
+    pitch: -0.04,
+    orbitCenter: [0, 0.4, 0],
+    orbitRadius: 4.5,
+  },
+];
+
 export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [ready, setReady] = useState(false);
+  const [activeId, setActiveId] = useState<string>("valley");
+  const [customTitle, setCustomTitle] = useState<string | null>(null);
+  const [assetState, setAssetState] = useState<"loading" | "ready" | "error">("loading");
   const [renderError, setRenderError] = useState(false);
-  const [isAutopilot, setIsAutopilot] = useState(false);
-  const isAutopilotRef = useRef(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [isCinematic, setIsCinematic] = useState(false);
+  const isCinematicRef = useRef(false);
   useEffect(() => {
-    isAutopilotRef.current = isAutopilot;
-  }, [isAutopilot]);
+    isCinematicRef.current = isCinematic;
+  }, [isCinematic]);
 
   const [isMuted, setIsMuted] = useState(true);
   const soundRef = useRef<SkySoundEngine | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [ringsPassed, setRingsPassed] = useState(0);
-  const [hudStats, setHudStats] = useState({ alt: 36, spd: 26, fps: 60 });
-  const [toast, setToast] = useState<string | null>(null);
+  const [fps, setFps] = useState(60);
+
+  const loadPresetRef = useRef<((preset: SplatPreset) => void) | null>(null);
+  const loadCustomFileRef = useRef<((file: File) => void) | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -59,72 +92,131 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 1.05;
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#0b101b");
+
     const camera = new THREE.PerspectiveCamera(
-      56,
+      58,
       container.clientWidth / container.clientHeight,
-      0.5,
-      2000
+      0.05,
+      500
     );
 
-    // 1. 电影级黄金暮色苍穹与三点布光
-    const atmosphere = createSkyAtmosphere(scene);
+    // World Labs 开源 SparkJS 3D Gaussian Splatting 渲染器
+    const spark = new SparkRenderer({ renderer });
+    scene.add(spark);
 
-    // 2. 100% 程序化材质与《云海浮空仙刹》世界
-    const cliffTex = createCliffTexture();
-    const cloudTex = createCloudSpriteTexture();
-    const waterfallTex = createWaterfallTexture();
-    const glowTex = createGlowSpriteTexture();
+    const splatContainer = new THREE.Group();
+    scene.add(splatContainer);
 
-    const world = buildSkySanctuaryWorld(cliffTex, cloudTex, waterfallTex, glowTex);
-    scene.add(world.group);
-
-    // 3. 东方灵韵滑翔飞行器
-    const glider = createSkyGlider(glowTex);
-    scene.add(glider.group);
-    scene.add(glider.trailMesh);
-
-    // 4. 克制的电影级辉光后期管线（仅点亮瀑布、金顶、银杏、灵气环与尾焰）
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(container.clientWidth, container.clientHeight),
-      0.42,
-      0.55,
-      0.78
-    );
-    composer.addPass(bloomPass);
-    composer.addPass(new OutputPass());
-
-    // 5. 纯 Web Audio 声学引擎
     const sound = new SkySoundEngine();
     soundRef.current = sound;
 
-    // 飞行动力学状态（出生在主浮空仙岛南侧云端，正对七层金顶古塔与第 1 道灵气环）
-    const flight = {
-      pos: new THREE.Vector3(0, 36, 128),
-      yaw: 0,
-      pitch: -0.04,
-      roll: 0,
-      speed: 24,
-      boostTimer: 0,
-      camOrbitYaw: 0,
-      camOrbitPitch: 0,
+    let disposed = false;
+    const cache = new Map<string, SplatMesh>();
+    const customBlobUrls: string[] = [];
+    let currentPreset: SplatPreset = SPLAT_PRESETS[0];
+
+    // 平滑自由飞行相机状态
+    const camState = {
+      pos: new THREE.Vector3(...currentPreset.spawn),
+      targetPos: new THREE.Vector3(...currentPreset.spawn),
+      yaw: currentPreset.yaw,
+      targetYaw: currentPreset.yaw,
+      pitch: currentPreset.pitch,
+      targetPitch: currentPreset.pitch,
     };
 
+    const showOnly = (key: string) => {
+      cache.forEach((mesh, k) => {
+        mesh.visible = k === key;
+      });
+    };
+
+    const loadSplatByKey = (key: string, url: string, preset: SplatPreset) => {
+      if (disposed) return;
+      currentPreset = preset;
+      camState.targetPos.set(...preset.spawn);
+      camState.pos.set(...preset.spawn);
+      camState.targetYaw = preset.yaw;
+      camState.yaw = preset.yaw;
+      camState.targetPitch = preset.pitch;
+      camState.pitch = preset.pitch;
+
+      if (cache.has(key)) {
+        showOnly(key);
+        setAssetState("ready");
+        return;
+      }
+
+      setAssetState("loading");
+      showOnly(key);
+      try {
+        const mesh = new SplatMesh({
+          url,
+          onLoad: () => {
+            if (!disposed && currentPreset.id === key) {
+              setAssetState("ready");
+            }
+          },
+        });
+        // 标准 OpenCV -> Three.js 坐标系翻转（180° 绕 X 轴）
+        mesh.quaternion.set(1, 0, 0, 0);
+        mesh.scale.setScalar(preset.scale);
+        mesh.position.set(0, 0, 0);
+        splatContainer.add(mesh);
+        cache.set(key, mesh);
+        // 兜底：部分格式 onLoad 回调时机不同，2.2s 后自动就绪
+        setTimeout(() => {
+          if (!disposed && currentPreset.id === key) {
+            setAssetState("ready");
+          }
+        }, 2200);
+      } catch (err) {
+        console.warn("SparkJS SplatMesh load error:", err);
+        if (!disposed) setAssetState("error");
+      }
+    };
+
+    loadPresetRef.current = (preset) => {
+      setCustomTitle(null);
+      loadSplatByKey(preset.id, preset.url, preset);
+    };
+
+    loadCustomFileRef.current = (file) => {
+      const blobUrl = URL.createObjectURL(file);
+      customBlobUrls.push(blobUrl);
+      const customKey = `custom-${Date.now()}`;
+      const customPreset: SplatPreset = {
+        id: customKey,
+        label: "自定义",
+        title: `自定义 3DGS · ${file.name}`,
+        url: blobUrl,
+        scale: 2.2,
+        spawn: [0, 0.8, 5.0],
+        yaw: 0,
+        pitch: -0.02,
+        orbitCenter: [0, 0.5, 0],
+        orbitRadius: 4.5,
+      };
+      setActiveId(customKey);
+      setCustomTitle(customPreset.title);
+      loadSplatByKey(customKey, blobUrl, customPreset);
+    };
+
+    // 首屏直接加载真实雪山溪谷 3DGS 光场
+    loadSplatByKey(SPLAT_PRESETS[0].id, SPLAT_PRESETS[0].url, SPLAT_PRESETS[0]);
+
+    // 键盘与鼠标交互
     const keys: Record<string, boolean> = {};
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
       keys[k] = true;
-      if (k === "c") {
-        setIsAutopilot((prev) => !prev);
-      }
+      if (k === "c") setIsCinematic((v) => !v);
     };
     const onKeyUp = (e: KeyboardEvent) => {
       delete keys[e.key.toLowerCase()];
@@ -137,20 +229,32 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     let lastX = 0;
     let lastY = 0;
     const onPointerDown = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest("button, a")) return;
+      if ((e.target as HTMLElement).closest("button, a, input")) return;
       dragging = true;
       lastX = e.clientX;
       lastY = e.clientY;
     };
     const onPointerMove = (e: PointerEvent) => {
       if (!dragging) return;
-      flight.camOrbitYaw -= (e.clientX - lastX) * 0.004;
-      flight.camOrbitPitch = Math.max(-0.45, Math.min(0.45, flight.camOrbitPitch + (e.clientY - lastY) * 0.003));
+      camState.targetYaw -= (e.clientX - lastX) * 0.0042;
+      camState.targetPitch = Math.max(
+        -0.75,
+        Math.min(0.75, camState.targetPitch - (e.clientY - lastY) * 0.0036)
+      );
       lastX = e.clientX;
       lastY = e.clientY;
     };
     const onPointerUp = () => {
       dragging = false;
+    };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const fwd = new THREE.Vector3(
+        -Math.sin(camState.yaw) * Math.cos(camState.pitch),
+        Math.sin(camState.pitch),
+        -Math.cos(camState.yaw) * Math.cos(camState.pitch)
+      );
+      camState.targetPos.addScaledVector(fwd, -e.deltaY * 0.006);
     };
 
     const onResize = () => {
@@ -160,7 +264,6 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
-      composer.setSize(w, h);
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -170,20 +273,15 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     container.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
-
-    queueMicrotask(() => setReady(true));
+    container.addEventListener("wheel", onWheel, { passive: false });
 
     let animId = 0;
     let elapsed = 0;
     let lastTime = performance.now();
     let fpsFrames = 0;
     let fpsAcc = 0;
-    let measuredFps = 60;
-    let passedCount = 0;
 
-    const camTargetPos = new THREE.Vector3();
-    const camLookTarget = new THREE.Vector3();
-    const tailWorldPos = new THREE.Vector3();
+    const lookVec = new THREE.Vector3();
 
     const animate = (now: number) => {
       animId = requestAnimationFrame(animate);
@@ -193,123 +291,83 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
       fpsFrames++;
       fpsAcc += dt;
-      if (fpsAcc >= 0.5) {
-        measuredFps = Math.round(fpsFrames / fpsAcc);
+      if (fpsAcc >= 0.6) {
+        setFps(Math.round(fpsFrames / fpsAcc));
         fpsFrames = 0;
         fpsAcc = 0;
-        setHudStats({
-          alt: Math.round(flight.pos.y + 80),
-          spd: Math.round(flight.speed * 3.6),
-          fps: measuredFps,
-        });
       }
 
-      world.update(dt, elapsed);
-
-      const boosting = !!keys["shift"] || flight.boostTimer > 0;
-      if (flight.boostTimer > 0) flight.boostTimer = Math.max(0, flight.boostTimer - dt);
-
-      if (isAutopilotRef.current) {
-        // 电影级自动巡航：沿主塔与浮空瀑布大环线优雅盘旋
-        const orbitR = 108;
-        const a = elapsed * 0.22;
-        const nextX = Math.sin(a) * orbitR;
-        const nextZ = Math.cos(a) * orbitR;
-        const nextY = 38 + Math.sin(a * 2.0) * 14;
-        flight.yaw = Math.atan2(flight.pos.x - nextX, flight.pos.z - nextZ);
-        flight.pitch = Math.cos(a * 2.0) * 0.14;
-        flight.roll = -0.32;
-        flight.pos.set(nextX, nextY, nextZ);
-        flight.speed = 32;
-      } else {
-        const turnInput = (keys["a"] || keys["arrowleft"] ? 1 : 0) - (keys["d"] || keys["arrowright"] ? 1 : 0);
-        const pitchInput = (keys["s"] || keys["arrowdown"] ? 1 : 0) - (keys["w"] || keys["arrowup"] ? 1 : 0);
-        const climbInput = keys[" "] || keys["space"] ? 1 : 0;
-
-        flight.yaw += turnInput * 1.45 * dt;
-        const targetPitch = Math.max(-0.55, Math.min(0.55, flight.pitch + (pitchInput * 1.15 + climbInput * 0.7) * dt));
-        flight.pitch = targetPitch * (1 - dt * 0.65); // 自然回正
-        const targetRoll = turnInput * 0.58;
-        flight.roll += (targetRoll - flight.roll) * Math.min(1, dt * 6);
-
-        const targetSpeed = boosting ? 54 : 26;
-        flight.speed += (targetSpeed - flight.speed) * Math.min(1, dt * 4);
-
-        const forward = new THREE.Vector3(
-          -Math.sin(flight.yaw) * Math.cos(flight.pitch),
-          Math.sin(flight.pitch),
-          -Math.cos(flight.yaw) * Math.cos(flight.pitch)
+      if (isCinematicRef.current) {
+        const [cx, cy, cz] = currentPreset.orbitCenter;
+        const r = currentPreset.orbitRadius;
+        const angle = Math.sin(elapsed * 0.28) * 0.85;
+        camera.position.set(
+          cx + Math.sin(angle) * r,
+          cy + 0.35 + Math.sin(elapsed * 0.45) * 0.45,
+          cz + Math.cos(angle) * r
         );
-        flight.pos.addScaledVector(forward, flight.speed * dt);
+        camera.lookAt(cx, cy, cz);
+      } else {
+        const speed = (keys["shift"] ? 6.8 : 3.2) * dt;
+        const forward = new THREE.Vector3(
+          -Math.sin(camState.yaw) * Math.cos(camState.pitch),
+          Math.sin(camState.pitch),
+          -Math.cos(camState.yaw) * Math.cos(camState.pitch)
+        );
+        const right = new THREE.Vector3(Math.cos(camState.yaw), 0, -Math.sin(camState.yaw));
 
-        // 柔和边界回归与云海最低高度保护
-        flight.pos.y = Math.max(-35, Math.min(175, flight.pos.y));
-        const distFromCenter = Math.hypot(flight.pos.x, flight.pos.z);
-        if (distFromCenter > 360) {
-          const pull = (360 / distFromCenter);
-          flight.pos.x *= pull;
-          flight.pos.z *= pull;
+        let moving = false;
+        if (keys["w"] || keys["arrowup"]) {
+          camState.targetPos.addScaledVector(forward, speed);
+          moving = true;
         }
-      }
-
-      // 更新飞行器姿态与发光尾迹
-      glider.group.position.copy(flight.pos);
-      glider.group.rotation.order = "YXZ";
-      glider.group.rotation.set(flight.pitch, flight.yaw, flight.roll);
-
-      tailWorldPos.set(0, 0, 1.9).applyMatrix4(glider.group.matrixWorld);
-      glider.updateTrail(tailWorldPos, boosting);
-
-      // 动态 FOV 速度感
-      const targetFov = boosting ? 67 : 56;
-      if (Math.abs(camera.fov - targetFov) > 0.05) {
-        camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 5);
-        camera.updateProjectionMatrix();
-      }
-
-      // 丝滑弹簧追尾相机（支持鼠标拖拽临时环视）
-      if (!dragging) {
-        flight.camOrbitYaw *= Math.pow(0.92, dt * 60);
-        flight.camOrbitPitch *= Math.pow(0.92, dt * 60);
-      }
-      const camYaw = flight.yaw + flight.camOrbitYaw;
-      const camDist = boosting ? 14.5 : 12.2;
-      camTargetPos.set(
-        flight.pos.x + Math.sin(camYaw) * camDist,
-        flight.pos.y + 3.4 + flight.camOrbitPitch * 8,
-        flight.pos.z + Math.cos(camYaw) * camDist
-      );
-      camera.position.lerp(camTargetPos, Math.min(1, dt * 6.5));
-      camLookTarget.set(
-        flight.pos.x - Math.sin(flight.yaw) * 18,
-        flight.pos.y + 1.2 + Math.sin(flight.pitch) * 10,
-        flight.pos.z - Math.cos(flight.yaw) * 18
-      );
-      camera.lookAt(camLookTarget);
-
-      // 检测穿过灵气光环
-      world.rings.forEach((ring, idx) => {
-        if (!ring.passed && flight.pos.distanceTo(ring.position) < 12.5) {
-          ring.passed = true;
-          passedCount++;
-          setRingsPassed(passedCount);
-          flight.boostTimer = 1.6;
-          const mat = ring.mesh.material as THREE.MeshStandardMaterial;
-          mat.color.setHex(0x63f5b8);
-          mat.emissive.setHex(0x10b981);
-          sound.playRingChime(idx);
-          setToast(`穿过灵气光环 (${passedCount}/${world.rings.length}) · 灵风加速`);
-          setTimeout(() => setToast(null), 1800);
+        if (keys["s"] || keys["arrowdown"]) {
+          camState.targetPos.addScaledVector(forward, -speed);
+          moving = true;
         }
-      });
+        if (keys["a"] || keys["arrowleft"]) {
+          camState.targetPos.addScaledVector(right, -speed);
+          moving = true;
+        }
+        if (keys["d"] || keys["arrowright"]) {
+          camState.targetPos.addScaledVector(right, speed);
+          moving = true;
+        }
+        if (keys["e"] || keys[" "] || keys["space"]) {
+          camState.targetPos.y += speed * 0.75;
+          moving = true;
+        }
+        if (keys["q"]) {
+          camState.targetPos.y -= speed * 0.75;
+          moving = true;
+        }
 
-      sound.updateFlightSpeed((flight.speed - 20) / 34);
-      composer.render();
+        // 柔性边界限制，防止飞出光场有效范围
+        camState.targetPos.clampLength(0, 18);
+
+        const damp = Math.min(1, dt * 8.5);
+        camState.pos.lerp(camState.targetPos, damp);
+        camState.yaw += (camState.targetYaw - camState.yaw) * damp;
+        camState.pitch += (camState.targetPitch - camState.pitch) * damp;
+
+        camera.position.copy(camState.pos);
+        lookVec.set(
+          -Math.sin(camState.yaw) * Math.cos(camState.pitch),
+          Math.sin(camState.pitch),
+          -Math.cos(camState.yaw) * Math.cos(camState.pitch)
+        );
+        camera.lookAt(camState.pos.x + lookVec.x, camState.pos.y + lookVec.y, camState.pos.z + lookVec.z);
+
+        sound.updateFlightSpeed(moving ? (keys["shift"] ? 1.0 : 0.45) : 0.12);
+      }
+
+      renderer.render(scene, camera);
     };
 
     animId = requestAnimationFrame(animate);
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(animId);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -318,16 +376,28 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       container.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      container.removeEventListener("wheel", onWheel);
+      loadPresetRef.current = null;
+      loadCustomFileRef.current = null;
+      customBlobUrls.forEach((u) => URL.revokeObjectURL(u));
       sound.dispose();
-      atmosphere.dispose();
-      cliffTex.dispose();
-      cloudTex.dispose();
-      waterfallTex.dispose();
-      glowTex.dispose();
-      composer.dispose();
       renderer.dispose();
     };
   }, []);
+
+  const handleSelectPreset = (preset: SplatPreset) => {
+    setActiveId(preset.id);
+    loadPresetRef.current?.(preset);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && /\.(spz|splat|ply|ksplat)$/i.test(file.name)) {
+      loadCustomFileRef.current?.(file);
+    }
+  };
 
   const toggleSound = () => {
     const next = !isMuted;
@@ -345,55 +415,106 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     }
   };
 
+  const currentPreset = SPLAT_PRESETS.find((p) => p.id === activeId);
+  const displayTitle = customTitle ?? currentPreset?.title ?? "SparkJS 3DGS 真实光场";
+
   return (
     <div
       ref={containerRef}
-      className="relative h-[calc(100dvh-48px)] min-h-[580px] w-full overflow-hidden select-none bg-[#0e1c3a] font-sans"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDraggingFile(true);
+      }}
+      onDragLeave={() => setIsDraggingFile(false)}
+      onDrop={handleDrop}
+      className="relative h-[calc(100dvh-48px)] min-h-[580px] w-full overflow-hidden select-none bg-[#0b101b] font-sans"
     >
       <canvas ref={canvasRef} className="h-full w-full cursor-grab active:cursor-grabbing touch-none block" />
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".spz,.splat,.ply,.ksplat"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) loadCustomFileRef.current?.(f);
+        }}
+      />
+
       {renderError && (
-        <div role="alert" className="absolute inset-0 z-50 flex items-center justify-center bg-[#0e1c3a] p-8 text-center text-white">
-          <p>无法启动 WebGL 3D 渲染器，请启用浏览器硬件加速后重试。</p>
+        <div role="alert" className="absolute inset-0 z-50 flex items-center justify-center bg-[#0b101b] p-8 text-center text-white">
+          <p>无法启动 WebGL 2 渲染器，请在浏览器设置中启用硬件加速后重试。</p>
         </div>
       )}
 
-      {/* 左上角：极简克制标题与遥测 */}
+      {isDraggingFile && (
+        <div className="pointer-events-none absolute inset-4 z-40 flex items-center justify-center rounded-3xl border-2 border-dashed border-sky-400 bg-slate-950/75 backdrop-blur-md">
+          <div className="text-center text-white">
+            <div className="text-lg font-semibold">松开即可加载您的真实 3DGS 世界</div>
+            <div className="mt-1 text-xs text-white/65">支持 World Labs .spz / Polycam .ply / Luma .splat</div>
+          </div>
+        </div>
+      )}
+
+      {/* 左上角：极简光场遥测状态 */}
       <div
         role="status"
-        className="pointer-events-none absolute top-3 left-3 sm:top-4 sm:left-4 z-20 rounded-2xl border border-white/15 bg-slate-950/55 px-3 py-2 sm:px-4 sm:py-2.5 text-white backdrop-blur-md"
+        className="pointer-events-none absolute top-3 left-3 sm:top-4 sm:left-4 z-20 rounded-2xl border border-white/15 bg-slate-950/60 px-3 py-2 sm:px-4 sm:py-2.5 text-white backdrop-blur-md"
       >
-        <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-medium tracking-widest text-amber-300/90 uppercase">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          <span>{ready ? "TERRA-OASIS · 云海浮空仙刹" : "正在构建云海世界…"}</span>
+        <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-medium tracking-wider text-sky-300">
+          <span className={`h-1.5 w-1.5 rounded-full ${assetState === "ready" ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
+          <span>{assetState === "loading" ? "正在解码 3DGS 光场…" : displayTitle}</span>
         </div>
-        <div className="mt-1 hidden sm:flex items-center gap-3 text-[12px] text-white/75 tabular-nums">
-          <span>ALT {hudStats.alt}m</span>
-          <span>SPD {hudStats.spd} km/h</span>
-          <span className="text-emerald-400">{hudStats.fps} FPS</span>
+        <div className="mt-1 hidden sm:flex items-center gap-3 text-[11px] text-white/65 tabular-nums">
+          <span>SparkJS 3DGS</span>
+          <span className="text-emerald-400">{fps} FPS</span>
         </div>
       </div>
 
-      {/* 右上角：精简功能胶囊 + 光环计数（移动端下移避免与左上角重叠） */}
-      <div className="absolute top-14 left-3 sm:left-auto sm:top-4 sm:right-4 z-20 flex flex-wrap items-center gap-1.5 sm:gap-2">
-        <div className="rounded-full border border-amber-300/30 bg-slate-950/60 px-3 py-1.5 text-[12px] font-medium text-amber-200 backdrop-blur-md tabular-nums">
-          灵环 {ringsPassed}/7
-        </div>
+      {/* 顶部居中：真实光场世界切换药丸 */}
+      <div className="absolute top-14 left-3 sm:top-4 sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center gap-1 rounded-full border border-white/15 bg-slate-950/65 p-1 backdrop-blur-md">
+        {SPLAT_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            onClick={() => handleSelectPreset(preset)}
+            className={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
+              activeId === preset.id
+                ? "bg-[#0071e3] text-white font-medium"
+                : "text-white/70 hover:text-white"
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 右上角：精简功能胶囊 */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 sm:gap-2">
         <button
           type="button"
-          onClick={() => setIsAutopilot((v) => !v)}
-          className={`rounded-full border px-3 py-1.5 text-[12px] font-medium backdrop-blur-md transition cursor-pointer ${
-            isAutopilot
+          onClick={() => fileInputRef.current?.click()}
+          className="rounded-full border border-sky-400/50 bg-slate-950/75 px-3 py-1.5 text-[11px] sm:text-[12px] font-medium text-sky-200 backdrop-blur-md hover:bg-slate-900/90 transition cursor-pointer"
+          title="支持导入 World Labs Marble (.spz)、Polycam (.ply)、Luma (.splat)"
+        >
+          导入 .spz
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsCinematic((v) => !v)}
+          className={`hidden sm:inline-flex rounded-full border px-3 py-1.5 text-[12px] font-medium backdrop-blur-md transition cursor-pointer ${
+            isCinematic
               ? "border-amber-400 bg-amber-400 text-slate-950"
               : "border-white/20 bg-slate-950/60 text-white hover:bg-slate-900/80"
           }`}
         >
-          {isAutopilot ? "电影巡航中" : "电影巡航"}
+          {isCinematic ? "巡航中" : "电影巡航"}
         </button>
         <button
           type="button"
           onClick={toggleSound}
-          className="rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
+          className="hidden md:inline-flex rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
         >
           {isMuted ? "音效关" : "音效开"}
         </button>
@@ -401,7 +522,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           <button
             type="button"
             onClick={onToggleSpecs}
-            className="hidden sm:inline-flex rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
+            className="hidden lg:inline-flex rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
           >
             世界模型文献
           </button>
@@ -409,22 +530,15 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
+          className="rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[11px] sm:text-[12px] text-white backdrop-blur-md hover:bg-slate-900/80 transition cursor-pointer"
         >
           {isFullscreen ? "退出" : "全屏"}
         </button>
       </div>
 
-      {/* 穿过光环极简提示 */}
-      {toast && (
-        <div className="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 z-30 rounded-full border border-amber-300/40 bg-slate-950/75 px-4 py-1.5 text-sm font-medium text-amber-200 backdrop-blur-md shadow-lg">
-          {toast}
-        </div>
-      )}
-
-      {/* 底部居中：极简一行操作提示 */}
-      <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap rounded-full border border-white/15 bg-slate-950/50 px-4 py-1.5 text-[11px] sm:text-[12px] text-white/80 backdrop-blur-md">
-        W/S 俯仰 · A/D 转向 · Space 爬升 · Shift 灵气加速 · C 巡航 · 鼠标拖拽环视
+      {/* 底部居中：一行极简操作提示 */}
+      <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 z-20 max-w-[92vw] truncate rounded-full border border-white/15 bg-slate-950/55 px-4 py-1.5 text-[11px] sm:text-[12px] text-white/80 backdrop-blur-md">
+        WASD 漫游 · Q/E 升降 · Shift 加速 · 滚轮缩放 · 鼠标拖拽环视 · 支持直接拖入 .spz / .ply 文件
       </div>
     </div>
   );

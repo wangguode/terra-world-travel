@@ -5,9 +5,8 @@
 </p>
 
 <p align="center">
-  <strong>纯程序化 WebGL 云海浮空仙刹飞行世界 × 世界模型前沿学术知识图谱。</strong><br>
-  零外部 3D 模型、零外部图片、零外部音频——全部几何、岩石/瀑布/云海 PBR 纹理、暮色大气着色器与五声音阶 Web Audio 音效均由代码实时生成。<br>
-  极简电影级界面，60 FPS 丝滑滑翔穿梭于 15 座浮空仙山与七层金顶古塔之间，内置 100+ 篇世界模型交互式学术图谱。
+  <strong>基于 World Labs SparkJS 的浏览器端 3D Gaussian Splatting (3DGS) 真实光场漫游器 × 100+ 篇世界模型学术知识图谱。</strong><br>
+  告别低模塑料感，直接在浏览器 WebGL2 中实时渲染照片级 3D 高斯泼溅实景（阿尔卑斯雪山溪谷、实景铁路机车），支持拖入自定义 <code>.spz</code> / <code>.ply</code> / <code>.splat</code> 文件一键漫游。
 </p>
 
 <p align="center">
