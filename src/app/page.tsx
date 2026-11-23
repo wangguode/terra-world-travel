@@ -1,62 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import True3DWorldGame from "@/components/true-3d-world-game";
-import WorldModelSimulator from "@/components/beijing-pulse-world-model";
 import { useLanguage } from "@/lib/language-context";
 import { AppleHeader } from "@/components/apple-header";
 import { AppleFooter } from "@/components/apple-footer";
 import { CopilotDrawer } from "@/components/copilot-drawer";
-import { AppleStoryGallery } from "@/components/apple-story-gallery";
 import { WorldModelKnowledgeGraph } from "@/components/world-model-knowledge-graph";
 import { PaperReaderDrawer } from "@/components/paper-reader-drawer";
-import { AppleArchitectureCompare } from "@/components/apple-architecture-compare";
-import { AppleNeuralSpecDeepdive } from "@/components/apple-neural-spec-deepdive";
-import { ECOSYSTEM_STORIES } from "@/lib/apple-job-creation-data";
 import { WORLD_MODEL_PAPERS_100, WorldModelPaper } from "@/lib/world-model-papers-100";
 
 export default function HomePage() {
   const router = useRouter();
   const { lang } = useLanguage();
 
-  // 3D 模拟器状态 (默认进入赛博禅刹祈福殿堂)
-  const [activeWorldId, setActiveWorldId] = useState<string>("cyber-temple");
-  const [activeHour, setActiveHour] = useState<number>(17.5);
-  const [snowMode, setSnowMode] = useState<boolean>(false);
+  // AI 助手抽屉状态
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const [copilotQuery, setCopilotQuery] = useState("");
 
-  // AI 助手抽屉与知识库联动状态
-  const [copilotOpen, setCopilotOpen] = useState<boolean>(false);
-  const [copilotQuery, setCopilotQuery] = useState<string>("");
-
-  // 图谱当前选中的论文 (默认展示首篇 Oasis 核心世界模型，并在下方直接 Markdown 阅读)
+  // 图谱当前选中的论文
   const [selectedPaper, setSelectedPaper] = useState<WorldModelPaper>(WORLD_MODEL_PAPERS_100[0]);
-
-  // 论文深度阅读抽屉状态 (可选)
   const [readingPaper, setReadingPaper] = useState<WorldModelPaper | null>(null);
-  const [readerOpen, setReaderOpen] = useState<boolean>(false);
-
-  useEffect(() => {
-    const nodes = document.querySelectorAll(".terra-reveal");
-    if (!("IntersectionObserver" in window)) {
-      nodes.forEach((n) => n.classList.add("is-visible"));
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-          }
-        });
-      },
-      { threshold: 0.08 }
-    );
-    nodes.forEach((n) => io.observe(n));
-    return () => io.disconnect();
-  }, [lang]);
+  const [readerOpen, setReaderOpen] = useState(false);
 
   const handleSelectPaperFromGraph = (paper: WorldModelPaper) => {
     setSelectedPaper(paper);
@@ -78,200 +45,164 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-white text-[#1d1d1f] overflow-x-hidden selection:bg-[#0071e3] selection:text-white">
-      {/* 1. 单层规范 Apple 旗舰全局导航 (白昼磨砂玻璃，带知识图谱一级链接) */}
+    <div className="min-h-[100dvh] bg-[#030712] text-[#1d1d1f] overflow-x-hidden selection:bg-sky-500 selection:text-white">
+      {/* 1. 深空通透悬浮顶栏（零割裂，与 100dvh 地球视口一体成型） */}
       <AppleHeader
+        variant="overlay"
         onOpenCopilot={() => {
           setCopilotQuery("");
           setCopilotOpen(true);
         }}
-        snowMode={snowMode}
-        onToggleSnow={() => setSnowMode(!snowMode)}
       />
 
       <main className="w-full">
-        {/* =========================================================================
-            2. Hero Section: 旗舰双模 3D 游戏主舞台 (赛博禅刹 & 赛博新城开屏即玩)
-           ========================================================================= */}
-        <section id="hero-3d-world" className="relative w-full bg-[#070707] text-white overflow-hidden">
-          <div className="relative w-full h-[88vh] sm:h-[92vh]">
-            <True3DWorldGame
-              onToggleSpecs={() => {
-                const el = document.getElementById("knowledge-graph");
-                el?.scrollIntoView({ behavior: "smooth" });
-              }}
-            />
-          </div>
+        {/* 2. 首屏 100dvh 影院级真实 3D 太空地球与低空航拍引擎 */}
+        <section id="hero-3d-world" className="relative w-full bg-[#030712]">
+          <True3DWorldGame
+            onToggleSpecs={() => {
+              const el = document.getElementById("knowledge-graph");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
         </section>
 
-        {/* 游戏下方导读与快速导航 */}
-        <section className="bg-white py-12 sm:py-16 terra-reveal w-full box-border">
-          <div className="mx-auto max-w-5xl px-6 sm:px-8 text-center space-y-4">
-            <div className="text-[13px] sm:text-[14px] font-semibold text-[#0071e3] tracking-widest uppercase">
-              TERRA-OASIS Real-time Foundation
-            </div>
-            <h1 className="text-[32px] sm:text-[50px] font-semibold text-[#1d1d1f] tracking-tight">
-              {lang === "en"
-                ? "Dual-Realm Playable World Model Engine"
-                : "旗舰双模时空：在线赛博禅刹与未来数字新城"}
-            </h1>
-            <p className="text-[17px] sm:text-[19px] text-[#6e6e73] max-w-2xl mx-auto leading-relaxed">
-              {lang === "en"
-                ? "14B causal autoregressive neural world model. WASD continuous 3D roaming, Web Audio wooden fish synthesis, fluid incense diffusion, and urban counterfactual obstacle avoidance."
-                : "140 亿参数自回归因果世界模型驱动：全 3D 几何大殿庭院、Web Audio 原生木鱼与大殿晨钟声学合成、流体青烟自发扩散与多智能体连续决策推演。"}
-            </p>
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-4 text-[14px] sm:text-[15px]">
-              <a
-                href="#knowledge-graph"
-                className="rounded-full bg-[#f5f5f7] px-6 py-2.5 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] transition no-underline"
-              >
-                {lang === "en" ? "Explore 100+ Papers Graph" : "查阅 100+ 篇学术星空图谱"}
-              </a>
-              <Link
-                href="/research"
-                className="rounded-full bg-[#0071e3] px-6 py-2.5 text-white font-medium hover:bg-[#0077ed] transition no-underline"
-              >
-                {lang === "en" ? "Research Publications" : "研读学术专刊长文"}
-              </Link>
-              <Link
-                href="/docs"
-                className="text-[#0071e3] hover:underline flex items-center gap-1 font-medium transition no-underline"
-              >
-                <span>{lang === "en" ? "Developer Docs" : "开发者技术文档"}</span>
-                <span>&gt;</span>
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* =========================================================================
-            3. Big Impact Numbers (Apple 风格浅灰大数字核心指标区)
-           ========================================================================= */}
-        <section className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
-          <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-16">
-            <div className="text-center space-y-3">
-              <h2 className="text-[64px] sm:text-[96px] lg:text-[116px] font-semibold text-[#1d1d1f] tracking-[-0.035em] leading-none tnum">
-                {lang === "en" ? "14 Billion" : "140 亿"}
-              </h2>
-              <p className="text-[19px] sm:text-[23px] text-[#6e6e73] font-medium max-w-xl mx-auto leading-relaxed">
+        {/* 3. 深空过渡区：实事求是的 3 大硬核工程架构支柱 */}
+        <section className="relative bg-[#050a14] text-white border-t border-white/8 py-20 sm:py-28">
+          <div className="mx-auto max-w-6xl px-5 sm:px-8 space-y-14">
+            <div className="max-w-3xl space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-medium tracking-[0.14em] text-emerald-300 uppercase">
+                <span>OPEN SPATIAL INTELLIGENCE LAB</span>
+              </div>
+              <h2 className="text-[30px] sm:text-[46px] font-semibold tracking-tight leading-[1.1] text-white">
                 {lang === "en"
-                  ? "Causal latent parameters powering physical spatial intelligence"
-                  : "驱动物理空间因果智能的神经潜空间参数规模"}
+                  ? "Real Earth Photogrammetry Meets World Models Research."
+                  : "真实地球 3D 渲染，与世界模型前沿学术研究台。"}
+              </h2>
+              <p className="text-[16px] sm:text-[18px] text-white/65 leading-relaxed">
+                {lang === "en"
+                  ? "No synthetic toy scenes, no billing walls. Stream real global satellite imagery, 3D elevation terrain, and city skylines directly in WebGL alongside 100+ curated World Model papers."
+                  : "告别低模 Demo 与封闭付费墙。在浏览器中直连全球真实卫星影像、3D 数字高程与城市天际线，并配套 100+ 篇世界模型核心论文交互式知识图谱。"}
               </p>
             </div>
 
-            {/* 3 个大型指标徽章 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum whitespace-nowrap">
-                    60 <span className="text-[22px] sm:text-[24px] font-medium text-[#0071e3]/80">FPS</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f] shrink-0">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#34c759]" />
-                    <span>Real-Time</span>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-7 sm:p-8 space-y-4 hover:border-white/20 transition">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-mono uppercase tracking-wider text-sky-300">
+                    01 / 3D GLOBE &amp; DEM
+                  </span>
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
                 </div>
-                <div className="text-[19px] font-semibold text-[#1d1d1f]">
-                  {lang === "en" ? "Continuous Neural Streaming" : "全双工连续神经推流"}
-                </div>
-                <p className="text-[15px] sm:text-[16px] text-[#6e6e73] leading-relaxed">
+                <h3 className="text-[20px] font-semibold text-white">
+                  {lang === "en" ? "True Orbital-to-Street Flight" : "太空轨道到低空航拍无缝俯冲"}
+                </h3>
+                <p className="text-[14px] sm:text-[15px] text-white/60 leading-relaxed">
                   {lang === "en"
-                    ? "Eliminating latent structural collapse through temporal sliding attention windows and dual-agent anchors."
-                    : "通过时序滑动注意力窗口与双智能体记忆锚点，彻底突破自回归视频模型长程坍塌魔咒。"}
+                    ? "Powered by MapLibre GL v6 Globe projection, Esri World Imagery, AWS Terrarium 3D elevation, and OpenFreeMap 3D buildings at 60 FPS."
+                    : "基于 MapLibre GL 球体投影、Esri 卫星影像、AWS Terrarium 3D 高程与 OpenFreeMap 3D 建筑，60 FPS 平滑切换全球真实地貌。"}
                 </p>
               </div>
 
-              <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#1d1d1f] tracking-tight tnum whitespace-nowrap">
-                    &lt; 16 <span className="text-[22px] sm:text-[24px] font-medium text-[#6e6e73]">ms</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f] shrink-0">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#34c759]" />
-                    <span>Ultra-Low</span>
-                  </div>
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-7 sm:p-8 space-y-4 hover:border-white/20 transition">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-mono uppercase tracking-wider text-amber-300">
+                    02 / ZERO-KEY EDGE
+                  </span>
+                  <span className="h-2 w-2 rounded-full bg-amber-400" />
                 </div>
-                <div className="text-[19px] font-semibold text-[#1d1d1f]">
-                  {lang === "en" ? "Action-to-Photon Latency" : "动作到光子极速响应"}
-                </div>
-                <p className="text-[15px] sm:text-[16px] text-[#6e6e73] leading-relaxed">
+                <h3 className="text-[20px] font-semibold text-white">
+                  {lang === "en" ? "Zero API Key, Static Edge Deploy" : "零 API Key · 纯静态边缘秒开"}
+                </h3>
+                <p className="text-[14px] sm:text-[15px] text-white/60 leading-relaxed">
                   {lang === "en"
-                    ? "WebGPU client-side shader decoding delivers instant WASD control response without local high-end hardware."
-                    : "轻量化 WebGPU 边缘端着色器解码，赋予用户在普通浏览器中即开即玩的超低延迟响应。"}
+                    ? "No Google Cloud billing or backend proxy required. Built with Next.js static export and isolated WebGL workers for instant global loading."
+                    : "无需绑定信用卡或后端代理，采用 Next.js 纯静态导出与独立静态 Worker，适配 Cloudflare 全球边缘节点开箱即用。"}
                 </p>
               </div>
 
-              <div className="rounded-[32px] bg-white p-8 sm:p-10 space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-[40px] sm:text-[48px] font-semibold text-[#0071e3] tracking-tight tnum whitespace-nowrap">
-                    94.2%
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-3 py-1 text-[11px] font-medium text-[#1d1d1f] shrink-0">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#0071e3]" />
-                    <span>Zero-Shot</span>
-                  </div>
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-7 sm:p-8 space-y-4 hover:border-white/20 transition">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-mono uppercase tracking-wider text-rose-300">
+                    03 / 100+ PAPERS GRAPH
+                  </span>
+                  <span className="h-2 w-2 rounded-full bg-rose-400" />
                 </div>
-                <div className="text-[19px] font-semibold text-[#1d1d1f]">
-                  {lang === "en" ? "Zero-Shot Sim-to-Real" : "真机无微调迁移成功率"}
-                </div>
-                <p className="text-[15px] sm:text-[16px] text-[#6e6e73] leading-relaxed">
+                <h3 className="text-[20px] font-semibold text-white">
+                  {lang === "en" ? "World Models Citation Universe" : "100+ 篇世界模型学术知识图谱"}
+                </h3>
+                <p className="text-[14px] sm:text-[15px] text-white/60 leading-relaxed">
                   {lang === "en"
-                    ? "Conditioned directly on continuous robotic actuator commands, closing the visual and physical simulation gap."
-                    : "直接基于机器人连续执行器动作向量推演动态环境，消除传统合成渲染与现实的虚实鸿沟。"}
+                    ? "Interactive force-directed graph indexing milestone papers from DeepMind, OpenAI, NVIDIA, World Labs, and Wayve with instant reading."
+                    : "系统梳理 2024–2026 年 DeepMind、OpenAI、NVIDIA、World Labs 等前沿文献引用脉络，支持图谱拖拽与一键 AI 精读。"}
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* =========================================================================
-            4. Interactive World Model Knowledge Graph (核心新增：100+ 篇文献可交互知识图谱)
-           ========================================================================= */}
-        <section id="knowledge-graph" className="bg-white py-20 sm:py-28 terra-reveal w-full box-border">
-          <div className="mx-auto max-w-7xl px-6 sm:px-8 space-y-10">
-            <div className="max-w-3xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
-                <span>100+ Papers Indexed</span>
-                <span>·</span>
-                <span>Interactive Force-Directed Graph</span>
+        {/* 4. 极简白昼编辑区：100+ 篇世界模型交互式学术知识图谱 */}
+        <section id="knowledge-graph" className="bg-white py-20 sm:py-28 w-full box-border">
+          <div className="mx-auto max-w-7xl px-5 sm:px-8 space-y-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="max-w-3xl space-y-3">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[12px] font-semibold text-[#0071e3]">
+                  <span>100+ Papers Indexed</span>
+                  <span>·</span>
+                  <span>2024–2026</span>
+                </div>
+                <h2 className="text-[30px] sm:text-[44px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.1]">
+                  {lang === "en"
+                    ? "Explore the World Models Knowledge Graph"
+                    : "世界模型前沿学术星空与文献图谱"}
+                </h2>
+                <p className="text-[15px] sm:text-[17px] text-[#515154] leading-relaxed">
+                  {lang === "en"
+                    ? "Drag nodes, zoom the citation network, click any milestone paper to inspect details, or jump directly to the full research reader."
+                    : "自由拖拽节点与缩放画布，点击任意文献即可查看核心贡献，或直接进入学术专刊视图与 AI Copilot 深度研读。"}
+                </p>
               </div>
-              <h2 className="text-[32px] sm:text-[44px] lg:text-[52px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
-                {lang === "en"
-                  ? "Explore the World Model Universe"
-                  : "探索世界模型前沿学术星空与知识图谱。"}
-              </h2>
-              <p className="text-[16px] sm:text-[18px] text-[#515154] leading-relaxed">
-                {lang === "en"
-                  ? "Explore the interconnected citation and concept universe of 100+ milestone world model papers (2024–2026). Drag nodes, zoom in, click any node to read the full paper, or ask Copilot AI for technical breakdowns."
-                  : "探索 2024 至 2026 年间由 Google DeepMind、OpenAI、NVIDIA、Wayve 及顶尖名校构建的世界模型学术演进图谱。自由拖拽节点、缩放画布，点击任意节点直接阅读论文全文，并可一键呼起 AI 智能问答。"}
-              </p>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Link
+                  href="/research"
+                  className="rounded-full bg-[#1d1d1f] px-5 py-2.5 text-[13px] font-medium text-white hover:bg-[#333336] transition no-underline"
+                >
+                  {lang === "en" ? "All Research Papers →" : "进入学术专刊 →"}
+                </Link>
+                <Link
+                  href="/docs"
+                  className="rounded-full bg-[#f5f5f7] px-5 py-2.5 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition no-underline"
+                >
+                  {lang === "en" ? "Developer Docs" : "开发者文档"}
+                </Link>
+              </div>
             </div>
 
-            {/* 知识图谱画布视窗 */}
             <WorldModelKnowledgeGraph
               onSelectPaper={handleSelectPaperFromGraph}
               selectedPaperId={selectedPaper.id}
             />
 
-            {/* 选中文献精炼卡片 (Apple 官方发布风格，点击一键跳转至专属学术长文页面) */}
-            <div id="selected-paper-card" className="pt-6">
-              <div className="rounded-[28px] bg-[#f5f5f7] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 transition">
-                <div className="space-y-3 max-w-3xl">
+            {/* 选中文献精炼卡片 */}
+            <div id="selected-paper-card" className="pt-2">
+              <div className="rounded-[28px] border border-black/5 bg-[#f5f5f7] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2.5 max-w-3xl">
                   <div className="flex flex-wrap items-center gap-2 text-[12px]">
                     <span className="rounded-full bg-white px-3 py-0.5 font-semibold text-[#0071e3]">
                       {lang === "en" ? selectedPaper.categoryNameEn : selectedPaper.categoryNameZh}
                     </span>
-                    <span className="text-[#86868b]">{selectedPaper.venue} · {selectedPaper.year}</span>
+                    <span className="text-[#86868b]">
+                      {selectedPaper.venue} · {selectedPaper.year}
+                    </span>
                     <span className="text-[#86868b]">·</span>
-                    <span className="text-[#515154] font-medium">{selectedPaper.org}</span>
+                    <span className="text-[#1d1d1f] font-medium">{selectedPaper.org}</span>
                   </div>
 
                   <h3 className="text-[20px] sm:text-[24px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
                     {lang === "en" ? selectedPaper.title : selectedPaper.titleZh}
                   </h3>
 
-                  <p className="text-[14px] text-[#515154] leading-relaxed line-clamp-2 font-normal">
+                  <p className="text-[14px] text-[#515154] leading-relaxed line-clamp-2">
                     {selectedPaper.highlight}
                   </p>
                 </div>
@@ -280,330 +211,39 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => router.push(`/research?paper=${selectedPaper.id}`)}
-                    className="rounded-full bg-[#0071e3] px-5 py-2 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer flex items-center gap-1.5"
+                    className="rounded-full bg-[#0071e3] px-5 py-2.5 text-[13px] font-medium text-white hover:bg-[#0077ed] transition cursor-pointer"
                   >
-                    <span>{lang === "en" ? "Read Publication Article" : "研读学术长文"}</span>
-                    <span>→</span>
+                    {lang === "en" ? "Read Full Article →" : "研读学术长文 →"}
                   </button>
-
                   <button
                     type="button"
                     onClick={() => handleAskAiAboutPaper(selectedPaper.title)}
-                    className="rounded-full bg-white px-4 py-2 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition cursor-pointer"
+                    className="rounded-full bg-white px-4 py-2.5 text-[13px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed] transition cursor-pointer"
                   >
-                    {lang === "en" ? "Ask AI" : "咨询 AI"}
+                    {lang === "en" ? "Ask AI Copilot" : "咨询 AI"}
                   </button>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* =========================================================================
-            5. Ecosystem Stories (生态落地故事轮播画廊)
-           ========================================================================= */}
-        <section id="ecosystem-pillars" className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
-          <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12">
-            <div className="max-w-3xl space-y-3">
-              <h2 className="text-[32px] sm:text-[44px] lg:text-[50px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
-                {lang === "en"
-                  ? "Expanding the World Model Ecosystem"
-                  : "放大世界模型生态，托起千千万万个数字时空。"}
-              </h2>
-              <div className="text-[44px] sm:text-[56px] font-semibold text-[#0071e3] tracking-tight tnum">
-                {lang === "en" ? "2.5M+ Global Explorers" : "250 多万"}
-              </div>
-              <p className="text-[17px] sm:text-[19px] text-[#515154] leading-relaxed font-normal">
-                {lang === "en"
-                  ? "From historical architectural preservation to quadruped robot field inspections, researchers and indie studios build upon TERRA's open foundation."
-                  : "从千年古建筑数字化保护，到工业巡检四足机器人实战演练，全球研究机构与独立团队正基于 TERRA 开源生态开辟前所未有的时空应用。"}
-              </p>
-            </div>
-
-            {/* Apple 经典可交互 DotNav + PaddleNav 故事画廊 */}
-            <AppleStoryGallery stories={ECOSYSTEM_STORIES} />
-          </div>
-        </section>
-
-        {/* =========================================================================
-            6. Interactive 3D Simulator (Apple 剧场级深黑实机沙盒)
-           ========================================================================= */}
-        <section id="interactive-playground" className="bg-[#000000] text-white py-24 sm:py-32 terra-reveal w-full box-border relative overflow-hidden">
-          <div className="relative z-10 mx-auto max-w-7xl px-6 sm:px-8 space-y-10">
-            <div className="max-w-3xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[13px] font-medium text-[#2997ff]">
-                <span>WebGPU Client Decode</span>
-                <span>·</span>
-                <span>60 FPS Action-Conditioned</span>
-              </div>
-
-              <h2 className="text-[34px] sm:text-[48px] lg:text-[56px] font-semibold text-white tracking-tight leading-[1.06]">
-                {lang === "en"
-                  ? "Intuitive physics. Dual-realm spatiotemporal streaming in your browser."
-                  : "旗舰双模时空：赛博禅刹祈福殿堂与未来数字新城。"}
-              </h2>
-
-              <p className="text-[17px] sm:text-[19px] text-[#86868b] leading-relaxed">
-                {lang === "en"
-                  ? "Explore multiplayer continuous causal worlds: Space for kinetic leaps & electronic wooden fish, F for cyber incense fluid diffusion, and E for temple bells or urban counterfactual obstacle avoidance."
-                  : "多人同屏在线漫游与世界模型自回归推流：WASD 走行动力学，Space 敲击电子木鱼积攒因果功德，F 键敬奉赛博真香诱发流体青烟扩散，E 键撞响天坛晨钟或在未来新城注入突发工况反事实避障。"}
-              </p>
-            </div>
-
-            {/* 实机运行的 3D 模拟器外壳 */}
-            <div className="rounded-[32px] sm:rounded-[40px] bg-[#121214] p-3 sm:p-5 w-full box-border text-white" data-ui="true">
-              <WorldModelSimulator
-                activeWorldId={activeWorldId}
-                onSelectWorld={setActiveWorldId}
-                hour={activeHour}
-                onChangeHour={setActiveHour}
-                snowMode={snowMode}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* =========================================================================
-            7. Architecture Paradigm Comparison (Apple 官方风格交互对比展台)
-           ========================================================================= */}
-        <AppleArchitectureCompare />
-
-        {/* =========================================================================
-            8. Neural Architecture Exploded View (Apple 旗舰级分层解剖展台)
-           ========================================================================= */}
-        <AppleNeuralSpecDeepdive />
-
-        {/* =========================================================================
-            9. Real-World Deployments (Apple 标志性非对称 Bento Grid 工业落地)
-           ========================================================================= */}
-        <section className="bg-[#f5f5f7] py-20 sm:py-28 terra-reveal w-full box-border">
-          <div className="mx-auto max-w-6xl px-6 sm:px-8 space-y-12">
-            <div className="max-w-3xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1 text-[13px] font-medium text-[#0071e3]">
-                <span>{lang === "en" ? "Industrial Deployments" : "实体产业落地"}</span>
-                <span>·</span>
-                <span>{lang === "en" ? "Physical AI in Action" : "具身空间智能"}</span>
-              </div>
-              <h2 className="text-[32px] sm:text-[44px] lg:text-[50px] font-semibold text-[#1d1d1f] tracking-tight leading-[1.08]">
-                {lang === "en"
-                  ? "Bridging Simulation to the Physical World"
-                  : "从前沿理论，到物理世界的真实落地。"}
-              </h2>
-              <p className="text-[17px] sm:text-[19px] text-[#515154] leading-relaxed font-normal">
-                {lang === "en"
-                  ? "From quadruped robot field navigation to autonomous driving closed-loop simulation and cultural heritage preservation, explore real-world deployments driven by the neural world model."
-                  : "从四足机器人野外复杂地形巡检，到自动驾驶高保真闭环仿真与千年古建数字孪生，见证自回归因果世界模型在实体工业场景中的核心落地能力。"}
-              </p>
-            </div>
-
-            {/* Apple 经典非对称便当盒网格 (Bento Grid) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-              {/* Bento 1: 具身智能旗舰主卡片 (全景 12 列 Hero Bento) */}
-              <div className="lg:col-span-12 rounded-[32px] bg-white p-8 sm:p-12 overflow-hidden relative">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                  <div className="lg:col-span-6 space-y-5">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[12px] font-semibold text-[#0071e3]">
-                      <span>{lang === "en" ? "FLAGSHIP DEPLOYMENT" : "旗舰工业级标杆"}</span>
-                    </div>
-                    <h3 className="text-[28px] sm:text-[38px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
-                      {lang === "en" ? "Zero-Shot Hardware Transfer on Quadruped Robotics" : "四足机器人硬件零微调迁移"}
-                    </h3>
-                    <p className="text-[16px] text-[#515154] leading-relaxed">
-                      {lang === "en"
-                        ? "Conditioned directly on continuous motor torques and foot contact sensors, achieving 94.2% policy transfer success on quadruped robots without real-world damage penalties."
-                        : "直接基于四足机器人电机连续扭矩与足端触地压力传感器推演，在野外未见复杂碎石地貌中实现 94.2% 的策略无微调迁移成功率，免受真实物理试错损耗。"}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-6 pt-2">
-                      <div>
-                        <div className="text-[32px] sm:text-[40px] font-semibold text-[#0071e3] tracking-tight tnum">94.2%</div>
-                        <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Sim-to-Real Success" : "实机迁移成功率"}</div>
-                      </div>
-                      <div>
-                        <div className="text-[32px] sm:text-[40px] font-semibold text-[#1d1d1f] tracking-tight tnum">0</div>
-                        <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Hardware Breakage" : "实体硬件损耗"}</div>
-                      </div>
-                      <div>
-                        <div className="text-[32px] sm:text-[40px] font-semibold text-[#1d1d1f] tracking-tight tnum">12-DoF</div>
-                        <div className="text-[12px] text-[#86868b]">{lang === "en" ? "Continuous Torque" : "连续关节扭矩"}</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="lg:col-span-6">
-                    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[24px] bg-[#f5f5f7]">
-                      <Image
-                        src="/images/beijing-pulse/hero-beijing.jpg"
-                        alt="Embodied Robotics Deployment"
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 50vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bento 2: 自动驾驶极限工况 (6 列) */}
-              <div className="lg:col-span-6 rounded-[32px] bg-white p-8 sm:p-10 flex flex-col justify-between space-y-6">
-                <div className="space-y-4">
-                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px] bg-[#f5f5f7]">
-                    <Image
-                      src="/images/beijing-pulse/futuristic.jpg"
-                      alt="Autonomous Driving Closed-Loop Simulation"
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="text-[12px] font-semibold text-[#0071e3]">
-                    {lang === "en" ? "Autonomous Mobility" : "自动驾驶反事实仿真"}
-                  </div>
-                  <h3 className="text-[24px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
-                    {lang === "en" ? "Counterfactual Road Exploration" : "极限工况与反事实决策推演"}
-                  </h3>
-                  <p className="text-[15px] text-[#515154] leading-relaxed">
-                    {lang === "en"
-                      ? "Generates dynamic traffic branches based on steering and brake actions, enabling safe closed-loop stress testing for corner cases."
-                      : "依据转向与制动控制向量生成连续动态交通分支，为自动驾驶系统提供零事故风险的极端 corner-case 闭环压力测试环境。"}
-                  </p>
-                </div>
-                <div className="text-[12px] text-[#86868b] font-medium">
-                  {lang === "en" ? "Continuous multi-agent trajectory prediction" : "多智能体高保真时序轨迹因果推演"}
-                </div>
-              </div>
-
-              {/* Bento 3: 毫米级 3DGS 古建空间孪生 (6 列) */}
-              <div className="lg:col-span-6 rounded-[32px] bg-white p-8 sm:p-10 flex flex-col justify-between space-y-6">
-                <div className="space-y-4">
-                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[20px] bg-[#f5f5f7]">
-                    <Image
-                      src="/images/beijing-pulse/forbidden-city.jpg"
-                      alt="Cultural Heritage Digital Preservation"
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="text-[12px] font-semibold text-[#0071e3]">
-                    {lang === "en" ? "Spatial Digital Twins" : "空间高精度数字孪生"}
-                  </div>
-                  <h3 className="text-[24px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
-                    {lang === "en" ? "Sub-Millimeter 3DGS Heritage" : "古建毫米级 3DGS 保护与漫游"}
-                  </h3>
-                  <p className="text-[15px] text-[#515154] leading-relaxed">
-                    {lang === "en"
-                      ? "Unites millions of spatial radiance points with sun-path solar calculation, preserving architectural geometry for digital research."
-                      : "将数百万空间辐射点云与太阳高度角天光物理模型融合，高保真数字化复刻古建筑历史形态，赋能高精细度空间感知。"}
-                  </p>
-                </div>
-                <div className="text-[12px] text-[#86868b] font-medium">
-                  {lang === "en" ? "Sub-millimeter spatial coordinate precision" : "毫米级空间几何定位精度与天光解耦"}
-                </div>
-              </div>
-
-              {/* Bento 4: 边缘端 WebGPU 零安装即用 (全景 12 列横幅微便当盒) */}
-              <div className="lg:col-span-12 rounded-[32px] bg-white p-8 sm:p-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                <div className="space-y-3 max-w-2xl">
-                  <div className="text-[12px] font-semibold text-[#0071e3]">
-                    {lang === "en" ? "Edge Spatial Computing" : "边缘端空间计算"}
-                  </div>
-                  <h3 className="text-[24px] sm:text-[28px] font-semibold text-[#1d1d1f] tracking-tight leading-snug">
-                    {lang === "en" ? "Zero-Install WebGPU Streaming in Any Browser" : "全浏览器 WebGPU 零安装即开即玩"}
-                  </h3>
-                  <p className="text-[15px] text-[#515154] leading-relaxed">
-                    {lang === "en"
-                      ? "Ultra-lightweight WGSL decoders bring full 60 FPS interactive neural world rendering to mobile and desktop browsers instantly."
-                      : "通过超轻量化 WGSL 着色器解码，在普通移动端与桌面浏览器上即开即用，实现 60 FPS 无感延迟动作漫游。"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 shrink-0">
-                  <div className="rounded-[20px] bg-[#f5f5f7] px-6 py-4 text-center">
-                    <div className="text-[28px] font-semibold text-[#0071e3] tnum">&lt; 16 ms</div>
-                    <div className="text-[11px] text-[#86868b]">{lang === "en" ? "Action Latency" : "动作时延"}</div>
-                  </div>
-                  <div className="rounded-[20px] bg-[#f5f5f7] px-6 py-4 text-center">
-                    <div className="text-[28px] font-semibold text-[#1d1d1f] tnum">60 FPS</div>
-                    <div className="text-[11px] text-[#86868b]">{lang === "en" ? "Client Frame Rate" : "客户端帧率"}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* =========================================================================
-            8. Router & Action Call (Apple 经典的纯白行动跳转路由)
-           ========================================================================= */}
-        <section className="bg-white py-24 sm:py-32 text-center terra-reveal w-full box-border">
-          <div className="mx-auto max-w-4xl px-6 sm:px-8 space-y-6">
-            <h2 className="text-[36px] sm:text-[52px] font-semibold text-[#1d1d1f] tracking-[-0.03em] leading-tight">
-              {lang === "en" ? "Ready to build inside the world model?" : "准备好在世界模型中开始构建了吗？"}
-            </h2>
-            <p className="text-[18px] sm:text-[21px] text-[#6e6e73] max-w-2xl mx-auto leading-relaxed">
-              {lang === "en"
-                ? "Dive into our comprehensive developer API specifications, roam the 100+ paper knowledge graph, or consult Copilot AI."
-                : "查阅详尽的开发者 API 接口规范与代码范例，漫游 100+ 篇世界模型前沿文献星空，或与 AI 助手实时推演。"}
-            </p>
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-[15px] sm:text-[16px]">
-              <Link
-                href="/docs"
-                className="rounded-full bg-[#0071e3] px-7 py-3 text-white font-medium hover:bg-[#0077ed] active:scale-[0.98] transition no-underline"
-              >
-                {lang === "en" ? "Developer Documentation" : "开发文档中心"}
-              </Link>
-              <Link
-                href="/research"
-                className="rounded-full bg-[#f5f5f7] px-7 py-3 text-[#1d1d1f] font-medium hover:bg-[#e8e8ed] active:scale-[0.98] transition no-underline"
-              >
-                {lang === "en" ? "100+ Papers Library" : "100+ 篇文献专栏"}
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setCopilotQuery("");
-                  setCopilotOpen(true);
-                }}
-                className="text-[#0071e3] hover:underline flex items-center gap-1 font-medium transition cursor-pointer"
-              >
-                <span>{lang === "en" ? "Ask AI Assistant" : "咨询 AI 智能助手"}</span>
-                <span>&gt;</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* =========================================================================
-            9. Footnotes (Apple 官方注脚风格)
-           ========================================================================= */}
-        <section className="bg-[#f5f5f7] py-12 px-6 sm:px-8 text-[13px] sm:text-[14px] text-[#515154] leading-relaxed w-full box-border">
-          <div className="mx-auto max-w-6xl space-y-2">
-            <p>1. 知识图谱收录 2024 至 2026 年间由全球顶尖机构发表在 CVPR、NeurIPS、ICLR 等顶级会议的 100+ 篇世界模型同行评议文献。</p>
-            <p>2. 60 FPS 连续流式神经推流需现代支持 WebGPU 或 WebGL 2.0 硬件加速环境之浏览器支持。</p>
-            <p>3. 具身智能 Sim-to-Real 迁移基准数据基于 Unitree Go2 四足机器人与 Fourier GR-1 人形机器人 100+ 次实测统计。</p>
-            <p>4. 演示沙盘中全部三维时空画面均由动作因果自回归模型实时预测生成。</p>
           </div>
         </section>
       </main>
 
-      {/* 10. 全局单层页脚 */}
-      <AppleFooter />
+      <div className="bg-white">
+        <AppleFooter />
+      </div>
 
-      {/* 11. 论文沉浸式深度阅读器抽屉 */}
+      <CopilotDrawer
+        isOpen={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        initialQuery={copilotQuery}
+      />
+
       <PaperReaderDrawer
         paper={readingPaper}
         isOpen={readerOpen}
         onClose={() => setReaderOpen(false)}
         onAskAi={handleAskAiAboutPaper}
-        onOpenBlog={(blog) => {
-          setReaderOpen(false);
-          router.push(`/research?blog=${blog.id}`);
-        }}
-      />
-
-      {/* 12. AI 知识库智能问答抽屉 */}
-      <CopilotDrawer
-        isOpen={copilotOpen}
-        onClose={() => setCopilotOpen(false)}
-        initialQuery={copilotQuery}
       />
     </div>
   );

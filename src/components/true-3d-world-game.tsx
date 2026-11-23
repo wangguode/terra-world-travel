@@ -12,28 +12,67 @@ interface True3DWorldGameProps {
 interface EarthPreset {
   id: string;
   label: string;
+  subtitle: string;
   title: string;
   center: [number, number];
   zoom: number;
   pitch: number;
   bearing: number;
   exaggeration: number;
+  isOrbit?: boolean;
 }
+
+type AtmosphereTheme = "day" | "golden";
+
+const SKY_THEMES: Record<AtmosphereTheme, maplibregl.SkySpecification> = {
+  day: {
+    "sky-color": "#0d2d5e",
+    "sky-horizon-blend": 0.58,
+    "horizon-color": "#c9e0f5",
+    "horizon-fog-blend": 0.9,
+    "fog-color": "#bfd8f0",
+    "fog-ground-blend": 0.35,
+    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 7, 0],
+  },
+  golden: {
+    "sky-color": "#1a2444",
+    "sky-horizon-blend": 0.68,
+    "horizon-color": "#f2b885",
+    "horizon-fog-blend": 0.88,
+    "fog-color": "#d89c78",
+    "fog-ground-blend": 0.38,
+    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 7, 0],
+  },
+};
 
 const EARTH_PRESETS: EarthPreset[] = [
   {
+    id: "globe",
+    label: "太空地球",
+    subtitle: "ORBITAL GLOBE · REAL SATELLITE",
+    title: "真实地球 · 轨道卫星全景",
+    center: [104.2, 31.5],
+    zoom: 2.15,
+    pitch: 16,
+    bearing: -8,
+    exaggeration: 1.25,
+    isOrbit: true,
+  },
+  {
     id: "matterhorn",
     label: "马特洪峰",
+    subtitle: "SWISS ALPS · 4,478M DEM",
     title: "真实地球 · 瑞士阿尔卑斯马特洪峰",
     center: [7.6586, 45.9763],
     zoom: 13.3,
-    pitch: 76,
+    pitch: 75,
     bearing: -32,
-    exaggeration: 1.35,
+    exaggeration: 1.38,
   },
   {
     id: "manhattan",
     label: "纽约曼哈顿",
+    subtitle: "MANHATTAN · 3D SKYLINE",
     title: "真实地球 · 纽约曼哈顿 3D 天际线",
     center: [-73.9855, 40.7484],
     zoom: 15.3,
@@ -44,6 +83,7 @@ const EARTH_PRESETS: EarthPreset[] = [
   {
     id: "fuji",
     label: "日本富士山",
+    subtitle: "MT. FUJI · VOLCANIC CONE",
     title: "真实地球 · 日本富士山 3D 火山地貌",
     center: [138.7274, 35.3606],
     zoom: 12.6,
@@ -54,6 +94,7 @@ const EARTH_PRESETS: EarthPreset[] = [
   {
     id: "hongkong",
     label: "香港维港",
+    subtitle: "VICTORIA HARBOUR · 3D CITY",
     title: "真实地球 · 香港维多利亚港与太平山",
     center: [114.1694, 22.2855],
     zoom: 14.9,
@@ -64,22 +105,13 @@ const EARTH_PRESETS: EarthPreset[] = [
   {
     id: "zhangjiajie",
     label: "张家界",
+    subtitle: "ZHANGJIAJIE · KARST PEAKS",
     title: "真实地球 · 湖南张家界天门山绝壁",
     center: [110.4785, 29.051],
     zoom: 13.4,
-    pitch: 75,
+    pitch: 73,
     bearing: 38,
     exaggeration: 1.45,
-  },
-  {
-    id: "kyoto",
-    label: "京都清水寺",
-    title: "真实地球 · 日本京都东山古刹",
-    center: [135.785, 34.9949],
-    zoom: 15.2,
-    pitch: 66,
-    bearing: 72,
-    exaggeration: 1.3,
   },
 ];
 
@@ -89,7 +121,13 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const mapRef = useRef<maplibregl.Map | null>(null);
   const soundRef = useRef<SkySoundEngine | null>(null);
 
-  const [activeId, setActiveId] = useState<string>("matterhorn");
+  const [activeId, setActiveId] = useState<string>("globe");
+  const activeIdRef = useRef<string>("globe");
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  const [atmosphere, setAtmosphere] = useState<AtmosphereTheme>("day");
   const [ready, setReady] = useState(false);
   const [renderError, setRenderError] = useState(false);
   const [isCinematic, setIsCinematic] = useState(true);
@@ -101,9 +139,9 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const [isMuted, setIsMuted] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [telemetry, setTelemetry] = useState({
-    lat: "45.976°N",
-    lon: "7.659°E",
-    pitch: 76,
+    lat: "31.500°N",
+    lon: "104.200°E",
+    zoom: "2.2x",
     fps: 60,
   });
 
@@ -113,7 +151,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
     let map: maplibregl.Map;
     try {
-      // 指定静态托管的独立 Worker，避免 Next.js webpack 打包内联 Blob Worker 失效
+      // 指定静态托管的独立 Worker，兼容 Next.js 静态导出与 Cloudflare 边缘部署
       maplibregl.setWorkerUrl("/vendor/maplibre-gl-worker.js");
       const initial = EARTH_PRESETS[0];
       map = new maplibregl.Map({
@@ -122,10 +160,13 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         zoom: initial.zoom,
         pitch: initial.pitch,
         bearing: initial.bearing,
-        maxPitch: 85,
+        maxPitch: 82,
         attributionControl: false,
         style: {
           version: 8,
+          projection: {
+            type: "globe",
+          },
           sources: {
             satellite: {
               type: "raster",
@@ -150,22 +191,8 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
               url: "https://tiles.openfreemap.org/planet",
             },
           },
-          sky: {
-            "sky-color": "#1c4e8f",
-            "sky-horizon-blend": 0.62,
-            "horizon-color": "#d4e6f7",
-            "horizon-fog-blend": 0.92,
-            "fog-color": "#cce0f3",
-            "fog-ground-blend": 0.35,
-          },
+          sky: SKY_THEMES.day,
           layers: [
-            {
-              id: "earth-atmosphere-bg",
-              type: "background",
-              paint: {
-                "background-color": "#cce0f3",
-              },
-            },
             {
               id: "satellite-layer",
               type: "raster",
@@ -219,7 +246,6 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       setReady(true);
     });
 
-    // 用户手动拖拽或滚轮时自动暂停电影巡航，交还自由控制权
     const stopAutoOnInteract = () => {
       if (isCinematicRef.current) {
         setIsCinematic(false);
@@ -269,15 +295,22 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         fpsAcc = 0;
         const c = map.getCenter();
         setTelemetry({
-          lat: `${Math.abs(c.lat).toFixed(3)}°${c.lat >= 0 ? "N" : "S"}`,
-          lon: `${Math.abs(c.lng).toFixed(3)}°${c.lng >= 0 ? "E" : "W"}`,
-          pitch: Math.round(map.getPitch()),
+          lat: `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? "N" : "S"}`,
+          lon: `${Math.abs(c.lng).toFixed(2)}°${c.lng >= 0 ? "E" : "W"}`,
+          zoom: `${map.getZoom().toFixed(1)}x`,
           fps: measuredFps,
         });
       }
 
       if (isCinematicRef.current && !map.isMoving()) {
-        map.setBearing(map.getBearing() + dt * 5.2);
+        if (activeIdRef.current === "globe" || map.getZoom() < 4.5) {
+          // 太空轨道视角：地球缓慢优雅自转
+          const c = map.getCenter();
+          map.setCenter([c.lng + dt * 2.4, c.lat]);
+        } else {
+          // 低空航拍视角：围绕地标 360° 环绕飞行
+          map.setBearing(map.getBearing() + dt * 5.0);
+        }
       } else {
         const panSpeed = (keys["shift"] ? 520 : 240) * dt;
         let dx = 0;
@@ -292,8 +325,8 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         } else {
           sound.updateFlightSpeed(0.12);
         }
-        if (keys["q"]) map.setPitch(Math.max(15, map.getPitch() - 35 * dt));
-        if (keys["e"]) map.setPitch(Math.min(85, map.getPitch() + 35 * dt));
+        if (keys["q"]) map.setPitch(Math.max(10, map.getPitch() - 35 * dt));
+        if (keys["e"]) map.setPitch(Math.min(82, map.getPitch() + 35 * dt));
       }
     };
 
@@ -320,9 +353,15 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       zoom: preset.zoom,
       pitch: preset.pitch,
       bearing: preset.bearing,
-      duration: 2400,
+      duration: preset.isOrbit ? 2200 : 2600,
       essential: true,
     });
+  };
+
+  const toggleAtmosphere = () => {
+    const next: AtmosphereTheme = atmosphere === "day" ? "golden" : "day";
+    setAtmosphere(next);
+    mapRef.current?.setSky(SKY_THEMES[next]);
   };
 
   const toggleSound = () => {
@@ -346,44 +385,85 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   return (
     <div
       ref={containerRef}
-      className="relative h-[calc(100dvh-48px)] min-h-[580px] w-full overflow-hidden select-none bg-[#c8dcf0] font-sans"
+      className="relative h-[100dvh] min-h-[640px] w-full overflow-hidden select-none bg-[#030712] font-sans"
+      style={{
+        backgroundImage:
+          "radial-gradient(circle at 50% 45%, rgba(28, 78, 155, 0.28) 0%, rgba(5, 10, 22, 0.96) 62%, #02050c 100%)",
+      }}
     >
-      <div ref={mapHostRef} className="h-full w-full" />
+      {/* 深空微弱星点底纹（仅在 Globe 太空视野周围显现） */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-60"
+        style={{
+          backgroundImage:
+            "radial-gradient(1px 1px at 14% 22%, rgba(255,255,255,0.8), transparent), radial-gradient(1px 1px at 28% 76%, rgba(190,220,255,0.7), transparent), radial-gradient(1.5px 1.5px at 78% 18%, rgba(255,255,255,0.85), transparent), radial-gradient(1px 1px at 86% 64%, rgba(210,235,255,0.65), transparent), radial-gradient(1px 1px at 62% 84%, rgba(255,255,255,0.6), transparent), radial-gradient(1.2px 1.2px at 42% 14%, rgba(255,255,255,0.7), transparent)",
+        }}
+      />
+
+      {/* MapLibre GL v6 3D 真实地球画布 */}
+      <div ref={mapHostRef} className="relative z-10 h-full w-full" />
+
+      {/* 顶部与底部柔暗渐晕，让悬浮导航与航空 HUD 具备影院级对比度 */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-[#030712]/75 via-[#030712]/25 to-transparent"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-36 bg-gradient-to-t from-[#030712]/85 via-[#030712]/35 to-transparent"
+      />
 
       {renderError && (
-        <div role="alert" className="absolute inset-0 z-50 flex items-center justify-center bg-[#0b1526] p-8 text-center text-white">
+        <div role="alert" className="absolute inset-0 z-50 flex items-center justify-center bg-[#030712] p-8 text-center text-white">
           <p>无法启动真实地球 WebGL 渲染器，请启用浏览器硬件加速后重试。</p>
         </div>
       )}
 
-      {/* 左上角：真实地球 GPS 遥测 */}
+      {/* 太空模式下的极简影院标题引导（不遮挡地球，仅左上轻盈排版） */}
+      {currentPreset.isOrbit && (
+        <div className="pointer-events-none absolute top-28 left-5 sm:top-24 sm:left-10 z-20 max-w-md space-y-2.5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-medium tracking-[0.16em] text-sky-300 uppercase backdrop-blur-md">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span>REAL-WORLD 3D EARTH ENGINE</span>
+          </div>
+          <h1 className="text-[28px] sm:text-[42px] font-semibold tracking-tight text-white leading-[1.08] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
+            从太空轨道，一秒俯冲真实地球
+          </h1>
+          <p className="hidden sm:block text-[14px] text-white/70 leading-relaxed">
+            零 API Key · Esri 全球卫星实景 × AWS 3D 数字高程 × OpenFreeMap 3D 城市建筑。点击下方地标，即刻开启 60 FPS 低空航拍。
+          </p>
+        </div>
+      )}
+
+      {/* 左下角：航空级实时遥测面板 */}
       <div
         role="status"
-        className="pointer-events-none absolute top-3 left-3 sm:top-4 sm:left-4 z-20 rounded-2xl border border-white/15 bg-slate-950/65 px-3 py-2 sm:px-4 sm:py-2.5 text-white backdrop-blur-md"
+        className="pointer-events-none absolute bottom-20 left-4 sm:bottom-6 sm:left-8 z-20 rounded-2xl border border-white/12 bg-[#060b16]/65 px-3.5 py-2.5 text-white backdrop-blur-xl"
       >
-        <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-medium tracking-wider text-sky-300">
+        <div className="flex items-center gap-2 text-[11px] font-medium tracking-wider text-white/95">
           <span className={`h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
-          <span>{ready ? currentPreset.title : "正在加载真实卫星 3D 地形…"}</span>
+          <span>{ready ? currentPreset.title : "正在连接全球卫星与 3D 高程…"}</span>
         </div>
-        <div className="mt-1 hidden sm:flex items-center gap-3 text-[11px] text-white/70 tabular-nums">
+        <div className="mt-1 hidden sm:flex items-center gap-3 text-[11px] text-white/60 font-mono tabular-nums">
           <span>{telemetry.lat}</span>
           <span>{telemetry.lon}</span>
-          <span>倾角 {telemetry.pitch}°</span>
+          <span>ZOOM {telemetry.zoom}</span>
           <span className="text-emerald-400">{telemetry.fps} FPS</span>
         </div>
       </div>
 
-      {/* 顶部居中：全球真实地标一键飞行传送 */}
-      <div className="absolute top-14 left-3 right-3 sm:right-auto sm:top-4 sm:left-1/2 sm:-translate-x-1/2 z-20 flex items-center gap-1 overflow-x-auto rounded-full border border-white/15 bg-slate-950/70 p-1 backdrop-blur-md no-scrollbar">
+      {/* 底部居中：行星与全球真实地标航拍切换台 */}
+      <div className="absolute bottom-5 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:bottom-6 z-20 flex items-center gap-1 overflow-x-auto rounded-full border border-white/15 bg-[#060b16]/75 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl no-scrollbar">
         {EARTH_PRESETS.map((preset) => (
           <button
             key={preset.id}
             type="button"
             onClick={() => flyToPreset(preset)}
-            className={`whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-[11px] sm:text-[12px] transition cursor-pointer ${
+            className={`whitespace-nowrap rounded-full px-3 sm:px-3.5 py-1.5 text-[12px] transition cursor-pointer ${
               activeId === preset.id
-                ? "bg-[#0071e3] text-white font-medium"
-                : "text-white/75 hover:text-white"
+                ? "bg-white text-[#060b16] font-semibold shadow-sm"
+                : "text-white/75 hover:text-white hover:bg-white/10"
             }`}
           >
             {preset.label}
@@ -391,23 +471,30 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         ))}
       </div>
 
-      {/* 右上角：精简功能胶囊 */}
-      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 sm:gap-2">
+      {/* 右下角：极简影院工具条（巡航 / 光影 / 风声 / 文献 / 全屏） */}
+      <div className="absolute top-16 right-4 sm:top-auto sm:bottom-6 sm:right-8 z-20 flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => setIsCinematic((v) => !v)}
-          className={`rounded-full border px-3 py-1.5 text-[11px] sm:text-[12px] font-medium backdrop-blur-md transition cursor-pointer ${
+          className={`rounded-full border px-3 py-1.5 text-[11px] sm:text-[12px] font-medium backdrop-blur-xl transition cursor-pointer ${
             isCinematic
-              ? "border-amber-400 bg-amber-400 text-slate-950"
-              : "border-white/20 bg-slate-950/70 text-white hover:bg-slate-900/90"
+              ? "border-emerald-400/60 bg-emerald-400/15 text-emerald-300"
+              : "border-white/15 bg-[#060b16]/70 text-white/80 hover:text-white"
           }`}
         >
-          {isCinematic ? "巡航中" : "航拍巡航"}
+          {isCinematic ? "巡航中" : "巡航"}
+        </button>
+        <button
+          type="button"
+          onClick={toggleAtmosphere}
+          className="rounded-full border border-white/15 bg-[#060b16]/70 px-3 py-1.5 text-[11px] sm:text-[12px] text-white/85 backdrop-blur-xl hover:text-white hover:bg-white/10 transition cursor-pointer"
+        >
+          {atmosphere === "day" ? "晴空" : "日落"}
         </button>
         <button
           type="button"
           onClick={toggleSound}
-          className="hidden md:inline-flex rounded-full border border-white/20 bg-slate-950/70 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/90 transition cursor-pointer"
+          className="hidden xl:inline-flex rounded-full border border-white/15 bg-[#060b16]/70 px-3 py-1.5 text-[12px] text-white/80 backdrop-blur-xl hover:text-white transition cursor-pointer"
         >
           {isMuted ? "风声关" : "风声开"}
         </button>
@@ -415,23 +502,18 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
           <button
             type="button"
             onClick={onToggleSpecs}
-            className="hidden lg:inline-flex rounded-full border border-white/20 bg-slate-950/70 px-3 py-1.5 text-[12px] text-white backdrop-blur-md hover:bg-slate-900/90 transition cursor-pointer"
+            className="hidden xl:inline-flex rounded-full border border-white/15 bg-[#060b16]/70 px-3 py-1.5 text-[12px] text-white/80 backdrop-blur-xl hover:text-white transition cursor-pointer"
           >
-            世界模型文献
+            文献图谱 ↓
           </button>
         )}
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="rounded-full border border-white/20 bg-slate-950/70 px-3 py-1.5 text-[11px] sm:text-[12px] text-white backdrop-blur-md hover:bg-slate-900/90 transition cursor-pointer"
+          className="rounded-full border border-white/15 bg-[#060b16]/70 px-3 py-1.5 text-[11px] sm:text-[12px] text-white/85 backdrop-blur-xl hover:text-white transition cursor-pointer"
         >
           {isFullscreen ? "退出" : "全屏"}
         </button>
-      </div>
-
-      {/* 底部居中：极简操作提示与真实数据源署名 */}
-      <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 z-20 max-w-[92vw] truncate rounded-full border border-white/15 bg-slate-950/60 px-4 py-1.5 text-[11px] sm:text-[12px] text-white/85 backdrop-blur-md">
-        WASD 航拍漫游 · Q/E 调整倾角 · 右键拖拽 3D 环视 · 滚轮缩放 · Esri 真实卫星影像 &amp; AWS 3D 高程
       </div>
     </div>
   );
