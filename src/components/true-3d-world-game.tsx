@@ -45,6 +45,21 @@ const SKY_THEMES: Record<AtmosphereTheme, maplibregl.SkySpecification> = {
   },
 };
 
+const LIGHT_THEMES: Record<AtmosphereTheme, maplibregl.LightSpecification> = {
+  day: {
+    anchor: "map",
+    color: "#fff7ea",
+    intensity: 0.48,
+    position: [1.5, 135, 38],
+  },
+  golden: {
+    anchor: "map",
+    color: "#ffba75",
+    intensity: 0.68,
+    position: [1.65, 250, 16],
+  },
+};
+
 const EARTH_PRESETS: EarthPreset[] = [
   {
     id: "globe",
@@ -64,8 +79,8 @@ const EARTH_PRESETS: EarthPreset[] = [
     subtitle: "SWISS ALPS · 4,478M DEM",
     title: "真实地球 · 瑞士阿尔卑斯马特洪峰",
     center: [7.6586, 45.9763],
-    zoom: 13.3,
-    pitch: 75,
+    zoom: 13.8,
+    pitch: 76,
     bearing: -32,
     exaggeration: 1.38,
   },
@@ -75,8 +90,8 @@ const EARTH_PRESETS: EarthPreset[] = [
     subtitle: "MANHATTAN · 3D SKYLINE",
     title: "真实地球 · 纽约曼哈顿 3D 天际线",
     center: [-73.9855, 40.7484],
-    zoom: 15.3,
-    pitch: 68,
+    zoom: 15.8,
+    pitch: 72,
     bearing: 24,
     exaggeration: 1.1,
   },
@@ -86,8 +101,8 @@ const EARTH_PRESETS: EarthPreset[] = [
     subtitle: "MT. FUJI · VOLCANIC CONE",
     title: "真实地球 · 日本富士山 3D 火山地貌",
     center: [138.7274, 35.3606],
-    zoom: 12.6,
-    pitch: 71,
+    zoom: 12.9,
+    pitch: 72,
     bearing: 118,
     exaggeration: 1.35,
   },
@@ -97,8 +112,8 @@ const EARTH_PRESETS: EarthPreset[] = [
     subtitle: "VICTORIA HARBOUR · 3D CITY",
     title: "真实地球 · 香港维多利亚港与太平山",
     center: [114.1694, 22.2855],
-    zoom: 14.9,
-    pitch: 68,
+    zoom: 15.4,
+    pitch: 70,
     bearing: -18,
     exaggeration: 1.25,
   },
@@ -108,12 +123,25 @@ const EARTH_PRESETS: EarthPreset[] = [
     subtitle: "ZHANGJIAJIE · KARST PEAKS",
     title: "真实地球 · 湖南张家界天门山绝壁",
     center: [110.4785, 29.051],
-    zoom: 13.4,
-    pitch: 73,
+    zoom: 13.8,
+    pitch: 74,
     bearing: 38,
     exaggeration: 1.45,
   },
 ];
+
+// 根据缩放级别估算当前相机相对地面的高度（米）
+function estimateAltitudeMeters(zoom: number, lat: number): number {
+  const metersPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
+  return Math.max(18, Math.round(metersPerPixel * 260));
+}
+
+// 将 0..360 航向角格式化为方位字母
+function headingToCardinal(deg: number): string {
+  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  const normalized = ((deg % 360) + 360) % 360;
+  return dirs[Math.round(normalized / 45) % 8];
+}
 
 export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -130,18 +158,29 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   const [atmosphere, setAtmosphere] = useState<AtmosphereTheme>("day");
   const [ready, setReady] = useState(false);
   const [renderError, setRenderError] = useState(false);
+
+  // 巡航模式 vs 自由驾驶模式（FPS 物理惯性移动）
   const [isCinematic, setIsCinematic] = useState(true);
   const isCinematicRef = useRef(true);
   useEffect(() => {
     isCinematicRef.current = isCinematic;
   }, [isCinematic]);
 
+  const [isPilotMode, setIsPilotMode] = useState(false);
+  const isPilotModeRef = useRef(false);
+  useEffect(() => {
+    isPilotModeRef.current = isPilotMode;
+  }, [isPilotMode]);
+
   const [isMuted, setIsMuted] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [telemetry, setTelemetry] = useState({
-    lat: "31.500°N",
-    lon: "104.200°E",
-    zoom: "2.2x",
+    lat: "31.50°N",
+    lon: "104.20°E",
+    agl: 12000,
+    groundElev: 0,
+    speedKmh: 0,
+    heading: 0,
     fps: 60,
   });
 
@@ -160,13 +199,14 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         zoom: initial.zoom,
         pitch: initial.pitch,
         bearing: initial.bearing,
-        maxPitch: 82,
+        maxPitch: 83,
         attributionControl: false,
         style: {
           version: 8,
           projection: {
             type: "globe",
           },
+          light: LIGHT_THEMES.day,
           sources: {
             satellite: {
               type: "raster",
@@ -212,17 +252,17 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
                   ["linear"],
                   ["coalesce", ["get", "render_height"], 12],
                   0,
-                  "#8a949e",
+                  "#7f8a96",
                   40,
-                  "#a8b4c0",
+                  "#9eaab8",
                   120,
-                  "#c9d5e2",
+                  "#c3d0de",
                   260,
-                  "#e8f0f8",
+                  "#e6eff8",
                 ],
                 "fill-extrusion-height": ["coalesce", ["get", "render_height"], 12],
                 "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
-                "fill-extrusion-opacity": 0.94,
+                "fill-extrusion-opacity": 0.95,
                 "fill-extrusion-vertical-gradient": true,
               },
             },
@@ -246,6 +286,34 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       setReady(true);
     });
 
+    // 自由驾驶模式下，左键拖拽直接自由环顾 360° 视角（像真游戏视角转动）
+    let isLooking = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (!isPilotModeRef.current || e.button !== 0) return;
+      isLooking = true;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isLooking || !isPilotModeRef.current) return;
+      const dx = e.clientX - lastMouseX;
+      const dy = e.clientY - lastMouseY;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+      map.setBearing(map.getBearing() - dx * 0.28);
+      map.setPitch(Math.max(12, Math.min(83, map.getPitch() - dy * 0.22)));
+    };
+    const onPointerUp = () => {
+      isLooking = false;
+    };
+
+    host.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
     const stopAutoOnInteract = () => {
       if (isCinematicRef.current) {
         setIsCinematic(false);
@@ -254,16 +322,31 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     map.on("dragstart", stopAutoOnInteract);
     map.on("wheel", stopAutoOnInteract);
 
-    // 键盘飞行控制（WASD 航拍移动、Q/E 俯仰、Shift 加速、C 切换巡航）
+    // 物理惯性速度状态
+    const physics = {
+      velForward: 0, // 前后速度 (米/秒)
+      velRight: 0, // 左右横向速度 (米/秒)
+      velZoom: 0, // 垂直高度缩放速度
+      velYaw: 0, // Q/E 键盘旋转速度 (度/秒)
+    };
+
     const keys: Record<string, boolean> = {};
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
+      if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
+        e.preventDefault();
+      }
       keys[k] = true;
+
       if (k === "c") {
         setIsCinematic((v) => !v);
       } else if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
         if (isCinematicRef.current) setIsCinematic(false);
+        if (!isPilotModeRef.current && map.getZoom() >= 10) {
+          setIsPilotMode(true);
+          map.dragPan.disable();
+        }
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -271,6 +354,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     };
     const onBlur = () => {
       for (const k of Object.keys(keys)) delete keys[k];
+      isLooking = false;
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
@@ -287,46 +371,124 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
 
+      const currentZoom = map.getZoom();
+      const center = map.getCenter();
+      const bearing = map.getBearing();
+
+      if (isCinematicRef.current && !map.isMoving()) {
+        physics.velForward *= 0.85;
+        physics.velRight *= 0.85;
+        if (activeIdRef.current === "globe" || currentZoom < 4.5) {
+          map.setCenter([center.lng + dt * 2.2, center.lat]);
+        } else {
+          map.setBearing(bearing + dt * 4.8);
+        }
+      } else if (!map.isMoving()) {
+        // 根据当前离地高度自动适配移动速度（低空街道如真人/无人机，高空如喷气机）
+        const aglEst = estimateAltitudeMeters(currentZoom, center.lat);
+        const baseMaxSpeed = Math.max(24, Math.min(480, aglEst * 0.42));
+        const maxSpeed = keys["shift"] ? baseMaxSpeed * 2.4 : baseMaxSpeed;
+        const accel = maxSpeed * 3.6;
+        const damping = Math.exp(-5.2 * dt);
+
+        let forwardInput = 0;
+        let rightInput = 0;
+        if (keys["w"] || keys["arrowup"]) forwardInput += 1;
+        if (keys["s"] || keys["arrowdown"]) forwardInput -= 1;
+        if (keys["d"] || keys["arrowright"]) rightInput += 1;
+        if (keys["a"] || keys["arrowleft"]) rightInput -= 1;
+
+        if (forwardInput !== 0) {
+          physics.velForward = Math.max(
+            -maxSpeed,
+            Math.min(maxSpeed, physics.velForward + forwardInput * accel * dt)
+          );
+        } else {
+          physics.velForward *= damping;
+          if (Math.abs(physics.velForward) < 0.2) physics.velForward = 0;
+        }
+
+        if (rightInput !== 0) {
+          physics.velRight = Math.max(
+            -maxSpeed * 0.8,
+            Math.min(maxSpeed * 0.8, physics.velRight + rightInput * accel * 0.85 * dt)
+          );
+        } else {
+          physics.velRight *= damping;
+          if (Math.abs(physics.velRight) < 0.2) physics.velRight = 0;
+        }
+
+        // Q / E 平滑左右偏航转向
+        const yawInput = (keys["e"] ? 1 : 0) - (keys["q"] ? 1 : 0);
+        if (yawInput !== 0) {
+          physics.velYaw = Math.max(-65, Math.min(65, physics.velYaw + yawInput * 190 * dt));
+        } else {
+          physics.velYaw *= damping;
+          if (Math.abs(physics.velYaw) < 0.1) physics.velYaw = 0;
+        }
+
+        // Space 上升（拉远 zoom） / F 贴地下降（拉近 zoom，限制最高 17.6 防止钻入地形）
+        const vertInput = (keys["f"] ? 1 : 0) - (keys[" "] ? 1 : 0);
+        if (vertInput !== 0) {
+          physics.velZoom = Math.max(-1.6, Math.min(1.6, physics.velZoom + vertInput * 4.5 * dt));
+        } else {
+          physics.velZoom *= damping;
+          if (Math.abs(physics.velZoom) < 0.005) physics.velZoom = 0;
+        }
+
+        // 应用真实地球球面位移（沿当前准星朝向 bearing）
+        const hasMove =
+          Math.abs(physics.velForward) > 0.1 ||
+          Math.abs(physics.velRight) > 0.1 ||
+          Math.abs(physics.velYaw) > 0.05 ||
+          Math.abs(physics.velZoom) > 0.003;
+
+        if (hasMove) {
+          const rad = (bearing * Math.PI) / 180;
+          const northMeters = (physics.velForward * Math.cos(rad) - physics.velRight * Math.sin(rad)) * dt;
+          const eastMeters = (physics.velForward * Math.sin(rad) + physics.velRight * Math.cos(rad)) * dt;
+
+          const cosLat = Math.max(0.15, Math.cos((center.lat * Math.PI) / 180));
+          const nextLat = Math.max(-82, Math.min(82, center.lat + northMeters / 111320));
+          const nextLng = center.lng + eastMeters / (111320 * cosLat);
+          const nextZoom = Math.max(2.0, Math.min(17.6, currentZoom + physics.velZoom * dt));
+          const nextBearing = bearing + physics.velYaw * dt;
+
+          map.jumpTo({
+            center: [nextLng, nextLat],
+            zoom: nextZoom,
+            bearing: nextBearing,
+          });
+        }
+
+        const speedNorm = Math.min(
+          1.0,
+          Math.hypot(physics.velForward, physics.velRight) / Math.max(30, baseMaxSpeed * 1.6)
+        );
+        sound.updateFlightSpeed(0.12 + speedNorm * 0.88);
+      }
+
+      // 实时刷新航空遥测仪表
       fpsFrames++;
       fpsAcc += dt;
-      if (fpsAcc >= 0.5) {
+      if (fpsAcc >= 0.25) {
         measuredFps = Math.round(fpsFrames / fpsAcc);
         fpsFrames = 0;
         fpsAcc = 0;
         const c = map.getCenter();
+        const z = map.getZoom();
+        const elev = map.queryTerrainElevation(c) ?? 0;
+        const speedMps = Math.hypot(physics.velForward, physics.velRight);
+        const hdg = Math.round(((map.getBearing() % 360) + 360) % 360);
         setTelemetry({
-          lat: `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? "N" : "S"}`,
-          lon: `${Math.abs(c.lng).toFixed(2)}°${c.lng >= 0 ? "E" : "W"}`,
-          zoom: `${map.getZoom().toFixed(1)}x`,
+          lat: `${Math.abs(c.lat).toFixed(3)}°${c.lat >= 0 ? "N" : "S"}`,
+          lon: `${Math.abs(c.lng).toFixed(3)}°${c.lng >= 0 ? "E" : "W"}`,
+          agl: estimateAltitudeMeters(z, c.lat),
+          groundElev: Math.max(0, Math.round(elev)),
+          speedKmh: Math.round(speedMps * 3.6),
+          heading: hdg,
           fps: measuredFps,
         });
-      }
-
-      if (isCinematicRef.current && !map.isMoving()) {
-        if (activeIdRef.current === "globe" || map.getZoom() < 4.5) {
-          // 太空轨道视角：地球缓慢优雅自转
-          const c = map.getCenter();
-          map.setCenter([c.lng + dt * 2.4, c.lat]);
-        } else {
-          // 低空航拍视角：围绕地标 360° 环绕飞行
-          map.setBearing(map.getBearing() + dt * 5.0);
-        }
-      } else {
-        const panSpeed = (keys["shift"] ? 520 : 240) * dt;
-        let dx = 0;
-        let dy = 0;
-        if (keys["w"] || keys["arrowup"]) dy -= panSpeed;
-        if (keys["s"] || keys["arrowdown"]) dy += panSpeed;
-        if (keys["a"] || keys["arrowleft"]) dx -= panSpeed;
-        if (keys["d"] || keys["arrowright"]) dx += panSpeed;
-        if (dx !== 0 || dy !== 0) {
-          map.panBy([dx, dy], { animate: false });
-          sound.updateFlightSpeed(keys["shift"] ? 1.0 : 0.45);
-        } else {
-          sound.updateFlightSpeed(0.12);
-        }
-        if (keys["q"]) map.setPitch(Math.max(10, map.getPitch() - 35 * dt));
-        if (keys["e"]) map.setPitch(Math.min(82, map.getPitch() + 35 * dt));
       }
     };
 
@@ -334,6 +496,9 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
 
     return () => {
       cancelAnimationFrame(animId);
+      host.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
@@ -343,25 +508,59 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
     };
   }, []);
 
-  const flyToPreset = (preset: EarthPreset) => {
+  const flyToPreset = (preset: EarthPreset, enterPilot = false) => {
     setActiveId(preset.id);
     const map = mapRef.current;
     if (!map) return;
+
+    if (preset.isOrbit) {
+      setIsPilotMode(false);
+      map.dragPan.enable();
+      setIsCinematic(true);
+    } else if (enterPilot) {
+      setIsCinematic(false);
+      setIsPilotMode(true);
+      map.dragPan.disable();
+    }
+
     map.setTerrain({ source: "terrainDem", exaggeration: preset.exaggeration });
     map.flyTo({
       center: preset.center,
       zoom: preset.zoom,
       pitch: preset.pitch,
       bearing: preset.bearing,
-      duration: preset.isOrbit ? 2200 : 2600,
+      duration: preset.isOrbit ? 2200 : 2500,
       essential: true,
     });
+  };
+
+  // 一键进入 / 退出真实第一人称自由驾驶漫游
+  const togglePilotMode = () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (isPilotMode) {
+      setIsPilotMode(false);
+      map.dragPan.enable();
+      return;
+    }
+
+    // 如果当前还在太空地球，自动俯冲降落到马特洪峰并进入自由驾驶
+    if (activeId === "globe" || map.getZoom() < 10) {
+      flyToPreset(EARTH_PRESETS[1], true);
+      return;
+    }
+
+    setIsCinematic(false);
+    setIsPilotMode(true);
+    map.dragPan.disable();
   };
 
   const toggleAtmosphere = () => {
     const next: AtmosphereTheme = atmosphere === "day" ? "golden" : "day";
     setAtmosphere(next);
     mapRef.current?.setSky(SKY_THEMES[next]);
+    mapRef.current?.setLight(LIGHT_THEMES[next]);
   };
 
   const toggleSound = () => {
@@ -385,13 +584,15 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
   return (
     <div
       ref={containerRef}
-      className="relative h-[100dvh] min-h-[640px] w-full overflow-hidden select-none bg-[#030712] font-sans"
+      className={`relative h-[100dvh] min-h-[640px] w-full overflow-hidden select-none bg-[#030712] font-sans ${
+        isPilotMode ? "cursor-crosshair" : "cursor-grab"
+      }`}
       style={{
         backgroundImage:
           "radial-gradient(circle at 50% 45%, rgba(28, 78, 155, 0.28) 0%, rgba(5, 10, 22, 0.96) 62%, #02050c 100%)",
       }}
     >
-      {/* 深空微弱星点底纹（仅在 Globe 太空视野周围显现） */}
+      {/* 深空星点底纹 */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-60"
@@ -404,7 +605,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       {/* MapLibre GL v6 3D 真实地球画布 */}
       <div ref={mapHostRef} className="relative z-10 h-full w-full" />
 
-      {/* 顶部与底部柔暗渐晕，让悬浮导航与航空 HUD 具备影院级对比度 */}
+      {/* 顶/底轻暗角渐晕 */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-[#030712]/75 via-[#030712]/25 to-transparent"
@@ -420,9 +621,40 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
         </div>
       )}
 
-      {/* 太空模式下的极简影院标题引导（不遮挡地球，仅左上轻盈排版） */}
-      {currentPreset.isOrbit && (
-        <div className="pointer-events-none absolute top-28 left-5 sm:top-24 sm:left-10 z-20 max-w-md space-y-2.5">
+      {/* 自由驾驶模式：顶部航空方向罗盘 + 屏幕中央极简微准星 */}
+      {isPilotMode && (
+        <>
+          <div
+            aria-label="Flight Compass"
+            className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 rounded-full border border-emerald-400/25 bg-[#060b16]/75 px-4 py-1.5 text-[11px] font-mono text-white/90 backdrop-blur-xl"
+          >
+            <span className="text-emerald-400 font-semibold">
+              HDG {String(telemetry.heading).padStart(3, "0")}° {headingToCardinal(telemetry.heading)}
+            </span>
+            <span className="text-white/25">|</span>
+            <span>SPD {telemetry.speedKmh} km/h</span>
+            <span className="hidden sm:inline text-white/25">|</span>
+            <span className="hidden sm:inline text-sky-300">AGL {telemetry.agl} m</span>
+          </div>
+
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center opacity-55"
+          >
+            <div className="relative h-7 w-7">
+              <span className="absolute left-1/2 top-0 h-2 w-[1px] -translate-x-1/2 bg-white" />
+              <span className="absolute left-1/2 bottom-0 h-2 w-[1px] -translate-x-1/2 bg-white" />
+              <span className="absolute top-1/2 left-0 w-2 h-[1px] -translate-y-1/2 bg-white" />
+              <span className="absolute top-1/2 right-0 w-2 h-[1px] -translate-y-1/2 bg-white" />
+              <span className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-400" />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 太空模式下的极简影院标题引导 */}
+      {currentPreset.isOrbit && !isPilotMode && (
+        <div className="pointer-events-none absolute top-28 left-5 sm:top-24 sm:left-10 z-20 max-w-md space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-medium tracking-[0.16em] text-sky-300 uppercase backdrop-blur-md">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             <span>REAL-WORLD 3D EARTH ENGINE</span>
@@ -431,7 +663,7 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
             从太空轨道，一秒俯冲真实地球
           </h1>
           <p className="hidden sm:block text-[14px] text-white/70 leading-relaxed">
-            零 API Key · Esri 全球卫星实景 × AWS 3D 数字高程 × OpenFreeMap 3D 城市建筑。点击下方地标，即刻开启 60 FPS 低空航拍。
+            支持第一人称物理惯性自由飞行：鼠标拖拽 360° 环顾视角，WASD 沿准星穿行真实雪峰与摩天楼群，Space / F 自由升降。
           </p>
         </div>
       )}
@@ -439,50 +671,67 @@ export default function True3DWorldGame({ onToggleSpecs }: True3DWorldGameProps)
       {/* 左下角：航空级实时遥测面板 */}
       <div
         role="status"
-        className="pointer-events-none absolute bottom-20 left-4 sm:bottom-6 sm:left-8 z-20 rounded-2xl border border-white/12 bg-[#060b16]/65 px-3.5 py-2.5 text-white backdrop-blur-xl"
+        className="pointer-events-none absolute bottom-20 left-4 sm:bottom-6 sm:left-8 z-20 rounded-2xl border border-white/12 bg-[#060b16]/70 px-3.5 py-2.5 text-white backdrop-blur-xl"
       >
         <div className="flex items-center gap-2 text-[11px] font-medium tracking-wider text-white/95">
-          <span className={`h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
-          <span>{ready ? currentPreset.title : "正在连接全球卫星与 3D 高程…"}</span>
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              ready ? (isPilotMode ? "bg-sky-400" : "bg-emerald-400") : "bg-amber-400 animate-pulse"
+            }`}
+          />
+          <span>
+            {!ready
+              ? "正在连接全球卫星与 3D 高程…"
+              : isPilotMode
+                ? `自由驾驶 · ${currentPreset.label}`
+                : currentPreset.title}
+          </span>
         </div>
         <div className="mt-1 hidden sm:flex items-center gap-3 text-[11px] text-white/60 font-mono tabular-nums">
           <span>{telemetry.lat}</span>
           <span>{telemetry.lon}</span>
-          <span>ZOOM {telemetry.zoom}</span>
+          {!currentPreset.isOrbit && <span>地面海拔 {telemetry.groundElev}m</span>}
           <span className="text-emerald-400">{telemetry.fps} FPS</span>
         </div>
       </div>
 
       {/* 底部居中：行星与全球真实地标航拍切换台 */}
-      <div className="absolute bottom-5 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:bottom-6 z-20 flex items-center gap-1 overflow-x-auto rounded-full border border-white/15 bg-[#060b16]/75 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl no-scrollbar">
-        {EARTH_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            onClick={() => flyToPreset(preset)}
-            className={`whitespace-nowrap rounded-full px-3 sm:px-3.5 py-1.5 text-[12px] transition cursor-pointer ${
-              activeId === preset.id
-                ? "bg-white text-[#060b16] font-semibold shadow-sm"
-                : "text-white/75 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            {preset.label}
-          </button>
-        ))}
+      <div className="absolute bottom-5 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:bottom-6 z-20 flex flex-col items-center gap-2">
+        {isPilotMode && (
+          <div className="pointer-events-none hidden md:block rounded-full border border-white/10 bg-[#060b16]/65 px-3.5 py-1 text-[11px] text-white/75 backdrop-blur-md">
+            按住左键拖拽环顾视角 · WASD 惯性穿行 · Q/E 转向 · Space 上升 / F 贴地 · Shift 加速
+          </div>
+        )}
+        <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/15 bg-[#060b16]/75 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl no-scrollbar">
+          {EARTH_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => flyToPreset(preset, isPilotMode)}
+              className={`whitespace-nowrap rounded-full px-3 sm:px-3.5 py-1.5 text-[12px] transition cursor-pointer ${
+                activeId === preset.id
+                  ? "bg-white text-[#060b16] font-semibold shadow-sm"
+                  : "text-white/75 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* 右下角：极简影院工具条（巡航 / 光影 / 风声 / 文献 / 全屏） */}
+      {/* 右下角：自由驾驶切换 + 极简影院工具条 */}
       <div className="absolute top-16 right-4 sm:top-auto sm:bottom-6 sm:right-8 z-20 flex items-center gap-1.5">
         <button
           type="button"
-          onClick={() => setIsCinematic((v) => !v)}
-          className={`rounded-full border px-3 py-1.5 text-[11px] sm:text-[12px] font-medium backdrop-blur-xl transition cursor-pointer ${
-            isCinematic
-              ? "border-emerald-400/60 bg-emerald-400/15 text-emerald-300"
-              : "border-white/15 bg-[#060b16]/70 text-white/80 hover:text-white"
+          onClick={togglePilotMode}
+          className={`rounded-full border px-3.5 py-1.5 text-[11px] sm:text-[12px] font-semibold backdrop-blur-xl transition cursor-pointer ${
+            isPilotMode
+              ? "border-sky-400 bg-sky-400 text-[#040812] shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+              : "border-emerald-400/50 bg-emerald-400/15 text-emerald-300 hover:bg-emerald-400/25"
           }`}
         >
-          {isCinematic ? "巡航中" : "巡航"}
+          {isPilotMode ? "退出驾驶" : "自由驾驶"}
         </button>
         <button
           type="button"

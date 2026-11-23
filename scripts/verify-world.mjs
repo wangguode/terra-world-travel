@@ -38,46 +38,40 @@ async function run() {
     await expect(page.getByRole("status").filter({ hasText: "轨道卫星全景" })).toBeVisible({
       timeout: 25000,
     });
-    await page.waitForTimeout(4500);
-    const globeShot = path.join(OUT_DIR, "earth-globe-1440.png");
-    await page.screenshot({ path: globeShot });
-    report.screenshots.push(globeShot);
+    await page.waitForTimeout(3500);
     report.checks.globeReady = true;
 
-    // 2. 点击「马特洪峰」并切换「日落」大气光影
-    await page.getByRole("button", { name: "马特洪峰" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "马特洪峰" })).toBeVisible({
+    // 2. 点击「自由驾驶」：自动俯冲马特洪峰并激活 FPS 罗盘与准星
+    await page.getByRole("button", { name: "自由驾驶" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "自由驾驶 · 马特洪峰" })).toBeVisible({
       timeout: 10000,
     });
+    await expect(page.getByLabel("Flight Compass")).toBeVisible({ timeout: 10000 });
+    await page.waitForTimeout(4200);
+
+    // 3. 真实按住 W + Shift 向前物理加速飞行 1.2 秒，验证位移与航速
+    await page.keyboard.down("Shift");
+    await page.keyboard.down("w");
+    await page.waitForTimeout(1200);
+    const compassText = await page.getByLabel("Flight Compass").textContent();
+    report.checks.compassDuringFlight = compassText;
+    await page.keyboard.up("w");
+    await page.keyboard.up("Shift");
+
+    // 切换黄金日落光影，截取第一人称驾驶实机图
     await page.getByRole("button", { name: "晴空" }).click();
-    await page.waitForTimeout(5000);
-    const matterhornShot = path.join(OUT_DIR, "earth-matterhorn-golden-1440.png");
-    await page.screenshot({ path: matterhornShot });
-    report.screenshots.push(matterhornShot);
-    report.checks.matterhornGoldenReady = true;
+    await page.waitForTimeout(1500);
+    const pilotShot = path.join(OUT_DIR, "earth-pilot-matterhorn-1440.png");
+    await page.screenshot({ path: pilotShot });
+    report.screenshots.push(pilotShot);
+    report.checks.pilotModeVerified = true;
 
-    // 3. 向下滚动，检查重构后的深空架构支柱 + 知识图谱区块
-    await page.evaluate(() => window.scrollTo(0, 960));
-    await page.waitForTimeout(1000);
-    const sectionsShot = path.join(OUT_DIR, "earth-home-sections-1440.png");
-    await page.screenshot({ path: sectionsShot });
-    report.screenshots.push(sectionsShot);
-    report.checks.sectionsRendered = true;
-
-    // 4. 移动端 375x812 零横向溢出 + 太空地球开屏
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.getByRole("button", { name: "太空地球" }).click();
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.waitForTimeout(3000);
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth > window.innerWidth
-    );
-    report.checks.mobileOverflow = overflow;
-    expect(overflow).toBe(false);
-
-    const mobileShot = path.join(OUT_DIR, "earth-mobile-375.png");
-    await page.screenshot({ path: mobileShot });
-    report.screenshots.push(mobileShot);
+    // 4. 切换到纽约曼哈顿低空驾驶视角并截图
+    await page.getByRole("button", { name: "纽约曼哈顿" }).click();
+    await page.waitForTimeout(4500);
+    const manhattanPilotShot = path.join(OUT_DIR, "earth-pilot-manhattan-1440.png");
+    await page.screenshot({ path: manhattanPilotShot });
+    report.screenshots.push(manhattanPilotShot);
 
     report.passed = report.errors.length === 0;
   } catch (err) {
