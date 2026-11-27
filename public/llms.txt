@@ -1,0 +1,20 @@
+# TERRA-OASIS
+
+> Open-source playable 3D Earth & neural world simulator paired with an interactive 100+ World Models research knowledge graph.
+
+- Live Application: https://terra.statementflow.win
+- GitHub Repository: https://github.com/wangguode/terra-world-travel
+- License: MIT / Open Source
+
+## Core Capabilities
+
+- **60 FPS 3D Earth & Low-Altitude Flight Simulator (`/`)**: Real-time browser simulator powered by MapLibre GL v5 Globe projection, Esri World Imagery satellite tiles, AWS Terrarium 3D elevation DEM, and OpenFreeMap 3D buildings with zero API keys required.
+- **100+ World Models Research Hub (`/research`)**: Interactive force-directed citation graph and long-form technical breakdowns indexing milestone World Models papers (DeepMind Genie, Decart Oasis, Google GameNGen, NVIDIA Cosmos, Wayve GAIA-1, World Labs, and more).
+- **Developer Documentation (`/docs`)**: Architecture guides, action-conditioning protocol specifications, code runner examples, and static edge deployment instructions.
+
+## Key Pages
+
+- [Home & 3D World Simulator](https://terra.statementflow.win/): Interactive 3D orbital-to-street Earth flight and embedded World Models citation graph.
+- [World Models Research Library](https://terra.statementflow.win/research): Full 100+ paper index, deep-dive engineering blogs, and BibTeX references.
+- [Developer Documentation](https://terra.statementflow.win/docs): Technical protocols, SDK declarations, and deployment documentation.
+- [Source Code](https://github.com/wangguode/terra-world-travel): Next.js static export source code, components, and curated dataset.

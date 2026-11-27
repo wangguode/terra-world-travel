@@ -506,7 +506,7 @@ function DocsContent() {
                       {lang === "en" ? "Have questions?" : "有技术疑问？"}
                     </div>
                     <div className="text-[13px] text-[#1d1d1f]">
-                      {lang === "en" ? "Ask Copilot AI &gt;" : "咨询 AI 智能助手 &gt;"}
+                      {lang === "en" ? "Ask Copilot AI >" : "咨询 AI 智能助手 >"}
                     </div>
                   </button>
                 </div>

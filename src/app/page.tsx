@@ -67,7 +67,7 @@ export default function HomePage() {
         </section>
 
         {/* 3. 深空过渡区：实事求是的 3 大硬核工程架构支柱 */}
-        <section className="relative bg-[#050a14] text-white border-t border-white/8 py-20 sm:py-28">
+        <section id="ecosystem-pillars" className="relative bg-[#050a14] text-white border-t border-white/8 py-20 sm:py-28">
           <div className="mx-auto max-w-6xl px-5 sm:px-8 space-y-14">
             <div className="max-w-3xl space-y-4">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-medium tracking-[0.14em] text-emerald-300 uppercase">
@@ -98,7 +98,7 @@ export default function HomePage() {
                 </h3>
                 <p className="text-[14px] sm:text-[15px] text-white/60 leading-relaxed">
                   {lang === "en"
-                    ? "Powered by MapLibre GL v6 Globe projection, Esri World Imagery, AWS Terrarium 3D elevation, and OpenFreeMap 3D buildings at 60 FPS."
+                    ? "Powered by MapLibre GL v5 Globe projection, Esri World Imagery, AWS Terrarium 3D elevation, and OpenFreeMap 3D buildings at 60 FPS."
                     : "基于 MapLibre GL 球体投影、Esri 卫星影像、AWS Terrarium 3D 高程与 OpenFreeMap 3D 建筑，60 FPS 平滑切换全球真实地貌。"}
                 </p>
               </div>

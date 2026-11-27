@@ -126,9 +126,12 @@ export function PaperReaderDrawer({
             <div className="text-[13px] text-[#86868b]">
               <span>Preprint Reference: </span>
               <a
-                href="https://arxiv.org"
+                href={
+                  (paper as { url?: string }).url ||
+                  `https://arxiv.org/search/?query=${encodeURIComponent(paper.title)}&searchtype=title`
+                }
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-[#0071e3] hover:underline"
               >
                 {paper.arxiv} ↗

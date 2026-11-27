@@ -1,11 +1,11 @@
 {
-  "name": "BEIJING PULSE // 360° 实景空间漫游与四时光影世界模型",
-  "short_name": "Beijing Pulse",
-  "description": "精选北京经典地标实景呈现，360° 真实空间漫游与四时光影变幻世界模型。",
+  "name": "TERRA-OASIS · Playable Neural World Simulator",
+  "short_name": "TERRA-OASIS",
+  "description": "Open-source playable 3D Earth simulator with MapLibre GL v5 + AWS 3D Terrain and 100+ World Models research knowledge graph.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#070707",
-  "theme_color": "#070707",
+  "background_color": "#030712",
+  "theme_color": "#030712",
   "orientation": "portrait-primary",
   "icons": [
     {

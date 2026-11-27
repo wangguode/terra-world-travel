@@ -69,9 +69,12 @@ export function PaperBlogViewer({
 
         <div className="flex items-center gap-3">
           <a
-            href="https://arxiv.org"
+            href={
+              (article as { url?: string }).url ||
+              `https://arxiv.org/search/?query=${encodeURIComponent(article.title)}&searchtype=title`
+            }
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="rounded-full bg-[#f5f5f7] px-3.5 py-1 text-[12px] font-medium text-[#515154] hover:bg-[#e8e8ed] transition no-underline"
           >
             {article.arxiv} ↗
