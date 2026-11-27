@@ -19,12 +19,12 @@
 </p>
 
 <p align="center">
-  <a href="https://terra-world-travel.153557421.workers.dev/">
-    <img src="https://img.shields.io/badge/🌐_在线实时体验_Live_Demo-terra--world--travel.153557421.workers.dev-0071e3?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Live Demo on Cloudflare" />
+  <a href="https://terra.statementflow.win">
+    <img src="https://img.shields.io/badge/🌐_在线实时体验_Live_Demo-terra.statementflow.win-0071e3?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Live Demo on Cloudflare" />
   </a>
 </p>
 
-> 🔗 **在线体验**：[https://terra-world-travel.153557421.workers.dev/](https://terra-world-travel.153557421.workers.dev/) （Cloudflare 全球边缘静态分发，打开即飞）
+> 🔗 **在线体验**：[https://terra.statementflow.win](https://terra.statementflow.win) （Cloudflare 全球边缘静态分发，打开即飞）
 
 ---
 

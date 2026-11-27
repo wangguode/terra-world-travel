@@ -10,6 +10,10 @@
     {
       "pattern": "terra.statementflow.win",
       "custom_domain": true
+    },
+    {
+      "pattern": "terra.statementflow.win/*",
+      "zone_name": "statementflow.win"
     }
   ]
 }
